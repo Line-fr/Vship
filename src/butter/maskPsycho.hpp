@@ -65,7 +65,7 @@ __global__ void fuzzyerrosion_Kernel(float* src, float* dst, int width, int heig
 
     const int kStep = 3;
     float min0 = src[ux];
-    float min1 = 2 * min0;
+    float min1 = 2.0f * min0;
     float min2 = min1;
     if (x >= kStep) {
         float v = src[y*width + x - kStep];
@@ -130,14 +130,14 @@ void MaskPsychoImage(Plane_d* hf1, Plane_d* uhf1, Plane_d* hf2, Plane_d* uhf2, P
     Plane_d temp3 = uhf1[0];
     //Plane_d temp4 = uhf1[1];
 
-    diffPrecompute(mask_xyb0.mem_d, diff0.mem_d, width, height, 6.19424080439, 12.61050594197, stream);
-    diffPrecompute(mask_xyb1.mem_d, diff1.mem_d, width, height, 6.19424080439, 12.61050594197, stream);
+    diffPrecompute(mask_xyb0.mem_d, diff0.mem_d, width, height, 6.19424080439f, 12.61050594197f, stream);
+    diffPrecompute(mask_xyb1.mem_d, diff1.mem_d, width, height, 6.19424080439f, 12.61050594197f, stream);
     Plane_d blurred0 = mask_xyb0;
     Plane_d blurred1 = mask_xyb1;
-    diff0.blur(blurred0, temp3, 2.7, 0., gaussiankernel);
-    diff1.blur(blurred1, temp3, 2.7, 0., gaussiankernel);
+    diff0.blur(blurred0, temp3, 2.7f, 0.0f, gaussiankernel);
+    diff1.blur(blurred1, temp3, 2.7f, 0.0f, gaussiankernel);
     fuzzyerrosion(blurred0.mem_d, mask.mem_d, width, height, stream);
-    L2diff(blurred0.mem_d, blurred1.mem_d, block_diff_ac[1].mem_d, width*height, 10., stream);
+    L2diff(blurred0.mem_d, blurred1.mem_d, block_diff_ac[1].mem_d, width*height, 10.0f, stream);
 }
 
 }

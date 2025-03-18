@@ -71,6 +71,7 @@ if (err_hip != hipSuccess)\
 #define STREAMNUM 29
 #define GAUSSIANSIZE 10
 #define SIGMA 1.5f
-#define PI 3.14159265359
+#define PI  3.14159265359
+#define TAU 6.28318530718
 
 #endif

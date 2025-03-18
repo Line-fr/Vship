@@ -1,20 +1,20 @@
 namespace butter{
 
 __device__ float MaskY(float delta) {
-    const float offset = 0.829591754942;
-    const float scaler = 0.451936922203;
-    const float mul = 2.5485944793;
+    const float offset = 0.829591754942f;
+    const float scaler = 0.451936922203f;
+    const float mul = 2.5485944793f;
     const float c = mul / ((scaler * delta) + offset);
-    const float retval = (1.0 + c)/(0.79079917404f*17.83f);
+    const float retval = (1.0 + c)*(1.0/(0.79079917404f*17.83f));
     return retval * retval;
 }
 
 __device__ float MaskDcY(float delta) {
-    const float offset = 0.20025578522;
-    const float scaler = 3.87449418804;
-    const float mul = 0.505054525019;
+    const float offset = 0.20025578522f;
+    const float scaler = 3.87449418804f;
+    const float mul = 0.505054525019f;
     const float c = mul / ((scaler * delta) + offset);
-    const float retval = (1.0 + c)/(0.79079917404f*17.83f);
+    const float retval = (1.0 + c)*(1.0/(0.79079917404f*17.83f));
     return retval * retval;
 }
 

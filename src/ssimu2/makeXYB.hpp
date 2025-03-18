@@ -3,32 +3,32 @@
 
 __device__ inline void opsin_absorbance(float3& a){
     float3 out;
-    const float opsin_bias = 0.0037930734;
-    out.x = fmaf(0.30, a.x,
-    fmaf(0.622, a.y,
-    fmaf(0.078, a.z,
+    const float opsin_bias = 0.0037930734f;
+    out.x = fmaf(0.30f, a.x,
+    fmaf(0.622f, a.y,
+    fmaf(0.078f, a.z,
     opsin_bias)));
 
-    out.y = fmaf(0.23, a.x,
-    fmaf(0.692, a.y,
-    fmaf(0.078, a.z,
+    out.y = fmaf(0.23f, a.x,
+    fmaf(0.692f, a.y,
+    fmaf(0.078f, a.z,
     opsin_bias)));
 
-    out.z = fmaf(0.24342269, a.x,
-    fmaf(0.20476745, a.y,
-    fmaf(0.55180986, a.z,
+    out.z = fmaf(0.24342269f, a.x,
+    fmaf(0.20476745f, a.y,
+    fmaf(0.55180986f, a.z,
     opsin_bias)));
 
     a = out;
 }
 
 __device__ inline void mixed_to_xyb(float3& a){
-    a.x = 0.5 * (a.x - a.y);
+    a.x = 0.5f * (a.x - a.y);
     a.y = a.x + a.y;
 }
 
 __device__ inline void linear_rgb_to_xyb(float3& a){
-    const float abs_bias = -0.1559542025327239;
+    const float abs_bias = -0.1559542025327239f;
     opsin_absorbance(a);
     //printf("from %f to %f\n", a.x, cbrtf(a.x*((int)(a.x >= 0))));
     a.x = cbrtf(a.x * ((int)(a.x >= 0))) + abs_bias;
@@ -38,9 +38,9 @@ __device__ inline void linear_rgb_to_xyb(float3& a){
     mixed_to_xyb(a);
 }
 
-__device__ inline void make_positive_xyb(float3& a){
+__device__ inline void make_positive_xyb(float3& a) {
     a.z = (a.z - a.y) + 0.55;
-    a.x = a.x * 14 + 0.42;
+    a.x = a.x * 14.0f + 0.42;  
     a.y += 0.01;
 }
 
@@ -49,11 +49,11 @@ __device__ inline void rgb_to_positive_xyb_d(float3& a){
     make_positive_xyb(a);
 }
 
-__device__ inline void rgb_to_linrgbfunc(float& a){
-    if (a > 0.04045){
-        a = powf(((a+0.055)/(1+0.055)), 2.4f);
+__device__ inline void rgb_to_linrgbfunc(float& a) {
+    if (a > 0.04045f) {
+        a = powf((a + 0.055) * (1.0 / 1.055), 2.4f);
     } else {
-        a = a/12.92;
+        a *= (1.0 / 12.92);
     }
 }
 

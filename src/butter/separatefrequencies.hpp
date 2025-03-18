@@ -1,10 +1,10 @@
 namespace butter{
 
     __device__ inline void XybLowFreqToVals(float& x, float& y, float& b) {
-        const float xmuli = 33.832837186260;
-        const float ymuli = 14.458268100570;
-        const float bmuli = 49.87984651440;
-        const float y_to_b_muli = -0.362267051518;
+        const float xmuli = 33.832837186260f;
+        const float ymuli = 14.458268100570f;
+        const float bmuli = 49.87984651440f;
+        const float y_to_b_muli = -0.362267051518f;
         b = b + y_to_b_muli * y;
         b = b * bmuli;
         x = x * xmuli;
@@ -22,7 +22,7 @@ namespace butter{
     }
 
     __device__ inline void MaximumClamp(float& v, float maxval) {
-        const float kMul = 0.688059627878;
+        const float kMul = 0.688059627878f;
         if (v >= maxval) {
             v -= maxval;
             v *= kMul;
@@ -35,7 +35,7 @@ namespace butter{
     }
 
     __device__ inline void supressXbyY(float& x, float yval, float yw){
-        const float s = 0.653020556257;
+        const float s = 0.653020556257f;
         const float scaler = s + (yw * (1.0 - s)) / (yw + yval * yval);
         x *= scaler;
     }
@@ -119,15 +119,15 @@ namespace butter{
 
         if (x >= width) return;
 
-        const float kMaxclampHf = 28.4691806922;
-        const float kMaxclampUhf = 5.19175294647;
+        const float kMaxclampHf = 28.4691806922f;
+        const float kMaxclampUhf = 5.19175294647f;
 
         MaximumClamp(hf[x], kMaxclampHf);
         uhf[x] -= hf[x];
         MaximumClamp(uhf[x], kMaxclampUhf);
         uhf[x] *= 2.69313763794;
         hf[x] *= 2.155;
-        AmplifyRangeAroundZero(hf[x], 0.132);
+        AmplifyRangeAroundZero(hf[x], 0.132f);
 
         //printf("res : %f and %f\n", first[x], second[x]);
     }
@@ -161,12 +161,12 @@ namespace butter{
         
         for (int i = 0; i < 3; i++){
             //we separate lf to get mf BUT we put mf on hf if i != 2 for later reasons
-            src[i].blur(lf[i], temp[i], 7.15593339443, 0, gaussiankernel);
+            src[i].blur(lf[i], temp[i], 7.15593339443f, 0.0f, gaussiankernel);
 
             if (i == 2){
                 //mf = blur(xyb-lf)
                 subarray(src[i].mem_d, lf[i].mem_d, mf[i].mem_d, width*height, stream);
-                mf[i].blur(temp[i], 3.22489901262, 0, gaussiankernel);
+                mf[i].blur(temp[i], 3.22489901262f, 0.0f, gaussiankernel);
                 break;
             }
             //mf (hf (uhf)) = xyb-lf //mf is stored on hf which is stored in uhf
@@ -174,27 +174,27 @@ namespace butter{
             subarray(src[i].mem_d, lf[i].mem_d, uhf[i].mem_d, width*height, stream);
             //mf = blur(mf (hf (uhf))) //we blur mf BUT mf is on hf which is on uhf. After this, mf is stored in mf but hf is on uhf
             //the real mf is blurred and we avoid the need to copy the unblurred mf to hf (uhf)
-            uhf[i].blur(mf[i], temp[i], 3.22489901262, 0, gaussiankernel);
+            uhf[i].blur(mf[i], temp[i], 3.22489901262f, 0.0f, gaussiankernel);
 
             //hf (uhf) = op(mf, hf (uhf))
             if (i == 0){
-                subarray_removerangearound0(mf[i].mem_d, uhf[i].mem_d, width*height, 0.29, stream); 
+                subarray_removerangearound0(mf[i].mem_d, uhf[i].mem_d, width*height, 0.29f, stream); 
             } else {
-                subarray_amplifyrangearound0(mf[i].mem_d, uhf[i].mem_d, width*height, 0.1, stream);
+                subarray_amplifyrangearound0(mf[i].mem_d, uhf[i].mem_d, width*height, 0.1f, stream);
             }
 
         }
         //using uhf which contains hf in reality
-        supressXbyY(uhf[0].mem_d, uhf[1].mem_d, width*height, 46.0, stream);
+        supressXbyY(uhf[0].mem_d, uhf[1].mem_d, width*height, 46.0f, stream);
 
         for (int i = 0; i < 2; i++){
             //original does uhf = hf but hf is already in uhf.
             //next is hf = blur(hf (uhf)) -> hf is now at its place and uhf has the old hf copy
-            uhf[i].blur(hf[i], temp[i], 1.56416327805, 0, gaussiankernel);
+            uhf[i].blur(hf[i], temp[i], 1.56416327805f, 0.0f, gaussiankernel);
 
             if (i == 0){
-                subarray_removerangearound0(hf[i].mem_d, uhf[i].mem_d, width*height, 1.5, stream);
-                removerangearound0(uhf[i].mem_d, width*height, 0.04, stream);
+                subarray_removerangearound0(hf[i].mem_d, uhf[i].mem_d, width*height, 1.5f, stream);
+                removerangearound0(uhf[i].mem_d, width*height, 0.04f, stream);
             } else {
                 separateHf_Uhf(lf[i].mem_d, hf[i].mem_d, uhf[i].mem_d, width*height, stream);
             }

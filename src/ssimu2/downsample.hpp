@@ -14,7 +14,7 @@ __global__ void downsamplekernel(float3* src, float3* dst, int width, int height
     dst[y * neww + x] += src[min((int)(2*y + 1), (int)(height-1)) * width + min((int)(2*x), (int)(width-1))];
     dst[y * neww + x] += src[min((int)(2*y), (int)(height-1)) * width + min((int)(2*x+1), (int)(width-1))];
     dst[y * neww + x] += src[min((int)(2*y + 1), (int)(height-1)) * width + min((int)(2*x+1), (int)(width-1))];
-    dst[y * neww + x] /= 4;
+    dst[y * neww + x] *= 0.25f;
     //printf("got %f, %f, %f from %f, %f, %f ; %f, %f, %f ; %f, %f, %f ; %f, %f, %f\n", dst[y * neww + x].x, dst[y * neww + x].y, dst[y * neww + x].z, src[min((int)(2*y), (int)(newh-1)) * neww + 2*x].x, src[min((int)(2*y), (int)(newh-1)) * neww + 2*x].y, src[min((int)(2*y), (int)(newh-1)) * neww + 2*x].z, src[min((int)(2*y + 1), (int)(newh-1)) * neww + 2*x].x, src[min((int)(2*y + 1), (int)(newh-1)) * neww + 2*x].y, src[min((int)(2*y + 1), (int)(newh-1)) * neww + 2*x].z, src[min((int)(2*y), (int)(newh-1)) * neww + 2*x + 1].x, src[min((int)(2*y), (int)(newh-1)) * neww + 2*x + 1].y, src[min((int)(2*y), (int)(newh-1)) * neww + 2*x + 1].z, src[min((int)(2*y + 1), (int)(newh-1)) * neww + 2*x + 1].x, src[min((int)(2*y + 1), (int)(newh-1)) * neww + 2*x + 1].y, src[min((int)(2*y + 1), (int)(newh-1)) * neww + 2*x + 1].z);
 }
 

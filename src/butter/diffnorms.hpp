@@ -10,9 +10,9 @@ __global__ void sumreduce(float* dst, float* src, int width){
     __shared__ float sharedmem[1024*3];
 
     if (x >= width){
-        sharedmem[thx] = 0;
-        sharedmem[1024+thx] = 0;
-        sharedmem[1024*2+thx] = 0;
+        sharedmem[thx] = 0.0f;
+        sharedmem[1024+thx] = 0.0f;
+        sharedmem[1024*2+thx] = 0.0f;
     } else {
         sharedmem[thx] = src[x];
         sharedmem[1024+thx] = src[x+width];
@@ -47,9 +47,9 @@ __global__ void sumreducenorm(float* dst, float* src, int width){
     __shared__ float sharedmem[1024*3];
 
     if (x >= width){
-        sharedmem[thx] = 0;
-        sharedmem[1024+thx] = 0;
-        sharedmem[1024*2+thx] = 0;
+        sharedmem[thx] = 0.0f;
+        sharedmem[1024+thx] = 0.0f;
+        sharedmem[1024*2+thx] = 0.0f;
     } else {
         sharedmem[thx] = powf(abs(src[x]), 2);
         sharedmem[1024+thx] = powf(abs(src[x]), 3);
@@ -96,9 +96,9 @@ std::tuple<float, float, float> diffmapscore(float* diffmap, float* temp, float*
     }
     float* back_to_cpu = (float*)malloc(sizeof(float)*width*3);
     if (!back_to_cpu) throw std::bad_alloc();
-    float resnorm2 = 0;
-    float resnorm3 = 0;
-    float resnorminf = 0;
+    float resnorm2 = 0.0f;
+    float resnorm3 = 0.0f;
+    float resnorminf = 0.0f;
     hipMemcpyDtoHAsync(back_to_cpu, src, sizeof(float)*width*3, stream);
 
     hipEventRecord(event_d, stream); //place an event in the stream at the end of all our operations
@@ -117,8 +117,8 @@ std::tuple<float, float, float> diffmapscore(float* diffmap, float* temp, float*
     }
 
     free(back_to_cpu);
-    resnorm2 = std::pow(resnorm2/basewidth, 1./2.);
-    resnorm3 = std::pow(resnorm3/basewidth, 1./3.);
+    resnorm2 = std::powf(resnorm2/basewidth, 1.0/2.0);
+    resnorm3 = std::pow(resnorm3/basewidth, 1.0/3.0);
     return std::make_tuple(resnorm2, resnorm3, resnorminf);
 }
 

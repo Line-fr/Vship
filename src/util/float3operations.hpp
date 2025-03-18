@@ -1,7 +1,7 @@
 #ifndef FLOAT3OPHPP
 #define FLOAT3OPHPP
 
-__device__ __host__ void inline operator/=(float3& a, float3& b){
+__device__ __host__ void inline operator/=(float3& a, const float3& b){
     a.x /= b.x;
     a.y /= b.y;
     a.z /= b.z;
@@ -67,9 +67,9 @@ __device__ __host__ float3 inline fmaf(const float3& a, const float& b, const fl
 }
 __device__ __host__ float3 inline abs(const float3& a){
     float3 out;
-    out.x = abs(a.x);
-    out.y = abs(a.y);
-    out.z = abs(a.z);
+    out.x = fabsf(a.x);
+    out.y = fabsf(a.y);
+    out.z = fabsf(a.z);
     return out;
 }
 

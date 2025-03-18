@@ -10,12 +10,12 @@ __global__ void downsamplekernel(float* src, float* dst, int width, int height){
 
     if (x >= neww || y >= newh) return;
 
-    dst[y * neww + x] = 0;
+    dst[y * neww + x] = 0.0f;
     dst[y * neww + x] += src[min((int)(2*y), (int)(height-1)) * width + min((int)(2*x), (int)(width-1))];
     dst[y * neww + x] += src[min((int)(2*y + 1), (int)(height-1)) * width + min((int)(2*x), (int)(width-1))];
     dst[y * neww + x] += src[min((int)(2*y), (int)(height-1)) * width + min((int)(2*x+1), (int)(width-1))];
     dst[y * neww + x] += src[min((int)(2*y + 1), (int)(height-1)) * width + min((int)(2*x+1), (int)(width-1))];
-    dst[y * neww + x] /= 4;
+    dst[y * neww + x] *= 0.25f;
     //if ((y*2+1)*width + x*2 == 10000) printf("got %f\n", dst[y*neww + x]);
 }
 
@@ -38,12 +38,12 @@ __global__ void addsupersample2X_kernel(float* diffmap, float* diffmapsmall, int
 
     //int newh = (height-1)/2 + 1;
     int neww = (width-1)/2 + 1;
-
+    
     if (x >= width || y >= height) return;
 
     //if (y*width+x == 1841628) printf("small got %f and normal got %f\n", diffmapsmall[(y/2)*neww+x/2], diffmap[y*width+x]);
 
-    diffmap[y*width+x] *= 1. - 0.3*w;
+    diffmap[y*width+x] *= 1.0 - 0.3*w;
     diffmap[y*width+x] += w*diffmapsmall[(y/2)*neww+x/2];
 }
 

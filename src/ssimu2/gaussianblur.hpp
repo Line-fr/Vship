@@ -39,8 +39,8 @@ __global__ void verticalBlur_Kernel(float3* src, float3* dst, int width, int hei
     int current_line = x/w;
     int current_column = x%w;
 
-    float tot = 0;
-    float3 out; out.x = 0; out.y = 0; out.z = 0;
+    float tot = 0.0f;
+    float3 out; out.x = out.y = out.z = 0.0f;
     for (int i = max(current_line-GAUSSIANSIZE, 0); i <= min(current_line+GAUSSIANSIZE, h-1); i++){
         out += src[i * w + current_column]*gaussiankernel[GAUSSIANSIZE+i-current_line];
         tot += gaussiankernel[GAUSSIANSIZE+i-current_line];

@@ -278,7 +278,7 @@ static void VS_CC ssimulacra2Create(const VSMap *in, VSMap *out, void *userData,
 
     float gaussiankernel[2*GAUSSIANSIZE+1];
     for (int i = 0; i < 2*GAUSSIANSIZE+1; i++){
-        gaussiankernel[i] = std::exp(-(GAUSSIANSIZE-i)*(GAUSSIANSIZE-i)/(2*SIGMA*SIGMA))/(std::sqrt(2*PI*SIGMA*SIGMA));
+        gaussiankernel[i] = std::exp(-(GAUSSIANSIZE-i)*(GAUSSIANSIZE-i)/(2*SIGMA*SIGMA))/(std::sqrt(TAU*SIGMA*SIGMA));
     }
 
     data->maxshared = devattr.sharedMemPerBlock;
