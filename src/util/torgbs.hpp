@@ -5,10 +5,10 @@
 
 #include "../util/preprocessor.hpp"
 
-VSNode * toRGBS(VSNode * source, VSCore *core, const VSAPI *vsapi){
+VSNode * toRGBS(VSNode * source, VSCore *core, const VSAPI *vsapi, bool mode16bit = false){
     const VSVideoInfo *vi = vsapi->getVideoInfo(source);
 
-    if ((vi->format.bitsPerSample != 32) && (vi->format.colorFamily == cfRGB) && vi->format.sampleType == stFloat){
+    if ((vi->format.bitsPerSample != ((mode16bit)? 16:32)) && (vi->format.colorFamily == cfRGB) && vi->format.sampleType == (mode16bit?stInteger:stFloat)){
         return source;
     }
 
@@ -16,7 +16,7 @@ VSNode * toRGBS(VSNode * source, VSCore *core, const VSAPI *vsapi){
     VSMap* args = vsapi->createMap();
     vsapi->mapConsumeNode(args, "clip", source, maReplace);
     vsapi->mapSetInt(args, "matrix_in", matrix, maReplace);
-    vsapi->mapSetInt(args, "format", pfRGBS, maReplace);
+    vsapi->mapSetInt(args, "format", mode16bit?pfRGB48:pfRGBS, maReplace);
 
     VSPlugin* vsplugin = vsapi->getPluginByID(VSH_RESIZE_PLUGIN_ID, core);
     VSMap* ret = vsapi->invoke(vsplugin, "Bicubic", args);

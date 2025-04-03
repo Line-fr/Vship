@@ -200,9 +200,9 @@ __global__ void memoryorganizer_kernel(float3* out, const uint8_t *srcp0, const 
     if (x >= width*height) return;
     int j = x%width;
     int i = x/width;
-    out[i*width + j].x = ((float*)(srcp0 + i*stride))[j];
-    out[i*width + j].y = ((float*)(srcp1 + i*stride))[j];
-    out[i*width + j].z = ((float*)(srcp2 + i*stride))[j];
+    out[i*width + j].x = ((float)(((uint16_t*)(srcp0 + i*stride))[j]))/((1 << 16) -1);
+    out[i*width + j].y = ((float)(((uint16_t*)(srcp1 + i*stride))[j]))/((1 << 16) -1);
+    out[i*width + j].z = ((float)(((uint16_t*)(srcp2 + i*stride))[j]))/((1 << 16) -1);
 }
 
 void memoryorganizer(float3* out, const uint8_t *srcp0, const uint8_t *srcp1, const uint8_t *srcp2, int stride, int width, int height, hipStream_t stream){

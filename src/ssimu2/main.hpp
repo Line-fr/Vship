@@ -217,8 +217,8 @@ static void VS_CC ssimulacra2Create(const VSMap *in, VSMap *out, void *userData,
     Ssimulacra2Data *data;
 
     // Get a clip reference from the input arguments. This must be freed later.
-    d.reference = toRGBS(vsapi->mapGetNode(in, "reference", 0, 0), core, vsapi);
-    d.distorted = toRGBS(vsapi->mapGetNode(in, "distorted", 0, 0), core, vsapi);
+    d.reference = toRGBS(vsapi->mapGetNode(in, "reference", 0, 0), core, vsapi, true);
+    d.distorted = toRGBS(vsapi->mapGetNode(in, "distorted", 0, 0), core, vsapi, true);
     const VSVideoInfo *viref = vsapi->getVideoInfo(d.reference);
     const VSVideoInfo *vidis = vsapi->getVideoInfo(d.distorted);
 
@@ -229,7 +229,7 @@ static void VS_CC ssimulacra2Create(const VSMap *in, VSMap *out, void *userData,
         return;
     }
 
-    if ((viref->format.bitsPerSample != 32) || (viref->format.colorFamily != cfRGB) || viref->format.sampleType != stFloat){
+    if ((viref->format.bitsPerSample != 16) || (viref->format.colorFamily != cfRGB) || viref->format.sampleType != stInteger){
         vsapi->mapSetError(out, VshipError(NonRGBSInput, __FILE__, __LINE__).getErrorMessage().c_str());
         vsapi->freeNode(d.reference);
         vsapi->freeNode(d.distorted);
