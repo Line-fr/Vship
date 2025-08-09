@@ -143,32 +143,43 @@ class FFMSIndexResult {
 
   public:
     std::string file_path;
+    std::string index_file_path;
     FFMS_Index* index = NULL;
     FFMS_Track* track = NULL;
     int selected_video_track = -1;
     int numFrame = 0;
 
-    explicit FFMSIndexResult(const std::string &input_file_path) {
+    explicit FFMSIndexResult(const std::string &input_file_path, const std::string &input_index_file_path) {
         file_path = input_file_path;
+        index_file_path = input_index_file_path;
         FFMS_Init(0, 0);
 
         error_info.Buffer = error_message_buffer;
         error_info.BufferSize = error_message_buffer_size;
         error_info.ErrorType = FFMS_ERROR_SUCCESS;
         error_info.SubType = FFMS_ERROR_SUCCESS;
+        
+        if (input_index_file_path != "") {
+            index = FFMS_ReadIndex(input_index_file_path.c_str(), &error_info);
+            ASSERT_WITH_MESSAGE(index != nullptr,
+                                ("FFMS2: Failed to read index from [" +
+                                input_index_file_path + "] - " + error_message_buffer)
+                                    .c_str());
+            //std::cout << "Successfully read index from " << input_index_file_path << std::endl;
+        } else {
+            FFMS_Indexer *indexer =
+                FFMS_CreateIndexer(input_file_path.c_str(), &error_info);
+            ASSERT_WITH_MESSAGE(indexer != nullptr,
+                                ("FFMS2: Failed to create indexer for file [" +
+                                input_file_path + "] - " + error_message_buffer)
+                                    .c_str());
 
-        FFMS_Indexer *indexer =
-            FFMS_CreateIndexer(input_file_path.c_str(), &error_info);
-        ASSERT_WITH_MESSAGE(indexer != nullptr,
-                            ("FFMS2: Failed to create indexer for file [" +
-                             input_file_path + "] - " + error_message_buffer)
-                                .c_str());
-
-        index = FFMS_DoIndexing2(indexer, FFMS_IEH_ABORT, &error_info);
-        ASSERT_WITH_MESSAGE(index != nullptr,
-                            ("FFMS2: Failed to index file [" + input_file_path +
-                             "] - " + error_message_buffer)
-                                .c_str());
+            index = FFMS_DoIndexing2(indexer, FFMS_IEH_ABORT, &error_info);
+            ASSERT_WITH_MESSAGE(index != nullptr,
+                                ("FFMS2: Failed to index file [" + input_file_path +
+                                "] - " + error_message_buffer)
+                                    .c_str());
+        }
 
         selected_video_track =
             FFMS_GetFirstTrackOfType(index, FFMS_TYPE_VIDEO, &error_info);
@@ -437,6 +448,8 @@ struct CommandLineOptions {
     std::string source_file;
     std::string encoded_file;
     std::string json_output_file;
+    std::string source_index;
+    std::string encoded_index;
 
     int start_frame = 0;
     int end_frame = -1;
@@ -511,6 +524,8 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     parser.add_flag({"--metric", "-m"}, &metric_name, "Which metric to use [SSIMULACRA2, Butteraugli]");
     parser.add_flag({"--json"}, &opts.json_output_file, "Outputs metric results to a json file");
     parser.add_flag({"--live-score-output"}, &opts.live_index_score_output, "replace stdout output with index-score lines");
+    parser.add_flag({"--source-index"}, &opts.source_index, "FFMS2 index file for source video");
+    parser.add_flag({"--encoded-index"}, &opts.encoded_index, "FFMS2 index file for encoded video");
 
     parser.add_flag({"--start"}, &opts.start_frame, "Starting frame of source");
     parser.add_flag({"--end"}, &opts.end_frame, "Ending frame of source");
