@@ -148,8 +148,9 @@ class FFMSIndexResult {
     FFMS_Track* track = NULL;
     int selected_video_track = -1;
     int numFrame = 0;
+    int write = 0;
 
-    explicit FFMSIndexResult(const std::string &input_file_path, const std::string &input_index_file_path) {
+    explicit FFMSIndexResult(const std::string &input_file_path, const std::string &input_index_file_path, const bool cache_index) {
         file_path = input_file_path;
         index_file_path = input_index_file_path;
         FFMS_Init(0, 0);
@@ -158,14 +159,77 @@ class FFMSIndexResult {
         error_info.BufferSize = error_message_buffer_size;
         error_info.ErrorType = FFMS_ERROR_SUCCESS;
         error_info.SubType = FFMS_ERROR_SUCCESS;
-        
+
         if (input_index_file_path != "") {
-            index = FFMS_ReadIndex(input_index_file_path.c_str(), &error_info);
-            ASSERT_WITH_MESSAGE(index != nullptr,
-                                ("FFMS2: Failed to read index from [" +
-                                input_index_file_path + "] - " + error_message_buffer)
-                                    .c_str());
-            //std::cout << "Successfully read index from " << input_index_file_path << std::endl;
+            if (cache_index) {
+                index = FFMS_ReadIndex(input_index_file_path.c_str(), &error_info);
+                if (index == nullptr || FFMS_IndexBelongsToFile(index, input_file_path.c_str(), &error_info)) {
+                    std::cout << "Index file at [" << input_index_file_path << "] is invalid or does not exist, creating" << std::endl;
+                    FFMS_Indexer *indexer =
+                        FFMS_CreateIndexer(input_file_path.c_str(), &error_info);
+                    ASSERT_WITH_MESSAGE(indexer != nullptr,
+                                        ("FFMS2: Failed to create indexer for file [" +
+                                        input_file_path + "] - " + error_message_buffer)
+                                            .c_str());
+
+                    index = FFMS_DoIndexing2(indexer, FFMS_IEH_ABORT, &error_info);
+                    ASSERT_WITH_MESSAGE(index != nullptr,
+                                        ("FFMS2: Failed to index file [" + input_file_path +
+                                        "] - " + error_message_buffer)
+                                            .c_str());
+
+                    write = FFMS_WriteIndex(input_index_file_path.c_str(), index, &error_info);
+                    ASSERT_WITH_MESSAGE(write == 0,
+                                        ("FFMS2: Failed to write index to file [" + input_index_file_path +
+                                        "] - " + error_message_buffer)
+                                            .c_str());
+                    std::cout << "Successfully wrote index to [" << input_index_file_path << "]" << std::endl;
+                } else
+                    std::cout << "Successfully read index from [" << input_index_file_path << "]" << std::endl;
+            } else {
+                index = FFMS_ReadIndex(input_index_file_path.c_str(), &error_info);
+                if (index == nullptr || FFMS_IndexBelongsToFile(index, input_file_path.c_str(), &error_info)) {
+                    std::cout << "Index file at [" << input_index_file_path << "] is invalid or does not exist, ignoring" << std::endl;
+                    FFMS_Indexer *indexer =
+                        FFMS_CreateIndexer(input_file_path.c_str(), &error_info);
+                    ASSERT_WITH_MESSAGE(indexer != nullptr,
+                                        ("FFMS2: Failed to create indexer for file [" +
+                                        input_file_path + "] - " + error_message_buffer)
+                                            .c_str());
+
+                    index = FFMS_DoIndexing2(indexer, FFMS_IEH_ABORT, &error_info);
+                    ASSERT_WITH_MESSAGE(index != nullptr,
+                                        ("FFMS2: Failed to index file [" + input_file_path +
+                                        "] - " + error_message_buffer)
+                                            .c_str());
+                } else
+                    std::cout << "Successfully read index from [" << input_index_file_path << "]" << std::endl;
+            }
+        } else if (cache_index) {
+            index = FFMS_ReadIndex((input_file_path + ".ffindex").c_str(), &error_info);
+            if (index == nullptr || FFMS_IndexBelongsToFile(index, input_file_path.c_str(), &error_info)) {
+                std::cout << "Index file at [" << input_file_path << ".ffindex] is invalid or does not exist, creating" << std::endl;
+                FFMS_Indexer *indexer =
+                    FFMS_CreateIndexer(input_file_path.c_str(), &error_info);
+                ASSERT_WITH_MESSAGE(indexer != nullptr,
+                                    ("FFMS2: Failed to create indexer for file [" +
+                                    input_file_path + "] - " + error_message_buffer)
+                                        .c_str());
+
+                index = FFMS_DoIndexing2(indexer, FFMS_IEH_ABORT, &error_info);
+                ASSERT_WITH_MESSAGE(index != nullptr,
+                                    ("FFMS2: Failed to index file [" + input_file_path +
+                                    "] - " + error_message_buffer)
+                                        .c_str());
+
+                write = FFMS_WriteIndex((input_file_path + ".ffindex").c_str(), index, &error_info);
+                ASSERT_WITH_MESSAGE(write == 0,
+                                    ("FFMS2: Failed to write index to file [" + input_file_path +
+                                    ".ffindex] - " + error_message_buffer)
+                                        .c_str());
+                std::cout << "Successfully wrote index to [" << input_file_path << ".ffindex]" << std::endl;
+            } else
+                std::cout << "Successfully read index from [" << input_file_path << ".ffindex]" << std::endl;
         } else {
             FFMS_Indexer *indexer =
                 FFMS_CreateIndexer(input_file_path.c_str(), &error_info);
@@ -471,6 +535,8 @@ struct CommandLineOptions {
     bool NoAssertExit = false; //please exit without creating an assertion failed scary error
 
     bool live_index_score_output = false;
+
+    bool cache_index = false;
 };
 
 std::vector<int> splitPerToken(std::string inp){
@@ -526,6 +592,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     parser.add_flag({"--live-score-output"}, &opts.live_index_score_output, "replace stdout output with index-score lines");
     parser.add_flag({"--source-index"}, &opts.source_index, "FFMS2 index file for source video");
     parser.add_flag({"--encoded-index"}, &opts.encoded_index, "FFMS2 index file for encoded video");
+    parser.add_flag({"--cache-index"}, &opts.cache_index, "Write index files to disk and reuse if available");
 
     parser.add_flag({"--start"}, &opts.start_frame, "Starting frame of source");
     parser.add_flag({"--end"}, &opts.end_frame, "Ending frame of source");
