@@ -93,6 +93,7 @@ usage: ./FFVship [-h] [--source SOURCE] [--encoded ENCODED]
                     [--list-gpu]
                     Specific to Butteraugli: 
                     [--intensity-target Intensity(nits)]
+                    [--qnorm optional_norm_computation]
 ```
 
 ### Vapoursynth
