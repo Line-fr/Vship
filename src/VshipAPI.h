@@ -147,6 +147,31 @@ EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugliUint16(Vship_Butteraugl
 
 EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugliUint16v2(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
 
+typedef struct{
+    int id;
+} Vship_CVVDPHandler;
+
+//handler pointer will be replaced, it is a return value. Don't forget to free it after usage.
+EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, int width, int height);
+
+//handler pointer can be discarded after this function.
+EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);
+
+//the frame is not overwritten
+//dstp must either be NULL (in this case, the distortion map will never be retrieved from the gpu)
+//or be allocated of size dststride*height
+//when input is RGB with BT709 transfer function uint16_t frame
+//output in score
+EXPORTPREPROCESS Vship_Exception Vship_ComputeCVVDPUint16(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
+
+//the frame is not overwritten
+//dstp must either be NULL (in this case, the distortion map will never be retrieved from the gpu)
+//or be allocated of size dststride*height
+//when input is RGB with BT709 transfer function float frame
+//output in score
+EXPORTPREPROCESS Vship_Exception Vship_ComputeCVVDPFloat(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
+
+
 #ifdef __cplusplus
 } //extern "C"
 #endif

@@ -2,6 +2,7 @@
 #include "VSHelper4.h"
 #include "butter/vapoursynth.hpp"
 #include "ssimu2/vapoursynth.hpp"
+#include "cvvdp/vapoursynth.hpp"
 #include "util/gpuhelper.hpp"
 
 static void VS_CC GpuInfo(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
@@ -58,6 +59,7 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI
     vspapi->configPlugin("com.lumen.vship", "vship", "VapourSynth SSIMULACRA2 on GPU", VS_MAKE_VERSION(3, 2), VAPOURSYNTH_API_VERSION, 0, plugin);
     vspapi->registerFunction("SSIMULACRA2", "reference:vnode;distorted:vnode;numStream:int:opt;gpu_id:int:opt;", "clip:vnode;", ssimu2::ssimulacra2Create, NULL, plugin);
     vspapi->registerFunction("BUTTERAUGLI", "reference:vnode;distorted:vnode;qnorm:int:opt;intensity_multiplier:float:opt;distmap:int:opt;numStream:int:opt;gpu_id:int:opt;", "clip:vnode;", butter::butterCreate, NULL, plugin);
+    vspapi->registerFunction("CVVDP", "reference:vnode;distorted:vnode;distmap:int:opt;numStream:int:opt;gpu_id:int:opt;", "clip:vnode;", cvvdp::CVVDPCreate, NULL, plugin);
     vspapi->registerFunction("GpuInfo", "gpu_id:int:opt;", "gpu_human_data:data;", GpuInfo, NULL, plugin);
 }
 
@@ -156,6 +158,7 @@ Vship_Exception Vship_PinnedFree(void* ptr){
 
 RessourceManager<ssimu2::SSIMU2ComputingImplementation> HandlerManagerSSIMU2;
 RessourceManager<butter::ButterComputingImplementation> HandlerManagerButteraugli;
+RessourceManager<cvvdp::CVVDPComputingImplementation> HandlerManagerCVVDP;
 
 Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, int width, int height){
     Vship_Exception err = Vship_NoError;
@@ -358,6 +361,66 @@ Vship_Exception Vship_ComputeButteraugliUint16v2(Vship_ButteraugliHandler handle
         score->norm2 = std::get<0>(res);
         score->norm3 = std::get<1>(res);
         score->norminf = std::get<2>(res);
+    } catch (const VshipError& e){
+        err = (Vship_Exception)e.type;
+    }
+    return err;
+}
+
+Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, int width, int height){
+    Vship_Exception err = Vship_NoError;
+    handler->id = HandlerManagerCVVDP.allocate();
+    HandlerManagerCVVDP.lock.lock();
+    try{
+        HandlerManagerCVVDP.elements[handler->id].init(width, height);
+    } catch (const VshipError& e){
+        err = (Vship_Exception)e.type;
+    }
+    HandlerManagerCVVDP.lock.unlock();
+    return err;
+}
+
+Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler){
+    Vship_Exception err = Vship_NoError;
+    HandlerManagerCVVDP.lock.lock();
+    if (handler.id >= HandlerManagerCVVDP.elements.size()){
+        HandlerManagerCVVDP.lock.unlock();
+        return Vship_BadHandler;
+    }
+    try{
+        HandlerManagerCVVDP.elements[handler.id].destroy();
+    } catch (const VshipError& e){
+        err = (Vship_Exception)e.type;
+    }
+    HandlerManagerCVVDP.lock.unlock();
+    HandlerManagerCVVDP.free(handler.id);
+    return err;
+}
+
+Vship_Exception Vship_ComputeCVVDPUint16(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
+    Vship_Exception err = Vship_NoError;
+    HandlerManagerCVVDP.lock.lock();
+    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
+    cvvdp::CVVDPComputingImplementation cvvdpcomputingimplem = HandlerManagerCVVDP.elements[handler.id];
+    HandlerManagerCVVDP.lock.unlock();
+    //there is no safety feature to prevent using twice at the same time a single computingimplem
+    try{
+        *score = cvvdpcomputingimplem.run<UINT16>(dstp, dststride, srcp1, srcp2, stride, stride2);
+    } catch (const VshipError& e){
+        err = (Vship_Exception)e.type;
+    }
+    return err;
+}
+
+Vship_Exception Vship_ComputeCVVDPUFloat(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
+    Vship_Exception err = Vship_NoError;
+    HandlerManagerCVVDP.lock.lock();
+    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
+    cvvdp::CVVDPComputingImplementation cvvdpcomputingimplem = HandlerManagerCVVDP.elements[handler.id];
+    HandlerManagerCVVDP.lock.unlock();
+    //there is no safety feature to prevent using twice at the same time a single computingimplem
+    try{
+        *score = cvvdpcomputingimplem.run<FLOAT>(dstp, dststride, srcp1, srcp2, stride, stride2);
     } catch (const VshipError& e){
         err = (Vship_Exception)e.type;
     }

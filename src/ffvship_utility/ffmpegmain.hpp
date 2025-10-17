@@ -23,7 +23,7 @@ if (!(condition)) {\
 }
 #endif
 
-enum class MetricType { SSIMULACRA2, Butteraugli, Unknown };
+enum class MetricType { SSIMULACRA2, Butteraugli, CVVDP, Unknown };
 
 struct CropRectangle{
     int top = 0;
@@ -60,6 +60,7 @@ class GpuWorker {
 
     ssimu2::SSIMU2ComputingImplementation ssimu2worker;
     butter::ButterComputingImplementation butterworker;
+    cvvdp::CVVDPComputingImplementation cvvdpworker;
 
   public:
     GpuWorker(MetricType metric, int width, int height, int stride, int strideEncoded, CropRectangle cropSource, CropRectangle cropEncoded, int Qnorm, float intensity_multiplier)
@@ -101,6 +102,11 @@ class GpuWorker {
         if (selected_metric == MetricType::Butteraugli) {
             return butterworker.run<UINT16>(
                 nullptr, 0, source_channels, encoded_channels, image_stride, strideEncoded);
+        }
+
+        if (selected_metric == MetricType::CVVDP){
+            const float s = cvvdpworker.run<UINT16>(nullptr, 0, source_channels, encoded_channels, image_stride, strideEncoded);
+            return {s, s, s};
         }
 
         ASSERT_WITH_MESSAGE(false, "Unknown metric specified for GpuWorker.");
@@ -145,6 +151,14 @@ class GpuWorker {
                 ASSERT_WITH_MESSAGE(false, "Failed to initialize Butteraugli Worker");
                 return;
             }
+        } else if (selected_metric == MetricType::CVVDP){
+            try {
+                cvvdpworker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom);
+            } catch (const VshipError& e){
+                std::cerr << e.getErrorMessage() << std::endl;
+                ASSERT_WITH_MESSAGE(false, "Failed to initialize CVVDP Worker");
+                return;
+            }
         } else {
             ASSERT_WITH_MESSAGE(false,
                                 "Unknown metric during memory allocation.");
@@ -156,6 +170,8 @@ class GpuWorker {
             ssimu2worker.destroy();
         } else if (selected_metric == MetricType::Butteraugli) {
             butterworker.destroy();
+        } else if (selected_metric == MetricType::CVVDP){
+            cvvdpworker.destroy();
         }
     }
 };
@@ -747,6 +763,7 @@ MetricType parse_metric_name(const std::string &name) {
     }
     if (lowered == "ssimulacra2" || lowered == "ssimu2") return MetricType::SSIMULACRA2;
     if (lowered == "butteraugli" || lowered == "butter") return MetricType::Butteraugli;
+    if (lowered == "cvvdp") return MetricType::CVVDP;
     return MetricType::Unknown;
 }
 

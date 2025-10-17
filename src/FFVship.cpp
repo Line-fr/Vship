@@ -14,6 +14,7 @@
 
 #include "butter/main.hpp"
 #include "ssimu2/main.hpp"
+#include "cvvdp/main.hpp"
 
 #include "ffvship_utility/ProgressBar.hpp"
 #include "ffvship_utility/ffmpegmain.hpp"
