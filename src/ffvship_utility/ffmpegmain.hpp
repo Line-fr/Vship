@@ -63,11 +63,11 @@ class GpuWorker {
     cvvdp::CVVDPComputingImplementation cvvdpworker;
 
   public:
-    GpuWorker(MetricType metric, int width, int height, int stride, int strideEncoded, CropRectangle cropSource, CropRectangle cropEncoded, int Qnorm, float intensity_multiplier)
+    GpuWorker(MetricType metric, int width, int height, int stride, int strideEncoded, float fps, CropRectangle cropSource, CropRectangle cropEncoded, int Qnorm, float intensity_multiplier, std::string model_key)
         : image_width(width), image_height(height), selected_metric(metric), image_stride(stride), strideEncoded(strideEncoded), cropSource(cropSource), cropEncoded(cropEncoded){
         widthEncoded = width - cropSource.left - cropSource.right + cropEncoded.left + cropEncoded.right;
         heightEncoded = height - cropSource.top - cropSource.bottom + cropEncoded.top + cropEncoded.bottom;
-        allocate_gpu_memory(Qnorm, intensity_multiplier);
+        allocate_gpu_memory(fps, Qnorm, intensity_multiplier, model_key);
     }
     ~GpuWorker(){
         deallocate_gpu_memory();
@@ -134,7 +134,7 @@ class GpuWorker {
     }
 
   private:
-    void allocate_gpu_memory(int Qnorm = 2, float intensity_multiplier = 203) {
+    void allocate_gpu_memory(float fps, int Qnorm, float intensity_multiplier, std::string model_key) {
         if (selected_metric == MetricType::SSIMULACRA2) {
             try {
                 ssimu2worker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom);
@@ -153,7 +153,7 @@ class GpuWorker {
             }
         } else if (selected_metric == MetricType::CVVDP){
             try {
-                cvvdpworker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom);
+                cvvdpworker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom, fps, model_key);
             } catch (const VshipError& e){
                 std::cerr << e.getErrorMessage() << std::endl;
                 ASSERT_WITH_MESSAGE(false, "Failed to initialize CVVDP Worker");
@@ -317,6 +317,7 @@ class FFMSFrameReader {
     int frame_width = 0;
     int frame_height = 0;
     int total_frame_count = 0;
+    float fps = 0;
 
     FFMS_VideoSource *video_source = nullptr;
 
@@ -377,6 +378,8 @@ class FFMSFrameReader {
         total_frame_count = video_properties->NumFrames;
         ASSERT_WITH_MESSAGE(total_frame_count > 0,
                             "FFMS2: No frames found in video stream.");
+        
+        fps = (float)video_properties->FPSNumerator / (float)video_properties->FPSDenominator;
     }
 
     void load_first_frame() {
@@ -715,6 +718,9 @@ struct CommandLineOptions {
     std::vector<int> source_indices_list;
     std::vector<int> encoded_indices_list;
 
+    //for cvvdp
+    std::string model_key = "standard_fhd";
+
     //for butteraugli
     int Qnorm = 2;
     int intensity_target_nits = 203;
@@ -806,6 +812,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     parser.add_flag({"--cropLeftEncoded"}, &opts.cropEncoded.left, "Allows to crop Encoded");
     parser.add_flag({"--cropRightEncoded"}, &opts.cropEncoded.right, "Allows to crop Encoded");
 
+    parser.add_flag({"--displayModel"}, &opts.model_key, "Allow specifying screen dispotion to CVVDP (default standard_fhd)");
     parser.add_flag({"--intensity-target"}, &opts.intensity_target_nits, "Target nits for Butteraugli");
     parser.add_flag({"--qnorm"}, &opts.Qnorm, "Optional Norm to compute (default to 2)");
     parser.add_flag({"--threads", "-t"}, &opts.cpu_threads, "Number of Decoder process, recommended is 2");

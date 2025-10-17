@@ -17,6 +17,7 @@ enum VSHIPEXCEPTTYPE{
     OutOfRAM,
     
     //input issues
+    BadDisplayModel,
     DifferingInputType,
     NonRGBSInput, //should never happen since .resize should give RGBS always
     
@@ -45,6 +46,9 @@ std::string errorMessage(VSHIPEXCEPTTYPE type){
         case OutOfRAM:
         return "OutOfRAM: Vship was not able to allocate CPU memory. This is a rare error that should be reported. Check your RAM usage";
         
+        case BadDisplayModel:
+        return "BadDisplayModel: Vship was not able to find a corresponding model as specified. (Advice) See valid models in the doc or remove this option";
+
         case DifferingInputType:
         return "DifferingInputType: Vship received 2 videos with different properties. (Advice) verify that they have the same width, height and length";
 

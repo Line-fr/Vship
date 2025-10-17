@@ -134,6 +134,11 @@ namespace cvvdp{
         if (error != peSuccess){
             d.diffmap = 0.;
         }
+        const char* model_key_cstr = vsapi->mapGetData(in , "model_name", 0, &error);
+        if (error != peSuccess){
+            model_key_cstr = "standard_fhd";
+        }
+        const std::string model_key(model_key_cstr);
     
         if (d.diffmap){
             viout.format = formatout;
@@ -167,11 +172,17 @@ namespace cvvdp{
         data = (CVVDPData *)malloc(sizeof(d));
         *data = d;
 
+        float fps = (float)viref->fpsNum / (float)viref->fpsDen;
+
+        if (fps <= 0 || fps > 100000.){//sanitize
+            fps = 60;
+        }
+
         try{
             data->CVVDPStreams = (CVVDPComputingImplementation*)malloc(sizeof(CVVDPComputingImplementation)*d.streamnum);
             if (data->CVVDPStreams == NULL) throw VshipError(OutOfRAM, __FILE__, __LINE__);
             for (int i = 0; i < d.streamnum; i++){
-                data->CVVDPStreams[i].init(viref->width, viref->height);
+                data->CVVDPStreams[i].init(viref->width, viref->height, fps, model_key);
             }
         } catch (const VshipError& e){
             vsapi->mapSetError(out, e.getErrorMessage().c_str());

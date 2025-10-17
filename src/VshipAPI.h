@@ -40,6 +40,7 @@ typedef enum{
     Vship_OutOfRAM,
     
     //input issues
+    Vship_BadDisplayModel,
     Vship_DifferingInputType,
     Vship_NonRGBSInput, //should never happen since .resize should give RGBS always
     
@@ -152,7 +153,7 @@ typedef struct{
 } Vship_CVVDPHandler;
 
 //handler pointer will be replaced, it is a return value. Don't forget to free it after usage.
-EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, int width, int height);
+EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, int width, int height, float fps, const char* model_key_cstr);
 
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);

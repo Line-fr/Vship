@@ -337,12 +337,17 @@ int main(int argc, char **argv) {
     frame_pool_t frame_buffer_pool(frame_buffers);
     frame_queue_t frame_queue(queue_capacity);
 
+    float source_fps = v1.reader->fps;
+    if (source_fps <= 0 || source_fps > 1000){ //not acceptable range so probably an error
+        source_fps = 60;
+    }
+
     std::vector<GpuWorker> gpu_workers;
     gpu_workers.reserve(num_gpus);
 
     for (int i = 0; i < num_gpus; i++){
         //size of encoded version gets deduced by crops but stride needs to be given
-        gpu_workers.emplace_back(cli_args.metric, width, height, strideSource, strideEncoded, cli_args.cropSource, cli_args.cropEncoded, cli_args.Qnorm, cli_args.intensity_target_nits);
+        gpu_workers.emplace_back(cli_args.metric, width, height, strideSource, strideEncoded, source_fps, cli_args.cropSource, cli_args.cropEncoded, cli_args.Qnorm, cli_args.intensity_target_nits, cli_args.model_key);
     }
 
     std::vector<std::thread> reader_threads;
@@ -440,6 +445,7 @@ int main(int argc, char **argv) {
                 jsonfile << scores[3 * i + 1] << ", ";
                 jsonfile << scores[3 * i + 2];
                 break;
+            case MetricType::CVVDP:
             case MetricType::SSIMULACRA2:
                 jsonfile << scores[i];
                 break;
