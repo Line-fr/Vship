@@ -15,7 +15,8 @@ std::vector<float> inverseRealFourrierTransform(std::vector<float> inp, int size
     for (int i = 0; i < size; i++){
         res[i] = 0;
         for (int k = 0; k < inp.size(); k++){
-            res[i] += 2*inp[k]*std::cos(2*PI*k*i/size)/size; //2/N is normalization factor and exceptions are handled before
+            //-PI allows ordering the FFT from negative frequencies to positives, instead of positive then negative
+            res[i] += 2*inp[k]*std::cos(2*PI*k*i/size - PI)/size; //2/N is normalization factor and exceptions are handled before
         }
     }
 
