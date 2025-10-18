@@ -158,14 +158,19 @@ EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, in
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);
 
-//the frame is not overwritten
+//the frames are not overwritten
+//this video allows loading images to the temporal filter of CVVDP without computing the whole metric.
+//this is useful to start computing at the middle of a video, you can put previous frames with this.
+EXPORTPREPROCESS Vship_Exception Vship_LoadCVVDPUint16(Vship_CVVDPHandler handler, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
+
+EXPORTPREPROCESS Vship_Exception Vship_LoadCVVDPFloat(Vship_CVVDPHandler handler, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
+
 //dstp must either be NULL (in this case, the distortion map will never be retrieved from the gpu)
 //or be allocated of size dststride*height
 //when input is RGB with BT709 transfer function uint16_t frame
 //output in score
 EXPORTPREPROCESS Vship_Exception Vship_ComputeCVVDPUint16(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
 
-//the frame is not overwritten
 //dstp must either be NULL (in this case, the distortion map will never be retrieved from the gpu)
 //or be allocated of size dststride*height
 //when input is RGB with BT709 transfer function float frame

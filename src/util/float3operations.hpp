@@ -73,6 +73,12 @@ __device__ __host__ float3 inline fmaf(const float3& a, const float& b, const fl
     out.z = fmaf(a.z, b, c);
     return out;
 }
+__device__ __host__ float2 inline fmaf(const float2& a, const float2& b, const float2& c){
+    float2 out;
+    out.x = fmaf(a.x, b.x, c.x);
+    out.y = fmaf(a.y, b.y, c.y);
+    return out;
+}
 __device__ __host__ float3 inline abs(const float3& a){
     float3 out;
     out.x = fabsf(a.x);
@@ -141,12 +147,6 @@ __device__ __host__ float3 inline fmaf(const float3& a, const float3& b, const f
     out.x = fmaf(a.x, b.x, c.x);
     out.y = fmaf(a.y, b.y, c.y);
     out.z = fmaf(a.z, b.z, c.z);
-    return out;
-}
-__device__ __host__ float2 inline fmaf(const float2& a, const float2& b, const float2& c){
-    float2 out;
-    out.x = fmaf(a.x, b.x, c.x);
-    out.y = fmaf(a.y, b.y, c.y);
     return out;
 }
 #endif

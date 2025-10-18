@@ -226,6 +226,17 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    //force -g,-t and --every at 1 when cvvdp is used because the metric is temporal
+    if (cli_args.metric == MetricType::CVVDP) {
+        cli_args.gpu_threads = 1;
+        cli_args.cpu_threads = 1;
+        cli_args.every_nth_frame = 1;
+        if (!cli_args.source_indices_list.empty() || !cli_args.encoded_indices_list.empty()){
+            std::cerr << "You cannot use custom indice list with CVVDP, it is a video metric and needs sequential processing" << std::endl;
+            return 1;
+        }
+    }
+
     // gpu sanity check
     try {
         // if succeed, this function also does hipSetDevice

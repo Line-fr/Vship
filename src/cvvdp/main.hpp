@@ -12,8 +12,7 @@
 
 namespace cvvdp{
 
-template <InputMemType T>
-double CVVDPprocess(const uint8_t *dstp, int64_t dststride, const uint8_t *srcp1[3], const uint8_t *srcp2[3], int64_t stride, int64_t stride2, int64_t width, int64_t height, float fps, DisplayModel* model, int64_t maxshared, hipStream_t stream){
+double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing temporalRing, int64_t width, int64_t height, int64_t maxshared, hipStream_t stream){
     
     return 10.;
 }
@@ -50,8 +49,13 @@ public:
         hipStreamDestroy(stream);
     }
     template <InputMemType T>
+    void loadImageToRing(const uint8_t *srcp1[3], const uint8_t *srcp2[3], int64_t stride, int64_t stride2){
+
+    }
+    template <InputMemType T>
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
-        return CVVDPprocess<T>(dstp, dststride, srcp1, srcp2, stride, stride2, width, height, fps, model, maxshared, stream);
+        loadImageToRing<T>(srcp1, srcp2, stride, stride2);
+        return CVVDPprocess(dstp, dststride, tempFilter, width, height, maxshared, stream);
     }
 };
 
