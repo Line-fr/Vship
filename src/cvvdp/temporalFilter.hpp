@@ -32,12 +32,11 @@ class TemporalFilter{
     float* convolutionKernel_d; //already prepared for GPU
 public:
     int size;
-    int fourrier_size;
     TemporalFilter(){
     }
     void init(float fps){
         size = (ceil(0.25*fps/2)*2)+1;
-        fourrier_size = size/2 + 1; //only uses real FT
+        int fourrier_size = size/2 + 1; //only uses real FT
         
         std::vector<float> freq(fourrier_size);
         for (int i = 0; i < fourrier_size; i++) freq[i] = fps*i/2;
@@ -73,7 +72,7 @@ public:
             hipMemcpyHtoD(convolutionKernel_d + j*size, temporal_filters[j].data(), sizeof(float)*size);
         }
     }
-    float* getFilter(int j){ //returns gpu adresses
+    __device__ __host__ float* getFilter(int j){ //returns gpu adresses
         //j must be 0, 1, 2 or 3. If not the pointer will be invalid
         //the size of the returned array is size
         return convolutionKernel_d + j*size;
@@ -83,6 +82,97 @@ public:
     }
 };
 
+//will contain the temporal image frame and manage them. 
+// It will be able to apply the temporal filter to write 4 planes that corresponds to the 4 temporally filtered channels
+class TemporalRing{
+    float* internal_memory_d = NULL;
+    int temporal_size = 0;
+    //to get index of frame i, you need to do internal_memory+(3*plane_size)*((ind0+i)%max_temporal_size)
+    //3* is because the 3 color planes of a single plane are stored together.
+    int ind0 = 0; //index of current frame, past frames are stored after it up to temporal_size frames.
+public:
+    TemporalFilter tempFilterPreprocessor;
+    int max_temporal_size = 0;
+    int64_t width = -1;
+    int64_t height = -1;
+    TemporalRing(){}
+    void init(float fps, int64_t width, int64_t height){
+        this->width = width;
+        this->height = height;
+        tempFilterPreprocessor.init(fps);
+        const int num_channel = 3;
+        max_temporal_size = tempFilterPreprocessor.size;
+        hipError_t erralloc = hipMalloc(&internal_memory_d, sizeof(float)*width*height*max_temporal_size*num_channel);
+        if (erralloc != hipSuccess){
+            throw VshipError(OutOfRAM, __FILE__, __LINE__);
+        }
+    }
+    //the pointer has all 3 planes next to each others
+    //i is "how old" is the frame. 0 is current, 1 is previous,...
+    __device__ __host__ float* getFramePointer(int i){
+        assert(temporal_size > 0);
+        //if i asked is too old, CVVDP goes to the oldest frame in store
+        if (i >= temporal_size) i = temporal_size-1;
+        return internal_memory_d+(3*width*height)*((ind0+i)%max_temporal_size);
+    }
+    //the ring suppose the current frame has been written
+    //after rotation, frame 0 needs to be written too to be valid
+    //this is done using getFramePointer(0) and writing the frame on the pointer
+    void rotate(){
+        //we increment temporal_size to signify we have one more frame in store now
+        //if we reached max, it means the oldest one will be overwritten (intended)
+        temporal_size = std::min(max_temporal_size, temporal_size+1);
+        ind0 = (ind0 + max_temporal_size - 1)%max_temporal_size; //force maintain positive modulo
+    }
+    void destroy(){
+        hipFree(internal_memory_d);
+        tempFilterPreprocessor.destroy();
+    }
+};
+
+__global__ void temporalConvolutionKernel_d(TemporalRing ring, float* Y_sustained, float* RG_sustained, float* YV_sustained, float* Y_transient){
+    const int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
+    const int64_t planeSize = ring.width*ring.height;
+    if (x >= planeSize) return;
+
+    //we use float2 to use double issue float ALU computing units.
+    float2 valueTemp;
+
+    float2 kernelTemp;
+
+    float2 resY_Y = {0.f, 0.f};
+    float2 resRG_YV = {0.f, 0.f};
+    //convolution over temporal dimension
+    for (int k = 0;  k < ring.max_temporal_size; k++){
+        //kth frame
+        float* srcptr = ring.getFramePointer(k);
+
+        kernelTemp.x = ring.tempFilterPreprocessor.getFilter(0)[k];
+        kernelTemp.y = ring.tempFilterPreprocessor.getFilter(3)[k];
+        valueTemp.x = srcptr[x];
+        valueTemp.y = valueTemp.x;
+
+        resY_Y = fmaf(valueTemp, kernelTemp, resY_Y);
+
+        kernelTemp.x = ring.tempFilterPreprocessor.getFilter(1)[k];
+        kernelTemp.y = ring.tempFilterPreprocessor.getFilter(2)[k];
+        valueTemp.x = srcptr[x + planeSize];
+        valueTemp.y = srcptr[x + planeSize*2];
+
+        resRG_YV = fmaf(valueTemp, kernelTemp, resRG_YV);
+    }
+    Y_sustained[x] = resY_Y.x;
+    Y_transient[x] = resY_Y.y;
+    RG_sustained[x] = resRG_YV.x;
+    YV_sustained[x] = resRG_YV.y;
+}
+
+//give it planes, it will overwrite with the 4 temporal channels
+void computeTemporalChannels(TemporalRing& ring, float* Y_sustained, float* RG_sustained, float* YV_sustained, float* Y_transient, hipStream_t stream){
+    int th_x = 256;
+    int bl_x = (ring.width*ring.height+th_x-1)/th_x;
+    temporalConvolutionKernel_d<<<dim3(bl_x), dim3(th_x), 0, stream>>>(ring, Y_sustained, RG_sustained, YV_sustained, Y_transient);
+}
 
 
 }

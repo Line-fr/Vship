@@ -21,7 +21,7 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, const uint8_t *srcp1
 class CVVDPComputingImplementation{
     DisplayModel* model;
     float fps;
-    TemporalFilter tempFilter;
+    TemporalRing tempFilter;
     int64_t width;
     int64_t height;
     int maxshared;
@@ -32,7 +32,7 @@ public:
         this->height = height;
         this->fps = fps;
 
-        tempFilter.init(fps);
+        tempFilter.init(fps, width, height);
         model = new DisplayModel(model_key);
 
         hipStreamCreate(&stream);
