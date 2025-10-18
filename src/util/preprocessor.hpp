@@ -71,7 +71,7 @@
 #endif
 
 #ifdef _WIN32
-    #define aligned_alloc(a, b) malloc(b)
+    #define aligned_alloc(a, b) _aligned_malloc(b, a)
 #endif
 
 
