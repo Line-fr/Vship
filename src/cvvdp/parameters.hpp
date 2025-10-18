@@ -22,13 +22,13 @@ __device__ constexpr float mask_q[4] = {
 constexpr int filter_len = -1;
 constexpr float ch_chrom_w = 1.;
 constexpr float ch_trans_w = 0.8081134557723999;
-__device__ constexpr float sigma_tf[4] = {
+constexpr float sigma_tf[4] = {
     5.79336,
     14.1255,
     6.63661,
     0.12314,
 };
-__device__ constexpr float beta_tf[4] = {
+constexpr float beta_tf[4] = {
     1.3314,
     1.1196,
     0.947901,
