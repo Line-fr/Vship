@@ -7,7 +7,7 @@ namespace cvvdp{
     typedef struct CVVDPData{
         VSNode *reference;
         VSNode *distorted;
-        CVVDPComputingImplementation* CVVDPStreams;
+        CVVDPComputingImplementation CVVDPStreams;
         int diffmap;
         int streamnum = 0;
         threadSet<int>* streamSet;
@@ -51,8 +51,7 @@ namespace cvvdp{
             
             double val;
             
-            const int stream = d->streamSet->pop();
-            CVVDPComputingImplementation& CVVDPstream = d->CVVDPStreams[stream];
+            CVVDPComputingImplementation& CVVDPstream = d->CVVDPStreams;
             try{
                 if (d->diffmap){
                     val = CVVDPstream.run<FLOAT>(vsapi->getWritePtr(dst, 0), vsapi->getStride(dst, 0), srcp1, srcp2, stride, stride2);
@@ -61,12 +60,10 @@ namespace cvvdp{
                 }
             } catch (const VshipError& e){
                 vsapi->setFilterError(e.getErrorMessage().c_str(), frameCtx);
-                d->streamSet->insert(stream);
                 vsapi->freeFrame(src1);
                 vsapi->freeFrame(src2);
                 return NULL;
             }
-            d->streamSet->insert(stream);
     
             vsapi->mapSetFloat(vsapi->getFramePropertiesRW(dst), "_CVVDP", val, maReplace);
     
@@ -151,23 +148,9 @@ namespace cvvdp{
             vsapi->mapSetError(out, e.getErrorMessage().c_str());
             return;
         }
-    
-        d.streamnum = vsapi->mapGetInt(in, "numStream", 0, &error);
-        if (error != peSuccess){
-            d.streamnum = 4;
-        }
 
         VSCoreInfo infos;
         vsapi->getCoreInfo(core, &infos);
-    
-        d.streamnum = std::min(d.streamnum, infos.numThreads);
-        d.streamnum = std::max(d.streamnum, 1);
-    
-        std::set<int> newstreamset;
-        for (int i = 0; i < d.streamnum; i++){
-            newstreamset.insert(i);
-        }
-        d.streamSet = new threadSet(newstreamset);
     
         data = (CVVDPData *)malloc(sizeof(d));
         *data = d;
@@ -179,11 +162,7 @@ namespace cvvdp{
         }
 
         try{
-            data->CVVDPStreams = (CVVDPComputingImplementation*)malloc(sizeof(CVVDPComputingImplementation)*d.streamnum);
-            if (data->CVVDPStreams == NULL) throw VshipError(OutOfRAM, __FILE__, __LINE__);
-            for (int i = 0; i < d.streamnum; i++){
-                data->CVVDPStreams[i].init(viref->width, viref->height, fps, model_key);
-            }
+            data->CVVDPStreams.init(viref->width, viref->height, fps, model_key);
         } catch (const VshipError& e){
             vsapi->mapSetError(out, e.getErrorMessage().c_str());
             return;
