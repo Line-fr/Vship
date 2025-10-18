@@ -18,13 +18,13 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing tempora
 }
 
 class CVVDPComputingImplementation{
-    DisplayModel* model;
-    float fps;
+    DisplayModel* model = NULL;
+    float fps = 0;
     TemporalRing tempFilter;
-    int64_t width;
-    int64_t height;
-    int maxshared;
-    hipStream_t stream;
+    int64_t width = 0;
+    int64_t height = 0;
+    int maxshared = 0;
+    hipStream_t stream = 0;
 public:
     void init(int64_t width, int64_t height, float fps, std::string model_key){
         this->width = width;

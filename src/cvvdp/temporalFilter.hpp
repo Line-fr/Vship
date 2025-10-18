@@ -30,9 +30,9 @@ std::vector<float> inverseRealFourrierTransform(std::vector<float> inp, int size
 }
 
 class TemporalFilter{
-    float* convolutionKernel_d; //already prepared for GPU
+    float* convolutionKernel_d = NULL; //already prepared for GPU
 public:
-    int size;
+    int size = 0;
     TemporalFilter(){
     }
     void init(float fps){

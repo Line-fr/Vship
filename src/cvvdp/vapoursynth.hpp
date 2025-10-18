@@ -11,6 +11,7 @@ namespace cvvdp{
         int diffmap;
         int streamnum = 0;
         threadSet<int>* streamSet;
+        std::mutex* mutex;
     } CVVDPData;
     
     static const VSFrame *VS_CC CVVDPGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
@@ -51,6 +52,7 @@ namespace cvvdp{
             
             double val;
             
+            d->mutex->lock();
             CVVDPComputingImplementation& CVVDPstream = d->CVVDPStreams;
             try{
                 if (d->diffmap){
@@ -60,10 +62,12 @@ namespace cvvdp{
                 }
             } catch (const VshipError& e){
                 vsapi->setFilterError(e.getErrorMessage().c_str(), frameCtx);
+                d->mutex->unlock();
                 vsapi->freeFrame(src1);
                 vsapi->freeFrame(src2);
                 return NULL;
             }
+            d->mutex->unlock();
     
             vsapi->mapSetFloat(vsapi->getFramePropertiesRW(dst), "_CVVDP", val, maReplace);
     
@@ -85,11 +89,9 @@ namespace cvvdp{
         vsapi->freeNode(d->reference);
         vsapi->freeNode(d->distorted);
     
-        for (int i = 0; i < d->streamnum; i++){
-            d->CVVDPStreams[i].destroy();
-        }
-        free(d->CVVDPStreams);
-        delete d->streamSet;
+        
+        d->CVVDPStreams.destroy();
+        delete d->mutex;
     
         free(d);
     }
@@ -160,6 +162,8 @@ namespace cvvdp{
         if (fps <= 0 || fps > 100000.){//sanitize
             fps = 60;
         }
+
+        data->mutex = new std::mutex();
 
         try{
             data->CVVDPStreams.init(viref->width, viref->height, fps, model_key);
