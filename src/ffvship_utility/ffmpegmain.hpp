@@ -43,6 +43,16 @@ static void print_zimg_error(void) {
     fprintf(stderr, "zimg error %d: %s\n", err_code, err_msg);
 }
 
+struct MetricParameters{
+    //CVVDP
+    bool resizeToDisplay = 0;
+    std::string model_key = "standard_fhd";
+
+    //butteraugli
+    int intensity_target_nits = 203;
+    int Qnorm = 2;
+};
+
 class GpuWorker {
   private:
     int image_width;
@@ -63,11 +73,11 @@ class GpuWorker {
     cvvdp::CVVDPComputingImplementation cvvdpworker;
 
   public:
-    GpuWorker(MetricType metric, int width, int height, int stride, int strideEncoded, float fps, CropRectangle cropSource, CropRectangle cropEncoded, int Qnorm, float intensity_multiplier, std::string model_key)
+    GpuWorker(MetricType metric, int width, int height, int stride, int strideEncoded, float fps, CropRectangle cropSource, CropRectangle cropEncoded, MetricParameters metricParam)
         : image_width(width), image_height(height), selected_metric(metric), image_stride(stride), strideEncoded(strideEncoded), cropSource(cropSource), cropEncoded(cropEncoded){
         widthEncoded = width - cropSource.left - cropSource.right + cropEncoded.left + cropEncoded.right;
         heightEncoded = height - cropSource.top - cropSource.bottom + cropEncoded.top + cropEncoded.bottom;
-        allocate_gpu_memory(fps, Qnorm, intensity_multiplier, model_key);
+        allocate_gpu_memory(fps, metricParam);
     }
     ~GpuWorker(){
         deallocate_gpu_memory();
@@ -134,7 +144,7 @@ class GpuWorker {
     }
 
   private:
-    void allocate_gpu_memory(float fps, int Qnorm, float intensity_multiplier, std::string model_key) {
+    void allocate_gpu_memory(float fps, MetricParameters metricParam) {
         if (selected_metric == MetricType::SSIMULACRA2) {
             try {
                 ssimu2worker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom);
@@ -145,7 +155,7 @@ class GpuWorker {
             }
         } else if (selected_metric == MetricType::Butteraugli) {
             try {
-                butterworker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom, Qnorm, intensity_multiplier);
+                butterworker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom, metricParam.Qnorm, metricParam.intensity_target_nits);
             } catch (const VshipError& e){
                 std::cerr << e.getErrorMessage() << std::endl;
                 ASSERT_WITH_MESSAGE(false, "Failed to initialize Butteraugli Worker");
@@ -153,7 +163,7 @@ class GpuWorker {
             }
         } else if (selected_metric == MetricType::CVVDP){
             try {
-                cvvdpworker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom, fps, model_key);
+                cvvdpworker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom, fps, metricParam.resizeToDisplay, metricParam.model_key);
             } catch (const VshipError& e){
                 std::cerr << e.getErrorMessage() << std::endl;
                 ASSERT_WITH_MESSAGE(false, "Failed to initialize CVVDP Worker");
@@ -718,12 +728,7 @@ struct CommandLineOptions {
     std::vector<int> source_indices_list;
     std::vector<int> encoded_indices_list;
 
-    //for cvvdp
-    std::string model_key = "standard_fhd";
-
-    //for butteraugli
-    int Qnorm = 2;
-    int intensity_target_nits = 203;
+    MetricParameters metricParam;
 
     int gpu_id = 0;
     int gpu_threads = 3;
@@ -812,9 +817,10 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     parser.add_flag({"--cropLeftEncoded"}, &opts.cropEncoded.left, "Allows to crop Encoded");
     parser.add_flag({"--cropRightEncoded"}, &opts.cropEncoded.right, "Allows to crop Encoded");
 
-    parser.add_flag({"--displayModel"}, &opts.model_key, "Allow specifying screen dispotion to CVVDP (default standard_fhd)");
-    parser.add_flag({"--intensity-target"}, &opts.intensity_target_nits, "Target nits for Butteraugli");
-    parser.add_flag({"--qnorm"}, &opts.Qnorm, "Optional Norm to compute (default to 2)");
+    parser.add_flag({"--resizeToDisplay"}, &opts.metricParam.resizeToDisplay, "Allow to resize to the screen resolution specified in the model (default off)");
+    parser.add_flag({"--displayModel"}, &opts.metricParam.model_key, "Allow specifying screen disposition to CVVDP (default standard_fhd)");
+    parser.add_flag({"--intensity-target"}, &opts.metricParam.intensity_target_nits, "Target nits for Butteraugli");
+    parser.add_flag({"--qnorm"}, &opts.metricParam.Qnorm, "Optional Norm to compute (default to 2)");
     parser.add_flag({"--threads", "-t"}, &opts.cpu_threads, "Number of Decoder process, recommended is 2");
     parser.add_flag({"--gpu-threads", "-g"}, &opts.gpu_threads, "GPU thread count, recommended is 3");
     parser.add_flag({"--gpu-id"}, &opts.gpu_id, "GPU index");

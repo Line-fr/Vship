@@ -129,6 +129,10 @@ namespace cvvdp{
         if (error != peSuccess){
             gpuid = 0;
         }
+        int resizeToDisplay = vsapi->mapGetInt(in, "resizeToDisplay", 0, &error);
+        if (error != peSuccess){
+            resizeToDisplay = 0;
+        }
         d.diffmap = vsapi->mapGetInt(in, "distmap", 0, &error);
         if (error != peSuccess){
             d.diffmap = 0.;
@@ -166,7 +170,7 @@ namespace cvvdp{
         data->mutex = new std::mutex();
 
         try{
-            data->CVVDPStreams.init(viref->width, viref->height, fps, model_key);
+            data->CVVDPStreams.init(viref->width, viref->height, fps, resizeToDisplay, model_key);
         } catch (const VshipError& e){
             vsapi->mapSetError(out, e.getErrorMessage().c_str());
             return;

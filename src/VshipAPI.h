@@ -2,6 +2,7 @@
 #define VSHIP_API_HEADER
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #if defined(_WIN32)
 #if defined(EXPORTVSHIPLIB)
@@ -153,7 +154,7 @@ typedef struct{
 } Vship_CVVDPHandler;
 
 //handler pointer will be replaced, it is a return value. Don't forget to free it after usage.
-EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, int width, int height, float fps, const char* model_key_cstr);
+EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, int width, int height, float fps, bool resizeToDisplay, const char* model_key_cstr);
 
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);

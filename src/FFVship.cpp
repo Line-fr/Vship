@@ -81,7 +81,7 @@ void frame_reader_thread2(frame_reader_thread2_arguments args){
 
 void frame_worker_thread(frame_queue_t &input_queue,
                          frame_pool_t &frame_buffer_pool, GpuWorker &gpu_worker,
-                         MetricType metric, float intensity_multiplier,
+                         MetricType metric,
                          score_queue_t &output_score_queue,
                          int* error) {
     while (!*error) {
@@ -358,7 +358,7 @@ int main(int argc, char **argv) {
 
     for (int i = 0; i < num_gpus; i++){
         //size of encoded version gets deduced by crops but stride needs to be given
-        gpu_workers.emplace_back(cli_args.metric, width, height, strideSource, strideEncoded, source_fps, cli_args.cropSource, cli_args.cropEncoded, cli_args.Qnorm, cli_args.intensity_target_nits, cli_args.model_key);
+        gpu_workers.emplace_back(cli_args.metric, width, height, strideSource, strideEncoded, source_fps, cli_args.cropSource, cli_args.cropEncoded, cli_args.metricParam);
     }
 
     std::vector<std::thread> reader_threads;
@@ -394,7 +394,6 @@ int main(int argc, char **argv) {
         workers.emplace_back(frame_worker_thread, std::ref(frame_queue),
                              std::ref(frame_buffer_pool),
                              std::ref(gpu_workers[i]), cli_args.metric,
-                             cli_args.intensity_target_nits,
                              std::ref(score_queue), &error);
     }
 
@@ -476,7 +475,7 @@ int main(int argc, char **argv) {
 
     // console output
     std::cout << (cli_args.metric == MetricType::Butteraugli ? "Butteraugli"
-                                                             : "SSIMU2")
+                                                             : ((cli_args.metric == MetricType::CVVDP) ? "SSIMU2" : "CVVDP"))
               << " Result between " << cli_args.source_file << " and "
               << cli_args.encoded_file << std::endl;
     std::cout << "Computed " << num_frames << " frames at " << fps << " fps\n"
@@ -492,12 +491,14 @@ int main(int argc, char **argv) {
             norminf[i] = scores[3 * i + 2];
         }
 
-        print_aggergate_metric_statistics(normQ, std::to_string(cli_args.Qnorm)+"-Norm");
+        print_aggergate_metric_statistics(normQ, std::to_string(cli_args.metricParam.Qnorm)+"-Norm");
         print_aggergate_metric_statistics(norm3, "3-Norm");
         print_aggergate_metric_statistics(norminf, "INF-Norm");
 
     } else if (cli_args.metric == MetricType::SSIMULACRA2) {
         print_aggergate_metric_statistics(scores, "SSIMULACRA2");
+    } else if (cli_args.metric == MetricType::CVVDP){
+        print_aggergate_metric_statistics(scores, "CVVDP");
     }
     return 0;
 }

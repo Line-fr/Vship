@@ -59,7 +59,7 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI
     vspapi->configPlugin("com.lumen.vship", "vship", "VapourSynth SSIMULACRA2 on GPU", VS_MAKE_VERSION(3, 2), VAPOURSYNTH_API_VERSION, 0, plugin);
     vspapi->registerFunction("SSIMULACRA2", "reference:vnode;distorted:vnode;numStream:int:opt;gpu_id:int:opt;", "clip:vnode;", ssimu2::ssimulacra2Create, NULL, plugin);
     vspapi->registerFunction("BUTTERAUGLI", "reference:vnode;distorted:vnode;qnorm:int:opt;intensity_multiplier:float:opt;distmap:int:opt;numStream:int:opt;gpu_id:int:opt;", "clip:vnode;", butter::butterCreate, NULL, plugin);
-    vspapi->registerFunction("CVVDP", "reference:vnode;distorted:vnode;model_name:data:opt;distmap:int:opt;gpu_id:int:opt;", "clip:vnode;", cvvdp::CVVDPCreate, NULL, plugin);
+    vspapi->registerFunction("CVVDP", "reference:vnode;distorted:vnode;model_name:data:opt;resizeToDisplay:int:opt;distmap:int:opt;gpu_id:int:opt;", "clip:vnode;", cvvdp::CVVDPCreate, NULL, plugin);
     vspapi->registerFunction("GpuInfo", "gpu_id:int:opt;", "gpu_human_data:data;", GpuInfo, NULL, plugin);
 }
 
@@ -367,13 +367,13 @@ Vship_Exception Vship_ComputeButteraugliUint16v2(Vship_ButteraugliHandler handle
     return err;
 }
 
-Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, int width, int height, float fps, const char* model_key_cstr){
+Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, int width, int height, float fps, bool resizeToDisplay, const char* model_key_cstr){
     Vship_Exception err = Vship_NoError;
     handler->id = HandlerManagerCVVDP.allocate();
     HandlerManagerCVVDP.lock.lock();
     std::string model_key(model_key_cstr);
     try{
-        HandlerManagerCVVDP.elements[handler->id].init(width, height, fps, model_key);
+        HandlerManagerCVVDP.elements[handler->id].init(width, height, fps, resizeToDisplay, model_key);
     } catch (const VshipError& e){
         err = (Vship_Exception)e.type;
     }
