@@ -77,12 +77,21 @@ public:
     }
     template <InputMemType T>
     void loadImageToRing(const uint8_t *srcp1[3], const uint8_t *srcp2[3], int64_t stride, int64_t stride2){
+        bool is_resized = (source_width != resize_width || source_height != resize_height);
+        int64_t resizeBufferBytes;
+        if (is_resized){
+            resizeBufferBytes = resize_width*resize_height*sizeof(float) + source_width*source_height*sizeof(float);
+        } else {
+            resizeBufferBytes = 0;
+        }
         //allocate memory to send the raw to gpu
         float* mem_d;
-        hipError_t erralloc = hipMallocAsync(&mem_d, std::max(stride, stride2)*source_height + resize_width*resize_height*sizeof(float) + source_width*source_height*sizeof(float), stream);
+        hipError_t erralloc = hipMallocAsync(&mem_d, std::max(stride, stride2)*source_height + resizeBufferBytes, stream);
         if (erralloc != hipSuccess){
             throw VshipError(OutOfVRAM, __FILE__, __LINE__);
         }
+
+        //defined onnly if is_resized is true
         float* tempResize = (float*)((uint8_t*)mem_d + std::max(stride, stride2)*source_height); //of size resize plane
         float* tempStrideEliminated = tempResize + resize_width*resize_height; //of size source plane (float)
 
@@ -98,33 +107,33 @@ public:
         //we put the frame's planes on GPU
         GPU_CHECK(hipMemcpyHtoDAsync(mem_d, (void*)(srcp1[0]), stride * source_height, stream));
         strideEliminator<T>(tempStrideEliminated, mem_d, stride, source_width, source_height, stream);
-        rgb_to_linrgb(tempStrideEliminated, source_width*source_height, stream);
-        resizePlane(src1_d[0], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
+        rgb_to_linrgb(is_resized ? tempStrideEliminated : src1_d[0], source_width*source_height, stream);
+        if (is_resized) resizePlane(src1_d[0], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
         
         GPU_CHECK(hipMemcpyHtoDAsync(mem_d, (void*)(srcp1[1]), stride * source_height, stream));
         strideEliminator<T>(tempStrideEliminated, mem_d, stride, source_width, source_height, stream);
-        rgb_to_linrgb(tempStrideEliminated, source_width*source_height, stream);
-        resizePlane(src1_d[1], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
+        rgb_to_linrgb(is_resized ? tempStrideEliminated : src1_d[1], source_width*source_height, stream);
+        if (is_resized) resizePlane(src1_d[1], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
 
         GPU_CHECK(hipMemcpyHtoDAsync(mem_d, (void*)(srcp1[2]), stride * source_height, stream));
         strideEliminator<T>(tempStrideEliminated, mem_d, stride, source_width, source_height, stream);
-        rgb_to_linrgb(tempStrideEliminated, source_width*source_height, stream);
-        resizePlane(src1_d[2], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
+        rgb_to_linrgb(is_resized ? tempStrideEliminated : src1_d[2], source_width*source_height, stream);
+        if (is_resized) resizePlane(src1_d[2], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
 
         GPU_CHECK(hipMemcpyHtoDAsync(mem_d, (void*)(srcp2[0]), stride2 * source_height, stream));
         strideEliminator<T>(tempStrideEliminated, mem_d, stride2, source_width, source_height, stream);
-        rgb_to_linrgb(tempStrideEliminated, source_width*source_height, stream);
-        resizePlane(src2_d[0], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
+        rgb_to_linrgb(is_resized ? tempStrideEliminated : src2_d[0], source_width*source_height, stream);
+        if (is_resized) resizePlane(src2_d[0], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
         
         GPU_CHECK(hipMemcpyHtoDAsync(mem_d, (void*)(srcp2[1]), stride2 * source_height, stream));
         strideEliminator<T>(tempStrideEliminated, mem_d, stride2, source_width, source_height, stream);
-        rgb_to_linrgb(tempStrideEliminated, source_width*source_height, stream);
-        resizePlane(src2_d[1], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
+        rgb_to_linrgb(is_resized ? tempStrideEliminated : src2_d[1], source_width*source_height, stream);
+        if (is_resized) resizePlane(src2_d[1], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
         
         GPU_CHECK(hipMemcpyHtoDAsync(mem_d, (void*)(srcp2[2]), stride2 * source_height, stream));
         strideEliminator<T>(tempStrideEliminated, mem_d, stride2, source_width, source_height, stream);
-        rgb_to_linrgb(tempStrideEliminated, source_width*source_height, stream);
-        resizePlane(src2_d[2], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
+        rgb_to_linrgb(is_resized ? tempStrideEliminated : src2_d[2], source_width*source_height, stream);
+        if (is_resized) resizePlane(src2_d[2], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream);
 
         //colorspace conversion
         linrgb_to_dkl(src1_d, resize_width*resize_height, stream);
