@@ -18,13 +18,27 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing tempora
     int64_t width = temporalRing1.width;
     int64_t height = temporalRing1.height;
 
-    int allocatedPlanes = 4;
-    float gaussianPyrSizeMultiplier = 2.; //each plane will get twice the normal size so that we can fit the pyramid next to them
+    int allocatedPlanes = 8;
+    int gaussianPyrSizeMultiplier = 2; //each plane will get twice the normal size so that we can fit the pyramid next to them
     float* mem_d;
     hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*allocatedPlanes*width*height * gaussianPyrSizeMultiplier, stream);
     if (erralloc != hipSuccess){
         throw VshipError(OutOfVRAM, __FILE__, __LINE__);
     }
+
+    float* Y_sustained1 = mem_d;
+    float* RG_sustained1 = mem_d + width*height*gaussianPyrSizeMultiplier;
+    float* YV_sustained1 = mem_d + 2*width*height*gaussianPyrSizeMultiplier;
+    float* Y_transient1 = mem_d + 3*width*height*gaussianPyrSizeMultiplier;
+
+    float* Y_sustained2 = mem_d + 4*width*height*gaussianPyrSizeMultiplier;
+    float* RG_sustained2 = mem_d + 5*width*height*gaussianPyrSizeMultiplier;
+    float* YV_sustained2 = mem_d + 6*width*height*gaussianPyrSizeMultiplier;
+    float* Y_transient2 = mem_d + 7*width*height*gaussianPyrSizeMultiplier;
+
+    //let's get the temporal channel out of the temporal ring!
+    computeTemporalChannels(temporalRing1, Y_sustained1, RG_sustained1, YV_sustained1, Y_transient1, stream);
+    computeTemporalChannels(temporalRing2, Y_sustained2, RG_sustained2, YV_sustained2, Y_transient2, stream);
 
     hipFreeAsync(mem_d, stream);
 
