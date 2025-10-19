@@ -1,6 +1,8 @@
 #ifndef MAKEXYBHPP
 #define MAKEXYBHPP
 
+namespace ssimu2{
+
 __device__ inline void opsin_absorbance(float3& a){
     float3 out;
     const float opsin_bias = 0.0037930734f;
@@ -99,6 +101,6 @@ __host__ inline void rgb_to_linear(float3* array, int64_t width, hipStream_t str
     GPU_CHECK(hipGetLastError());
 }
 
-
+}
 
 #endif

@@ -173,6 +173,6 @@ namespace cvvdp{
         }
     
         VSFilterDependency deps[] = {{d.reference, rpStrictSpatial}, {d.distorted, rpStrictSpatial}};
-        vsapi->createVideoFilter(out, "vship", &viout, CVVDPGetFrame, CVVDPFree, fmParallel, deps, 2, data, core);
+        vsapi->createVideoFilter(out, "vship", &viout, CVVDPGetFrame, CVVDPFree, fmParallelRequests, deps, 2, data, core);
     }
 }

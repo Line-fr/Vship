@@ -7,9 +7,9 @@
 #include "../util/gpuhelper.hpp"
 #include "../util/float3operations.hpp"
 #include "../util/concurrency.hpp"
+#include "../util/Planed.hpp"
 #include "gaussianblur.hpp" 
 #include "downupsample.hpp"
-#include "Planed.hpp" //Plane_d class
 #include "colors.hpp" //OpsinDynamicsImage
 #include "separatefrequencies.hpp"
 #include "maltaDiff.hpp"

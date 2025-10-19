@@ -8,6 +8,7 @@
 
 #include "parameters.hpp"
 #include "display_models.hpp"
+#include "colors.hpp"
 #include "temporalFilter.hpp"
 
 namespace cvvdp{
@@ -50,7 +51,35 @@ public:
     }
     template <InputMemType T>
     void loadImageToRing(const uint8_t *srcp1[3], const uint8_t *srcp2[3], int64_t stride, int64_t stride2){
+        float* mem_d;
+        hipError_t erralloc = hipMallocAsync(&mem_d, std::max(stride, stride2)*height+6*sizeof(float)*width*height, stream); //max just in case stride is ridiculously large
+        if (erralloc != hipSuccess){
+            throw VshipError(OutOfVRAM, __FILE__, __LINE__);
+        }
+        //initial color planes
+        float* src1_d[3] = {mem_d, mem_d+width*height, mem_d+2*width*height};
+        float* src2_d[3] = {mem_d+3*width*height, mem_d+4*width*height, mem_d+5*width*height};
 
+        //we put the frame's planes on GPU
+        GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp1[0]), stride * height, stream));
+        strideEliminator<T>(src1_d[0], mem_d+6*width*height, stride, width, height, stream);
+        GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp1[1]), stride * height, stream));
+        strideEliminator<T>(src1_d[1], mem_d+6*width*height, stride, width, height, stream);
+        GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp1[2]), stride * height, stream));
+        strideEliminator<T>(src1_d[2], mem_d+6*width*height, stride, width, height, stream);
+
+        GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp2[0]), stride2 * height, stream));
+        strideEliminator<T>(src2_d[0], mem_d+6*width*height, stride2, width, height, stream);
+        GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp2[1]), stride2 * height, stream));
+        strideEliminator<T>(src2_d[1], mem_d+6*width*height, stride2, width, height, stream);
+        GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp2[2]), stride2 * height, stream));
+        strideEliminator<T>(src2_d[2], mem_d+6*width*height, stride2, width, height, stream);
+
+        //colorspace conversion
+        rgb_to_dkl(src1_d, width*height, stream);
+        rgb_to_dkl(src2_d, width*height, stream);
+
+        hipFreeAsync(mem_d, stream);
     }
     template <InputMemType T>
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
