@@ -125,6 +125,9 @@ public:
         temporal_size = std::min(max_temporal_size, temporal_size+1);
         ind0 = (ind0 + max_temporal_size - 1)%max_temporal_size; //force maintain positive modulo
     }
+    void reset(){
+        temporal_size = 0;
+    }
     void destroy(){
         hipFree(internal_memory_d);
         tempFilterPreprocessor.destroy();

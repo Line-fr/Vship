@@ -159,6 +159,10 @@ EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, in
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);
 
+//Allows to empty the frame history. Since the metric is temporal, you may want to reset without recreating a whole new handler since it is quite expensive
+//Unlike recreating the handler, this function is basically free perf wise, it is setting a variable to 0, that's it!
+EXPORTPREPROCESS Vship_Exception Vship_ResetCVVDP(Vship_CVVDPHandler handler);
+
 //the frames are not overwritten
 //this video allows loading images to the temporal filter of CVVDP without computing the whole metric.
 //this is useful to start computing at the middle of a video, you can put previous frames with this.

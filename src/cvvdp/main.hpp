@@ -15,9 +15,18 @@
 namespace cvvdp{
 
 double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing temporalRing1, TemporalRing temporalRing2, DisplayModel* model, int64_t maxshared, hipStream_t stream){
-    //int64_t width = temporalRing1.width;
-    //int64_t height = temporalRing1.height;
+    int64_t width = temporalRing1.width;
+    int64_t height = temporalRing1.height;
 
+    int allocatedPlanes = 4;
+    float gaussianPyrSizeMultiplier = 2.; //each plane will get twice the normal size so that we can fit the pyramid next to them
+    float* mem_d;
+    hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*allocatedPlanes*width*height * gaussianPyrSizeMultiplier, stream);
+    if (erralloc != hipSuccess){
+        throw VshipError(OutOfVRAM, __FILE__, __LINE__);
+    }
+
+    hipFreeAsync(mem_d, stream);
 
     return 10.;
 }
@@ -146,6 +155,11 @@ public:
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
         loadImageToRing<T>(srcp1, srcp2, stride, stride2);
         return CVVDPprocess(dstp, dststride, temporalRing1, temporalRing2, model, maxshared, stream);
+    }
+    //empties the history.
+    void flushTemporalRing(){
+        temporalRing1.reset();
+        temporalRing2.reset();
     }
 };
 
