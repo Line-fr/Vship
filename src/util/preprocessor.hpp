@@ -65,6 +65,7 @@
     #define hipFreeHost cudaFreeHost
     #define hipHostMalloc cudaMallocHost
     #define hipStreamSynchronize cudaStreamSynchronize
+    #define hipStreamWaitEvent cudaStreamWaitEvent
 #else
     #include<hip/hip_runtime.h>
     #include<hip/hip_fp16.h>

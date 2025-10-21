@@ -11,6 +11,7 @@
 #include "colors.hpp"
 #include "resize.hpp"
 #include "temporalFilter.hpp"
+#include "lpyr.hpp"
 
 namespace cvvdp{
 
@@ -18,8 +19,8 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing tempora
     int64_t width = temporalRing1.width;
     int64_t height = temporalRing1.height;
 
-    int allocatedPlanes = 4;
-    int gaussianPyrSizeMultiplier = 2; //each plane will get twice the normal size so that we can fit the pyramid next to them
+    int allocatedPlanes = 5;
+    int gaussianPyrSizeMultiplier = 2; //each plane will get 2x the normal size so that we can fit the pyramid
     float* mem_d;
     hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*allocatedPlanes*width*height * gaussianPyrSizeMultiplier, stream1);
     if (erralloc != hipSuccess){
@@ -46,12 +47,23 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing tempora
     computeTemporalChannels(temporalRing1, Y_sustained1, RG_sustained1, YV_sustained1, Y_transient1, stream1);
     computeTemporalChannels(temporalRing2, Y_sustained2, RG_sustained2, YV_sustained2, Y_transient2, stream2);
 
+    const float ppd = model->get_screen_ppd();
+    LpyrManager LPyr1(mem_d, width, height, ppd, stream1);
+    LpyrManager LPyr2(mem_d2, width, height, ppd, stream2);
+
+    //stream1 waits for stream2 to be done
+    hipEventRecord(event, stream2);
+    hipStreamWaitEvent(stream1, event);
+
+    hipStreamSynchronize(stream1);
+
     hipFreeAsync(mem_d, stream1);
     hipFreeAsync(mem_d2, stream2);
 
     return 10.;
 }
 
+//currently at 32 planes + 3*fps/2 planes consumed
 class CVVDPComputingImplementation{
     DisplayModel* model = NULL;
     float fps = 0;

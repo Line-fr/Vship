@@ -21,6 +21,9 @@ struct DisplayModel{
     float k_refl = 0.005;
     float exposure = 1;
     std::string source = "";
+
+    //computed
+    float cached_ppd = -1;
     DisplayModel(std::string model_key){
         if (model_key == "standard_4k"){
             name = "30-inch 4K monitor, peak luminance 200 cd/m^2, viewed under office light levels (250 lux), seen from 2 x display height";
@@ -93,6 +96,17 @@ struct DisplayModel{
         } else {
             throw VshipError(BadDisplayModel, __FILE__, __LINE__);
         }
+    }
+    float get_screen_ppd(){
+        if (cached_ppd != -1) return cached_ppd;
+
+        const float ar = (float)resolution[0]/(float)resolution[1];
+        const float height_meter = std::sqrt((diagonal_size_inches*25.4)*(diagonal_size_inches*25.4) / (1 + ar*ar))/1000;
+        const float width_meter = ar*height_meter;
+
+        const float pix_deg = 2*180*std::atan(0.5*width_meter/(float)resolution[0]/viewing_distance_meters)/PI;
+        cached_ppd = 1/pix_deg;
+        return cached_ppd;
     }
 };
 
