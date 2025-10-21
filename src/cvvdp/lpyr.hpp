@@ -48,6 +48,7 @@ void gaussPyrReduce(float* dst, float* src, int64_t source_width, int64_t source
 }
 
 //separable, but not worth it for a kernel of size 5
+template<bool subdst>
 __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width, int64_t new_height){
     const int64_t thid = threadIdx.x + blockIdx.x * blockDim.x;
     int ow = (new_width+1)/2;
@@ -73,51 +74,19 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
         }
     }
 
-    dst[y*new_width+x] = nval;
+    if constexpr (subdst) {
+        dst[y*new_width+x] -= nval;
+    } else {
+        dst[y*new_width+x] = nval;
+    }
 }
 
+template<bool subdst>
 void gaussPyrExpand(float* dst, float* src, int64_t new_width, int64_t new_height, hipStream_t stream){
     int th_x = 256;
     int64_t bl_x = (new_width*new_height+th_x-1)/th_x;
-    gaussPyrExpand_Kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(dst, src, new_width, new_height);
+    gaussPyrExpand_Kernel<subdst><<<dim3(bl_x), dim3(th_x), 0, stream>>>(dst, src, new_width, new_height);
 }
-
-//separable, but not worth it for a kernel of size 5
-__global__ void gaussPyrExpandSub_Kernel(float* dst, float* src, int64_t new_width, int64_t new_height){
-    const int64_t thid = threadIdx.x + blockIdx.x * blockDim.x;
-    int ow = (new_width+1)/2;
-    if (thid >= new_width*new_height) return;
-
-    //in new space
-    const int x = thid%new_width;
-    const int y = thid/new_height;
-
-    float nval = 0.f;
-
-    int parity_x = x%2;
-    int parity_y = y%2;
-
-    for (int dx = -2+parity_x; dx <= 2; dx+=2){
-        const float kernel_x = 2*gaussPyrKernel[dx+2];
-        const int ref_ind_x = (x + dx)/2; //funny: x+dx is always even
-        for (int dy = -2-parity_y; dy <= 2; dy+=2){
-            const float kernel_y = 2*gaussPyrKernel[dy+2];
-            const int ref_ind_y = (y+dy)/2; //(y+dy) is always even
-
-            nval += kernel_x*kernel_y*src[ref_ind_y*ow+ref_ind_x];
-        }
-    }
-
-    dst[y*new_width+x] -= nval;
-}
-
-//instead of storing the result, it substracts it to dst
-void gaussPyrExpandSub(float* dst, float* src, int64_t new_width, int64_t new_height, hipStream_t stream){
-    int th_x = 256;
-    int64_t bl_x = (new_width*new_height+th_x-1)/th_x;
-    gaussPyrExpandSub_Kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(dst, src, new_width, new_height);
-}
-
 __global__ void baseBandPyrRefine_Kernel(float* p, float* Lbkg, int64_t width){
     const int64_t thid = threadIdx.x + blockIdx.x * blockDim.x;
     if (thid >= width) return;
@@ -166,7 +135,7 @@ public:
             if (i != levels-1){
                 //first is Y_sustained, it governs L_BKG
                 gaussPyrReduce(p+w*h, p, w, h, stream);
-                gaussPyrExpand(p+4*planeOffset, p+w*h, w, h, stream);
+                gaussPyrExpand<false>(p+4*planeOffset, p+w*h, w, h, stream);
                 subarray(p, p+4*planeOffset, p, w*h, stream);
                 baseBandPyrRefine(p, p+4*planeOffset, w*h, stream);
                 //then other channels
@@ -174,7 +143,7 @@ public:
                     //we first create the next step of the pyramid
                     gaussPyrReduce(p+w*h+channel*planeOffset, p+channel*planeOffset, w, h, stream);
                     //then we substract its upscaled version from the original to create the "layer"
-                    gaussPyrExpandSub(p+channel*planeOffset, p+w*h+channel*planeOffset, w, h, stream);
+                    gaussPyrExpand<true>(p+channel*planeOffset, p+w*h+channel*planeOffset, w, h, stream);
                     //then we transform this layer into a contrast by using the L_BKG computed before the loop
                     baseBandPyrRefine(p+channel*planeOffset, p+4*planeOffset, w*h, stream);
                 }
