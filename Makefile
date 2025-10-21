@@ -42,27 +42,27 @@ buildFFVSHIPcudaall: src/FFVship.cpp .FORCE
 	nvcc -x cu src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -I "$(current_dir)include" -arch=all $(subst -pthread,-Xcompiler="-pthread",$(ffvshiplibheader)) -o FFVship$(exeend)
 
 build: src/VshipLib.cpp .FORCE
-	hipcc src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" --offload-arch=native -I "$(current_dir)include" -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)vship$(dllend)"
+	hipcc src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" --offload-arch=native -I "$(current_dir)include" -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)libvship$(dllend)"
 
 buildcuda: src/VshipLib.cpp .FORCE
-	nvcc -x cu src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" -arch=native -I "$(current_dir)include" -shared $(fpiccuda) -o "$(current_dir)vship$(dllend)"
+	nvcc -x cu src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" -arch=native -I "$(current_dir)include" -shared $(fpiccuda) -o "$(current_dir)libvship$(dllend)"
 
 buildcudaall: src/VshipLib.cpp .FORCE
-	nvcc -x cu src/VshipLib.cpp -g -std=c++17 -arch=all -I "$(current_dir)include" -shared $(fpiccuda) -o "$(current_dir)vship$(dllend)"
+	nvcc -x cu src/VshipLib.cpp -g -std=c++17 -arch=all -I "$(current_dir)include" -shared $(fpiccuda) -o "$(current_dir)libvship$(dllend)"
 
 buildall: src/VshipLib.cpp .FORCE
-	hipcc src/VshipLib.cpp -g -std=c++17 --offload-arch=$(HIPARCH) -I "$(current_dir)include" -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)vship$(dllend)"
+	hipcc src/VshipLib.cpp -g -std=c++17 --offload-arch=$(HIPARCH) -I "$(current_dir)include" -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)libvship$(dllend)"
 
 ifeq ($(OS),Windows_NT)
 install:
-	if exist "$(current_dir)vship$(dllend)" copy "$(current_dir)vship$(dllend)" "$(plugin_install_path)"
+	if exist "$(current_dir)libvship$(dllend)" copy "$(current_dir)libvship$(dllend)" "$(plugin_install_path)"
 else
 install:
-	@if [ -f "$(current_dir)vship$(dllend)" ]; then \
+	@if [ -f "$(current_dir)libvship$(dllend)" ]; then \
 		install -d "$(plugin_install_path)"; \
 		install -d "$(header_install_path)"; \
-		install -m755 "$(current_dir)vship$(dllend)" "$(lib_install_path)/vship$(dllend)"; \
-		ln -sf "../vship$(dllend)" "$(plugin_install_path)/vship$(dllend)"; \
+		install -m755 "$(current_dir)libvship$(dllend)" "$(lib_install_path)/libvship$(dllend)"; \
+		ln -sf "../libvship$(dllend)" "$(plugin_install_path)/libvship$(dllend)"; \
 		install -m755 "$(current_dir)src/VshipAPI.h" "$(header_install_path)/VshipAPI.h"; \
 	fi
 	@if [ -f "FFVship" ]; then \
@@ -70,7 +70,7 @@ install:
 		install -m755 FFVship "$(exe_install_path)/FFVship"; \
 	fi
 uninstall:
-	rm -f "$(plugin_install_path)/vship$(dllend)" "$(lib_install_path)/vship$(dllend)" "$(header_install_path)/VshipAPI.h" "$(exe_install_path)/FFVship"
+	rm -f "$(plugin_install_path)/libvship$(dllend)" "$(lib_install_path)/libvship$(dllend)" "$(header_install_path)/VshipAPI.h" "$(exe_install_path)/FFVship"
 endif
 
 test: .FORCE build
