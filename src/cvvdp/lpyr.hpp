@@ -87,18 +87,75 @@ void gaussPyrExpand(float* dst, float* src, int64_t new_width, int64_t new_heigh
     int64_t bl_x = (new_width*new_height+th_x-1)/th_x;
     gaussPyrExpand_Kernel<subdst><<<dim3(bl_x), dim3(th_x), 0, stream>>>(dst, src, new_width, new_height);
 }
+
+template<bool isMean>
 __global__ void baseBandPyrRefine_Kernel(float* p, float* Lbkg, int64_t width){
     const int64_t thid = threadIdx.x + blockIdx.x * blockDim.x;
     if (thid >= width) return;
 
-    p[thid] = min(p[thid]/max(0.01f, Lbkg[thid]), 1000.f);
+    if constexpr (!isMean){
+        p[thid] = min(p[thid]/max(0.01f, Lbkg[thid]), 1000.f);
+    } else {
+        //then our adress is the mean, a single float at 0
+        p[thid] = min(p[thid]/max(0.01f, Lbkg[0]), 1000.f);
+    }
 }
 
 //gets the contrast from the layers
+template<bool isMean = false>
 void baseBandPyrRefine(float* p, float* Lbkg, int64_t width, hipStream_t stream){
     int th_x = 256;
     int64_t bl_x = (width + th_x-1)/th_x;
-    baseBandPyrRefine_Kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(p, Lbkg, width);   
+    baseBandPyrRefine_Kernel<isMean><<<dim3(bl_x), dim3(th_x), 0, stream>>>(p, Lbkg, width);   
+}
+
+//pointer jumping, start with 1024 threads
+__global__ void reduceSum(float* dst, float* src, int64_t size){
+    const int64_t global_thid = threadIdx.x + blockIdx.x * blockDim.x;
+    const int local_thid = threadIdx.x;
+    constexpr int threadnum = 1024;
+
+    __shared__ float pointerJumpingBuffer[threadnum]; //one float per thread
+
+    if (global_thid >= size){
+        pointerJumpingBuffer[local_thid] = 0;
+    } else {
+        pointerJumpingBuffer[local_thid] = src[global_thid];
+    }
+
+    __syncthreads();
+
+    int next = 1;
+    while (next < threadnum){
+        if (local_thid + next < threadnum && (local_thid%(next*2) == 0)){
+            pointerJumpingBuffer[local_thid] += pointerJumpingBuffer[local_thid+next];
+        }
+        next *= 2;
+        __syncthreads();
+    }
+
+    if (local_thid == 0){
+        dst[blockIdx.x] = pointerJumpingBuffer[0];
+    }
+}
+
+//the result will be at temp[0]. We suppose that temp is of the same size as src
+void computeMean(float* src, float* temp, int64_t size, hipStream_t stream){
+    constexpr int th_x = 1024;
+    int bl_x;
+
+    float* final_dst = temp; //to contain temp[0]
+    float* tempbuffer[3] = {temp+1, temp+1+(size+1023)/1024, src};
+    int oscillator = 2; //corresponds to current source except the first time
+    while (size > 1024){
+        bl_x = (size+th_x-1)/th_x;
+        int destination = (oscillator == 2) ? 0 : (oscillator^1);
+        reduceSum<<<dim3(bl_x), dim3(th_x), 0, stream>>>(tempbuffer[destination], tempbuffer[oscillator], size);
+        oscillator = destination;
+        size = (size+1023)/1024;
+    }
+    bl_x = 1;
+    reduceSum<<<dim3(bl_x), dim3(th_x), 0, stream>>>(final_dst, tempbuffer[oscillator], size);
 }
 
 class LpyrManager{
@@ -110,14 +167,14 @@ class LpyrManager{
 public: 
     //plane contains 5 planes each twice the size
     //the last plane will contain L_bkg while the first planes should contain the 4 temporal channels for the first half
-    LpyrManager(float* plane, const int64_t width, const int64_t height, const float ppd, const hipStream_t stream){
+    LpyrManager(float* plane, const int64_t width, const int64_t height, const float ppd, int64_t bandOffset, const hipStream_t stream){
         const float min_freq = 0.2;
         const int maxLevel_forRes = std::log2(std::min(width, height))-1;
         const int maxLevel_forPPD = std::ceil(-std::log2(2*min_freq/0.3228/ppd));
         const int maxLevel_hard = 14;
         const int levels = std::min(maxLevel_forPPD, std::max(maxLevel_forRes, maxLevel_hard));
 
-        planeOffset = 2*width*height;
+        planeOffset = bandOffset;
 
         resolutions.resize(levels);
         band_frequencies.resize(levels);
@@ -146,6 +203,14 @@ public:
                     gaussPyrExpand<true>(p+channel*planeOffset, p+w*h+channel*planeOffset, w, h, stream);
                     //then we transform this layer into a contrast by using the L_BKG computed before the loop
                     baseBandPyrRefine(p+channel*planeOffset, p+4*planeOffset, w*h, stream);
+                }
+            } else {
+                //here Lbkg is different, it is the mean.
+                //now we need to take the mean. 
+                computeMean(p, p+4*planeOffset, w*h, stream);
+                float* meanp = p+4*planeOffset;
+                for (int channel = 0; channel < 4; channel++){
+                    baseBandPyrRefine<true>(p+channel*planeOffset, meanp, w*h, stream);
                 }
             }
 

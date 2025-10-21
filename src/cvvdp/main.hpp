@@ -20,36 +20,40 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing tempora
     int64_t height = temporalRing1.height;
 
     int allocatedPlanes = 5;
-    int gaussianPyrSizeMultiplier = 2; //each plane will get 2x the normal size so that we can fit the pyramid
+    //to fit the pyramid, we need 4/3 the normal size
+    int gaussianPyrSizeMultiplierNumerator = 4;
+    int gaussianPyrSizeMultiplierDenominator = 3;
+
+    const int64_t bandOffset = width*height*gaussianPyrSizeMultiplierNumerator/gaussianPyrSizeMultiplierDenominator;
     float* mem_d;
-    hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*allocatedPlanes*width*height * gaussianPyrSizeMultiplier, stream1);
+    hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*allocatedPlanes*bandOffset, stream1);
     if (erralloc != hipSuccess){
         throw VshipError(OutOfVRAM, __FILE__, __LINE__);
     }
     //second stream
     float* mem_d2;
-    erralloc = hipMallocAsync(&mem_d2, sizeof(float)*allocatedPlanes*width*height * gaussianPyrSizeMultiplier, stream2);
+    erralloc = hipMallocAsync(&mem_d2, sizeof(float)*allocatedPlanes*bandOffset, stream2);
     if (erralloc != hipSuccess){
         throw VshipError(OutOfVRAM, __FILE__, __LINE__);
     }
 
     float* Y_sustained1 = mem_d;
-    float* RG_sustained1 = mem_d + width*height*gaussianPyrSizeMultiplier;
-    float* YV_sustained1 = mem_d + 2*width*height*gaussianPyrSizeMultiplier;
-    float* Y_transient1 = mem_d + 3*width*height*gaussianPyrSizeMultiplier;
+    float* RG_sustained1 = mem_d + bandOffset;
+    float* YV_sustained1 = mem_d + 2*bandOffset;
+    float* Y_transient1 = mem_d + 3*bandOffset;
 
     float* Y_sustained2 = mem_d2;
-    float* RG_sustained2 = mem_d2 + width*height*gaussianPyrSizeMultiplier;
-    float* YV_sustained2 = mem_d2 + 2*width*height*gaussianPyrSizeMultiplier;
-    float* Y_transient2 = mem_d2 + 3*width*height*gaussianPyrSizeMultiplier;
+    float* RG_sustained2 = mem_d2 + bandOffset;
+    float* YV_sustained2 = mem_d2 + 2*bandOffset;
+    float* Y_transient2 = mem_d2 + 3*bandOffset;
 
     //let's get the temporal channel out of the temporal ring!
     computeTemporalChannels(temporalRing1, Y_sustained1, RG_sustained1, YV_sustained1, Y_transient1, stream1);
     computeTemporalChannels(temporalRing2, Y_sustained2, RG_sustained2, YV_sustained2, Y_transient2, stream2);
 
     const float ppd = model->get_screen_ppd();
-    LpyrManager LPyr1(mem_d, width, height, ppd, stream1);
-    LpyrManager LPyr2(mem_d2, width, height, ppd, stream2);
+    LpyrManager LPyr1(mem_d, width, height, ppd, bandOffset, stream1);
+    LpyrManager LPyr2(mem_d2, width, height, ppd, bandOffset, stream2);
 
     //stream1 waits for stream2 to be done
     hipEventRecord(event, stream2);
