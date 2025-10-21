@@ -11,12 +11,11 @@ std::vector<float> inverseRealFourrierTransform(std::vector<float> inp, int size
     }
     inp[0] /= 2;
 
-    std::vector<float> res(size);
+    std::vector<float> res(size, 0);
     for (int i = 0; i < size; i++){
-        res[i] = 0;
         for (int k = 0; k < inp.size(); k++){
-            //-PI allows ordering the FFT from negative frequencies to positives, instead of positive then negative
-            res[i] += 2*inp[k]*std::cos(2*PI*k*i/size - PI)/size; //2/N is normalization factor and exceptions are handled before
+            //we offset the index of res to get frequencies starting from 0 then positive then negative
+            res[(i+inp.size()-1)%size] += 2*inp[k]*std::cos(2*PI*k*i/size)/size; //2/N is normalization factor and exceptions are handled before
         }
     }
 
@@ -63,7 +62,7 @@ public:
         //go back from the FFT world, this will become a convolution kernel instead of a frequency multiplicator
         std::vector<float> temporal_filters[4];
         for (int j = 0; j < 4; j++) temporal_filters[j] = inverseRealFourrierTransform(filters_fftdomain[j], size);
-    
+
         hipError_t erralloc = hipMalloc(&convolutionKernel_d, sizeof(float)*size*4);
         if (erralloc != hipSuccess){
             throw VshipError(OutOfRAM, __FILE__, __LINE__);
@@ -169,6 +168,8 @@ __global__ void temporalConvolutionKernel_d(TemporalRing ring, float* Y_sustaine
     Y_transient[x] = resY_Y.y;
     RG_sustained[x] = resRG_YV.x;
     YV_sustained[x] = resRG_YV.y;
+
+    //if (x == 0) printf("after temporalFilter: %f %f %f %f\n", resY_Y.x, resRG_YV.x, resRG_YV.y, resY_Y.y);
 }
 
 //give it planes, it will overwrite with the 4 temporal channels

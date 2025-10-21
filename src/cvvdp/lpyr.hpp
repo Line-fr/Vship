@@ -56,7 +56,7 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
 
     //in new space
     const int x = thid%new_width;
-    const int y = thid/new_height;
+    const int y = thid/new_width;
 
     float nval = 0.f;
 
@@ -75,9 +75,9 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
     }
 
     if constexpr (subdst) {
-        dst[y*new_width+x] -= nval;
+        dst[thid] -= nval;
     } else {
-        dst[y*new_width+x] = nval;
+        dst[thid] = nval;
     }
 }
 
@@ -96,6 +96,7 @@ __global__ void baseBandPyrRefine_Kernel(float* p, float* Lbkg, int64_t width){
     if constexpr (!isMean){
         p[thid] = min(p[thid]/max(0.01f, Lbkg[thid]), 1000.f);
     } else {
+        //if (thid == 0) printf("value %f %f\n", Lbkg[0], p[thid]);
         //then our adress is the mean, a single float at 0
         p[thid] = min(p[thid]/max(0.01f, Lbkg[0]), 1000.f);
     }
@@ -110,7 +111,7 @@ void baseBandPyrRefine(float* p, float* Lbkg, int64_t width, hipStream_t stream)
 }
 
 //pointer jumping, start with 1024 threads
-__global__ void reduceSum(float* dst, float* src, int64_t size){
+__global__ void reduceSum(float* dst, float* src, int64_t size, bool divide){
     const int64_t global_thid = threadIdx.x + blockIdx.x * blockDim.x;
     const int local_thid = threadIdx.x;
     constexpr int threadnum = 1024;
@@ -135,6 +136,7 @@ __global__ void reduceSum(float* dst, float* src, int64_t size){
     }
 
     if (local_thid == 0){
+        if (divide) pointerJumpingBuffer[0] /= size;
         dst[blockIdx.x] = pointerJumpingBuffer[0];
     }
 }
@@ -150,12 +152,12 @@ void computeMean(float* src, float* temp, int64_t size, hipStream_t stream){
     while (size > 1024){
         bl_x = (size+th_x-1)/th_x;
         int destination = (oscillator == 2) ? 0 : (oscillator^1);
-        reduceSum<<<dim3(bl_x), dim3(th_x), 0, stream>>>(tempbuffer[destination], tempbuffer[oscillator], size);
+        reduceSum<<<dim3(bl_x), dim3(th_x), 0, stream>>>(tempbuffer[destination], tempbuffer[oscillator], size, (oscillator == 2));
         oscillator = destination;
         size = (size+1023)/1024;
     }
     bl_x = 1;
-    reduceSum<<<dim3(bl_x), dim3(th_x), 0, stream>>>(final_dst, tempbuffer[oscillator], size);
+    reduceSum<<<dim3(bl_x), dim3(th_x), 0, stream>>>(final_dst, tempbuffer[oscillator], size, (oscillator == 2));
 }
 
 class LpyrManager{

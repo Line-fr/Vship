@@ -167,34 +167,41 @@ public:
         float* src2_d[3] = {encoded_ptr, encoded_ptr+resize_width*resize_height, encoded_ptr+2*resize_width*resize_height};
 
         //we put the frame's planes on GPU
+        //do we write directly in final after stride eliminaation?
+        tempStrideEliminated = is_resized ? tempStrideEliminated : src1_d[0];
         GPU_CHECK(hipMemcpyHtoDAsync(mem_d, (void*)(srcp1[0]), stride * source_height, stream1));
         strideEliminator<T>(tempStrideEliminated, mem_d, stride, source_width, source_height, stream1);
-        rgb_to_linrgb(is_resized ? tempStrideEliminated : src1_d[0], source_width*source_height, stream1);
+        rgb_to_linrgb(tempStrideEliminated, source_width*source_height, stream1);
         if (is_resized) resizePlane(src1_d[0], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream1);
-        
+
+        tempStrideEliminated = is_resized ? tempStrideEliminated : src1_d[1];
         GPU_CHECK(hipMemcpyHtoDAsync(mem_d, (void*)(srcp1[1]), stride * source_height, stream1));
         strideEliminator<T>(tempStrideEliminated, mem_d, stride, source_width, source_height, stream1);
-        rgb_to_linrgb(is_resized ? tempStrideEliminated : src1_d[1], source_width*source_height, stream1);
+        rgb_to_linrgb(tempStrideEliminated, source_width*source_height, stream1);
         if (is_resized) resizePlane(src1_d[1], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream1);
 
+        tempStrideEliminated = is_resized ? tempStrideEliminated : src1_d[2];
         GPU_CHECK(hipMemcpyHtoDAsync(mem_d, (void*)(srcp1[2]), stride * source_height, stream1));
         strideEliminator<T>(tempStrideEliminated, mem_d, stride, source_width, source_height, stream1);
-        rgb_to_linrgb(is_resized ? tempStrideEliminated : src1_d[2], source_width*source_height, stream1);
+        rgb_to_linrgb(tempStrideEliminated, source_width*source_height, stream1);
         if (is_resized) resizePlane(src1_d[2], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream1);
 
+        tempStrideEliminated2 = is_resized ? tempStrideEliminated2 : src2_d[0];
         GPU_CHECK(hipMemcpyHtoDAsync(mem_d2, (void*)(srcp2[0]), stride2 * source_height, stream2));
         strideEliminator<T>(tempStrideEliminated2, mem_d2, stride2, source_width, source_height, stream2);
-        rgb_to_linrgb(is_resized ? tempStrideEliminated2 : src2_d[0], source_width*source_height, stream2);
-        if (is_resized) resizePlane(src2_d[0], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream2);
+        rgb_to_linrgb(tempStrideEliminated2, source_width*source_height, stream2);
+        if (is_resized) resizePlane(src2_d[0], tempResize2, tempStrideEliminated2, source_width, source_height, resize_width, resize_height, stream2);
         
+        tempStrideEliminated2 = is_resized ? tempStrideEliminated2 : src2_d[1];
         GPU_CHECK(hipMemcpyHtoDAsync(mem_d2, (void*)(srcp2[1]), stride2 * source_height, stream2));
         strideEliminator<T>(tempStrideEliminated2, mem_d2, stride2, source_width, source_height, stream2);
         rgb_to_linrgb(is_resized ? tempStrideEliminated2 : src2_d[1], source_width*source_height, stream2);
         if (is_resized) resizePlane(src2_d[1], tempResize2, tempStrideEliminated2, source_width, source_height, resize_width, resize_height, stream2);
         
-        GPU_CHECK(hipMemcpyHtoDAsync(mem_d, (void*)(srcp2[2]), stride2 * source_height, stream2));
+        tempStrideEliminated2 = is_resized ? tempStrideEliminated2 : src2_d[2];
+        GPU_CHECK(hipMemcpyHtoDAsync(mem_d2, (void*)(srcp2[2]), stride2 * source_height, stream2));
         strideEliminator<T>(tempStrideEliminated2, mem_d2, stride2, source_width, source_height, stream2);
-        rgb_to_linrgb(is_resized ? tempStrideEliminated2 : src2_d[2], source_width*source_height, stream2);
+        rgb_to_linrgb(tempStrideEliminated2, source_width*source_height, stream2);
         if (is_resized) resizePlane(src2_d[2], tempResize2, tempStrideEliminated2, source_width, source_height, resize_width, resize_height, stream2);
 
         //colorspace conversion

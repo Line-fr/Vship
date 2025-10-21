@@ -73,6 +73,8 @@ __global__ void linrgb_to_dklKernel(float* p1, float* p2, float* p3, int64_t wid
     xyz_to_LMS2006(src);
     LMS2006_to_DKLd65(src);
 
+    //if (x == 0) printf("value %f %f %f %f %f %f\n", src.x, src.y, src.z, p1[x], p2[x], p3[x]);
+
     p1[x] = src.x; p2[x] = src.y; p3[x] = src.z;
 }
 
