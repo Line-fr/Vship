@@ -8,7 +8,7 @@ public:
     float* gaussiankernel_d = NULL;
     float* gaussiankernel_integral_d = NULL;
     void init(){
-        const float sigma = 3.f;
+        const float sigma = pu_dilate;
         float gaussiankernel[4*GAUSSIANSIZE+3];
         gaussiankernel[2*GAUSSIANSIZE+1] = 0; //will be integral
         for (int i = 0; i < 2*GAUSSIANSIZE+1; i++){
@@ -25,17 +25,17 @@ public:
     }
 };
 
-__device__ void GaussianSmartSharedLoadPower(float* tampon, const float* src1, const float q, int64_t x, int64_t y, int64_t width, int64_t height){
+__device__ void GaussianSmartSharedLoadMin(float* tampon, const float* src1, const float* src2, int64_t x, int64_t y, int64_t width, int64_t height){
     const int thx = threadIdx.x;
     const int thy = threadIdx.y;
     const int tampon_base_x = x - thx - 8;
     const int tampon_base_y = y - thy - 8;
 
     //fill tampon
-    tampon[thy*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? pow(src1[(tampon_base_y+thy)*width + tampon_base_x+thx], q) : 0.f;
-    tampon[(thy+16)*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? pow(src1[(tampon_base_y+thy+16)*width + tampon_base_x+thx], q) : 0.f;
-    tampon[thy*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? pow(src1[(tampon_base_y+thy)*width + tampon_base_x+thx+16], q) : 0.f;
-    tampon[(thy+16)*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? pow(src1[(tampon_base_y+thy+16)*width + tampon_base_x+thx+16], q) : 0.f;
+    tampon[thy*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? min(src1[(tampon_base_y+thy)*width + tampon_base_x+thx], src2[(tampon_base_y+thy)*width + tampon_base_x+thx]) : 0.f;
+    tampon[(thy+16)*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? min(src1[(tampon_base_y+thy+16)*width + tampon_base_x+thx], src2[(tampon_base_y+thy+16)*width + tampon_base_x+thx]) : 0.f;
+    tampon[thy*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? min(src1[(tampon_base_y+thy)*width + tampon_base_x+thx+16], src2[(tampon_base_y+thy)*width + tampon_base_x+thx+16]) : 0.f;
+    tampon[(thy+16)*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? min(src1[(tampon_base_y+thy+16)*width + tampon_base_x+thx+16], src2[(tampon_base_y+thy+16)*width + tampon_base_x+thx+16]) : 0.f;
     __syncthreads();
 }
 

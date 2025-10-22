@@ -34,7 +34,7 @@ constexpr float beta_tf[4] = {
     0.947901,
     0.1898
 };
-constexpr bool xchannel_masking = true;
+//constexpr bool xchannel_masking = true;
 __device__ constexpr float xcm_weights[16] = {
     -0.18950104713439941,
     -5.962151050567627,

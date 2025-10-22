@@ -4,6 +4,8 @@
 
 namespace cvvdp{
 
+__device__ const float s_color_modulation[4] = {1, 1.7, 0.237, 1};
+
 //takes an ordered array of size 32 and a value and search the biggest index of element smaller
 //(except if x is smaller, then it returns 0)
 __device__ __host__ int indexSearch(const float xp[32], float x){
@@ -66,7 +68,7 @@ public:
         const int imax = min(31, imin+1);
         const float frac = x - (float)imin;
         const float logS = LUTy[imin] * frac + LUTy[imax] * (1.f-frac) + sensitivity_correction/20.f;
-        return pow(10, logS);
+        return powf(10, logS) * s_color_modulation[channel];
     }
 };
 

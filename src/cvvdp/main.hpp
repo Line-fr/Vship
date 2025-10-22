@@ -14,21 +14,23 @@
 #include "lpyr.hpp"
 #include "csf.hpp"
 #include "gaussianBlur.hpp"
+#include "maskingModel.hpp"
 
 namespace cvvdp{
 
-double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& temporalRing1, TemporalRing& temporalRing2, CSF_Handler& csf_handler, GaussianHandle& gaussianhandle, DisplayModel* model, int64_t maxshared, hipStream_t stream1, hipStream_t stream2, hipEvent_t event){
+double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& temporalRing1, TemporalRing& temporalRing2, CSF_Handler& csfhandle, GaussianHandle& gaussianhandle, DisplayModel* model, int64_t maxshared, hipStream_t stream1, hipStream_t stream2, hipEvent_t event){
     int64_t width = temporalRing1.width;
     int64_t height = temporalRing1.height;
 
     int allocatedPlanes = 5;
+    int stream1_supPlane = 0;
     //to fit the pyramid, we need 4/3 the normal size
     int gaussianPyrSizeMultiplierNumerator = 4;
     int gaussianPyrSizeMultiplierDenominator = 3;
 
     const int64_t bandOffset = width*height*gaussianPyrSizeMultiplierNumerator/gaussianPyrSizeMultiplierDenominator;
     float* mem_d;
-    hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*allocatedPlanes*bandOffset, stream1);
+    hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*(allocatedPlanes+stream1_supPlane)*bandOffset, stream1);
     if (erralloc != hipSuccess){
         throw VshipError(OutOfVRAM, __FILE__, __LINE__);
     }
@@ -62,6 +64,24 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& tempor
     hipStreamWaitEvent(stream1, event);
     //now we only use stream1, this is the time for merging both sources
     
+    int w = width;
+    int h = height;
+    for (int band = 0; band < LPyr1.getSize(); band++){
+        if (band != LPyr1.getSize()-1){
+            for (int channel = 0; channel < 4; channel++){
+                preGaussianPreCompute(LPyr1.getLbkg(band), LPyr1.getContrast(channel, band), LPyr2.getContrast(channel, band), w, h, channel, band, csfhandle, stream1);
+            }
+            //it writes on its source
+            computeD(LPyr1.getContrast(0, band), LPyr1.getContrast(1, band), LPyr1.getContrast(2, band), LPyr1.getContrast(3, band), LPyr2.getContrast(0, band), LPyr2.getContrast(1, band),LPyr2.getContrast(2, band), LPyr2.getContrast(3, band), w, h, gaussianhandle, stream1);
+        } else {
+            //baseband
+            for (int channel = 0; channel < 4; channel++){
+                computeD_baseband(LPyr1.getLbkg(band), LPyr1.getContrast(channel, band), LPyr2.getContrast(channel, band), w, h, channel, band, csfhandle, stream1);
+            }
+        }
+        w = (w+1)/2;
+        h = (h+1)/2;
+    }
 
     hipStreamSynchronize(stream1);
 
