@@ -67,11 +67,11 @@ __global__ void computeD_Kernel(float* R0, float* R1, float* R2, float* R3, floa
     const float D2 = max_v*Du2/(max_v+Du2);
     const float D3 = max_v*Du3/(max_v+Du3);
 
-    //we write D inside Reference planes
-    R0[id] = D0;
-    R1[id] = D1;
-    R2[id] = D2;
-    R3[id] = D3;
+    //we write D inside Reference planes along with the channel multiplier
+    R0[id] = D0 * 1.f;
+    R1[id] = D1 * ch_chrom_w;
+    R2[id] = D2 * ch_chrom_w;
+    R3[id] = D3 * ch_trans_w;
 
     //if (id == 128) printf("D width %d: %f %f %f %f\n", width, D0, D1, D2, D3);
 }

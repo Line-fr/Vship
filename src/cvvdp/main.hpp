@@ -97,22 +97,41 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& tempor
         for (int channel = 0; channel < 4; channel++){
             const auto [w, h] = LPyr1.getResolution(band);
             const int64_t size = w*h;
-            computeMean<beta_sch>(LPyr1.getContrast(channel, band), temp+tempOffset, size, false, stream1);
+            computeMean<2>(LPyr1.getContrast(channel, band), temp+tempOffset, size, true, stream1);
             tempOffset++; //we stored the norm at temp[tempOffset]
         }
     }
     hipMemcpyDtoHAsync(scores.data(), temp, sizeof(float)*levels*4, stream1);
     hipStreamSynchronize(stream1);
-
     hipFreeAsync(mem_d, stream1);
 
-    return 10.;
+    //we have our levels*4 scores
+    float finalValue = 0;
+    for (int band = 0; band < levels; band++){
+        for (int channel = 0; channel < 4; channel++){
+            const float val = scores[band*4+channel];
+            finalValue += std::pow(val, 4);
+        }
+    }
+    finalValue = std::pow(finalValue, 1./4.)/(float)(levels*4);
+
+    return finalValue;
+}
+
+double toJOD(double a){
+    if (a > 0.1){
+        return 10. - jod_a * std::pow(a, jod_exp);
+    } else {
+        const double jod_a_p = jod_a * (std::pow(0.1, jod_exp-1.));
+        return 10. - jod_a_p * a;
+    }
 }
 
 //currently at 32 planes + 3*fps/2 planes consumed
 class CVVDPComputingImplementation{
     DisplayModel* model = NULL;
     float fps = 0;
+    std::vector<float> all_scores; //for past frames
     TemporalRing temporalRing1; //source
     TemporalRing temporalRing2; //encoded
     CSF_Handler csf_handler;
@@ -263,10 +282,23 @@ public:
     template <InputMemType T>
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
         loadImageToRing<T>(srcp1, srcp2, stride, stride2);
-        return CVVDPprocess(dstp, dststride, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event);
+        const float current_score = CVVDPprocess(dstp, dststride, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event);
+        all_scores.push_back(current_score);
+        float resQ = 0;
+        if (all_scores.size() == 1){
+            resQ = current_score * image_int;
+        } else {
+            double sum_power = 0.;
+            for (const auto& el: all_scores){
+                sum_power += std::pow(el, beta_t);
+            }
+            resQ = std::pow(sum_power/(double)all_scores.size(), 1./beta_t);
+        }
+        return toJOD(resQ);
     }
     //empties the history.
     void flushTemporalRing(){
+        all_scores.clear();
         temporalRing1.reset();
         temporalRing2.reset();
     }
