@@ -88,26 +88,28 @@ void gaussPyrExpand(float* dst, float* src, int64_t new_width, int64_t new_heigh
     gaussPyrExpand_Kernel<subdst><<<dim3(bl_x), dim3(th_x), 0, stream>>>(dst, src, new_width, new_height);
 }
 
-template<bool isMean>
+template<bool isMean, int multiplier>
 __global__ void baseBandPyrRefine_Kernel(float* p, float* Lbkg, int64_t width){
     const int64_t thid = threadIdx.x + blockIdx.x * blockDim.x;
     if (thid >= width) return;
 
+    float val;
     if constexpr (!isMean){
-        p[thid] = min(p[thid]/max(0.01f, Lbkg[thid]), 1000.f);
+        val = min(p[thid]/max(0.01f, Lbkg[thid]), 1000.f);
     } else {
         //if (thid == 0) printf("value %f %f\n", Lbkg[0], p[thid]);
         //then our adress is the mean, a single float at 0
-        p[thid] = min(p[thid]/max(0.01f, Lbkg[0]), 1000.f);
+        val = min(p[thid]/max(0.01f, Lbkg[0]), 1000.f);
     }
+    p[thid] = val*multiplier;
 }
 
 //gets the contrast from the layers
-template<bool isMean = false>
+template<bool isMean, int multiplier>
 void baseBandPyrRefine(float* p, float* Lbkg, int64_t width, hipStream_t stream){
     int th_x = 256;
     int64_t bl_x = (width + th_x-1)/th_x;
-    baseBandPyrRefine_Kernel<isMean><<<dim3(bl_x), dim3(th_x), 0, stream>>>(p, Lbkg, width);   
+    baseBandPyrRefine_Kernel<isMean, multiplier><<<dim3(bl_x), dim3(th_x), 0, stream>>>(p, Lbkg, width);   
 }
 
 //pointer jumping, start with 1024 threads
@@ -160,6 +162,20 @@ void computeMean(float* src, float* temp, int64_t size, hipStream_t stream){
     reduceSum<<<dim3(bl_x), dim3(th_x), 0, stream>>>(final_dst, tempbuffer[oscillator], size, (oscillator == 2));
 }
 
+std::vector<float> get_frequencies(const int64_t width, const int64_t height, const float ppd){
+    const float min_freq = 0.2;
+    const int maxLevel_forRes = std::log2(std::min(width, height))-1;
+    const int maxLevel_forPPD = std::ceil(-std::log2(2*min_freq/0.3228/ppd));
+    const int maxLevel_hard = 14;
+    const int levels = std::min(maxLevel_forPPD, std::max(maxLevel_forRes, maxLevel_hard));
+
+    std::vector<float> band_frequencies(levels);
+    for (int i = 0; i < levels; i++){
+        band_frequencies[i] = 0.3228*0.5*ppd/((float)(1 << i));
+    }
+    return std::move(band_frequencies);
+}
+
 class LpyrManager{
     std::vector<std::pair<int64_t, int64_t>> resolutions; //for each band
     std::vector<float*> adresses;
@@ -170,16 +186,12 @@ public:
     //plane contains 5 planes each twice the size
     //the last plane will contain L_bkg while the first planes should contain the 4 temporal channels for the first half
     LpyrManager(float* plane, const int64_t width, const int64_t height, const float ppd, int64_t bandOffset, const hipStream_t stream){
-        const float min_freq = 0.2;
-        const int maxLevel_forRes = std::log2(std::min(width, height))-1;
-        const int maxLevel_forPPD = std::ceil(-std::log2(2*min_freq/0.3228/ppd));
-        const int maxLevel_hard = 14;
-        const int levels = std::min(maxLevel_forPPD, std::max(maxLevel_forRes, maxLevel_hard));
+        band_frequencies = get_frequencies(width, height, ppd);
+        const int levels = band_frequencies.size();
 
         planeOffset = bandOffset;
 
         resolutions.resize(levels);
-        band_frequencies.resize(levels);
         adresses.resize(levels);
         int64_t w = width;
         int64_t h = height;
@@ -189,14 +201,16 @@ public:
             resolutions[i].second = h;
             adresses[i] = p;
 
-            band_frequencies[i] = 0.3228*0.5*ppd/((float)(1 << i));
-
             if (i != levels-1){
                 //first is Y_sustained, it governs L_BKG
                 gaussPyrReduce(p+w*h, p, w, h, stream);
                 gaussPyrExpand<false>(p+4*planeOffset, p+w*h, w, h, stream);
                 subarray(p, p+4*planeOffset, p, w*h, stream);
-                baseBandPyrRefine(p, p+4*planeOffset, w*h, stream);
+                if (i == 0){
+                    baseBandPyrRefine<false, 1>(p, p+4*planeOffset, w*h, stream);
+                } else {
+                    baseBandPyrRefine<false, 2>(p, p+4*planeOffset, w*h, stream);
+                }
                 //then other channels
                 for (int channel = 1; channel < 4; channel++){
                     //we first create the next step of the pyramid
@@ -204,7 +218,11 @@ public:
                     //then we substract its upscaled version from the original to create the "layer"
                     gaussPyrExpand<true>(p+channel*planeOffset, p+w*h+channel*planeOffset, w, h, stream);
                     //then we transform this layer into a contrast by using the L_BKG computed before the loop
-                    baseBandPyrRefine(p+channel*planeOffset, p+4*planeOffset, w*h, stream);
+                    if (i == 0){
+                        baseBandPyrRefine<false, 1>(p+channel*planeOffset, p+4*planeOffset, w*h, stream);
+                    } else {
+                        baseBandPyrRefine<false, 2>(p+channel*planeOffset, p+4*planeOffset, w*h, stream);
+                    }
                 }
             } else {
                 //here Lbkg is different, it is the mean.
@@ -212,7 +230,7 @@ public:
                 computeMean(p, p+4*planeOffset, w*h, stream);
                 float* meanp = p+4*planeOffset;
                 for (int channel = 0; channel < 4; channel++){
-                    baseBandPyrRefine<true>(p+channel*planeOffset, meanp, w*h, stream);
+                    baseBandPyrRefine<true, 1>(p+channel*planeOffset, meanp, w*h, stream);
                 }
             }
 
