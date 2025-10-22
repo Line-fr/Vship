@@ -11,6 +11,7 @@
 #include "colors.hpp"
 #include "resize.hpp"
 #include "temporalFilter.hpp"
+#include "pooling.hpp"
 #include "lpyr.hpp"
 #include "csf.hpp"
 #include "gaussianBlur.hpp"
@@ -66,8 +67,9 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& tempor
     
     int w = width;
     int h = height;
-    for (int band = 0; band < LPyr1.getSize(); band++){
-        if (band != LPyr1.getSize()-1){
+    const int levels = LPyr1.getSize();
+    for (int band = 0; band < levels; band++){
+        if (band != levels-1){
             for (int channel = 0; channel < 4; channel++){
                 preGaussianPreCompute(LPyr1.getLbkg(band), LPyr1.getContrast(channel, band), LPyr2.getContrast(channel, band), w, h, channel, band, csfhandle, stream1);
             }
@@ -82,11 +84,27 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& tempor
         w = (w+1)/2;
         h = (h+1)/2;
     }
-
+    //stream2 waits for stream1 to be done before freeing memory (memory of Lpyr2)
+    hipEventRecord(event, stream1);
+    hipStreamWaitEvent(stream2, event);
+    hipFreeAsync(mem_d2, stream2);
+    //the complete full distortion map is stored in Lpyr1
+    //and we can use Lpyr1 Lbkg place as temporary storage for pooling
+    std::vector<float> scores(levels*4); //per_band and per channel
+    int tempOffset = 0;
+    float* temp = LPyr1.getLbkg(0); //we take all the space! so we use band0
+    for (int band = 0; band < levels; band++){
+        for (int channel = 0; channel < 4; channel++){
+            const auto [w, h] = LPyr1.getResolution(band);
+            const int64_t size = w*h;
+            computeMean<beta_sch>(LPyr1.getContrast(channel, band), temp+tempOffset, size, false, stream1);
+            tempOffset++; //we stored the norm at temp[tempOffset]
+        }
+    }
+    hipMemcpyDtoHAsync(scores.data(), temp, sizeof(float)*levels*4, stream1);
     hipStreamSynchronize(stream1);
 
     hipFreeAsync(mem_d, stream1);
-    hipFreeAsync(mem_d2, stream2);
 
     return 10.;
 }

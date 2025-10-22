@@ -112,56 +112,6 @@ void baseBandPyrRefine(float* p, float* Lbkg, int64_t width, hipStream_t stream)
     baseBandPyrRefine_Kernel<isMean, multiplier><<<dim3(bl_x), dim3(th_x), 0, stream>>>(p, Lbkg, width);   
 }
 
-//pointer jumping, start with 1024 threads
-__global__ void reduceSum(float* dst, float* src, int64_t size, bool divide){
-    const int64_t global_thid = threadIdx.x + blockIdx.x * blockDim.x;
-    const int local_thid = threadIdx.x;
-    constexpr int threadnum = 1024;
-
-    __shared__ float pointerJumpingBuffer[threadnum]; //one float per thread
-
-    if (global_thid >= size){
-        pointerJumpingBuffer[local_thid] = 0;
-    } else {
-        pointerJumpingBuffer[local_thid] = src[global_thid];
-    }
-
-    __syncthreads();
-
-    int next = 1;
-    while (next < threadnum){
-        if (local_thid + next < threadnum && (local_thid%(next*2) == 0)){
-            pointerJumpingBuffer[local_thid] += pointerJumpingBuffer[local_thid+next];
-        }
-        next *= 2;
-        __syncthreads();
-    }
-
-    if (local_thid == 0){
-        if (divide) pointerJumpingBuffer[0] /= size;
-        dst[blockIdx.x] = pointerJumpingBuffer[0];
-    }
-}
-
-//the result will be at temp[0]. We suppose that temp is of the same size as src
-void computeMean(float* src, float* temp, int64_t size, hipStream_t stream){
-    constexpr int th_x = 1024;
-    int bl_x;
-
-    float* final_dst = temp; //to contain temp[0]
-    float* tempbuffer[3] = {temp+1, temp+1+(size+1023)/1024, src};
-    int oscillator = 2; //corresponds to current source except the first time
-    while (size > 1024){
-        bl_x = (size+th_x-1)/th_x;
-        int destination = (oscillator == 2) ? 0 : (oscillator^1);
-        reduceSum<<<dim3(bl_x), dim3(th_x), 0, stream>>>(tempbuffer[destination], tempbuffer[oscillator], size, (oscillator == 2));
-        oscillator = destination;
-        size = (size+1023)/1024;
-    }
-    bl_x = 1;
-    reduceSum<<<dim3(bl_x), dim3(th_x), 0, stream>>>(final_dst, tempbuffer[oscillator], size, (oscillator == 2));
-}
-
 std::vector<float> get_frequencies(const int64_t width, const int64_t height, const float ppd){
     const float min_freq = 0.2;
     const int maxLevel_forRes = std::log2(std::min(width, height))-1;
@@ -227,7 +177,7 @@ public:
             } else {
                 //here Lbkg is different, it is the mean.
                 //now we need to take the mean. 
-                computeMean(p, p+4*planeOffset, w*h, stream);
+                computeMean<1>(p, p+4*planeOffset, w*h, true, stream);
                 float* meanp = p+4*planeOffset;
                 for (int channel = 0; channel < 4; channel++){
                     baseBandPyrRefine<true, 1>(p+channel*planeOffset, meanp, w*h, stream);

@@ -73,7 +73,7 @@ __global__ void computeD_Kernel(float* R0, float* R1, float* R2, float* R3, floa
     R2[id] = D2;
     R3[id] = D3;
 
-    //if (id == 100) printf("D width %d: %f %f %f %f\n", width, D0, D1, D2, D3);
+    //if (id == 128) printf("D width %d: %f %f %f %f\n", width, D0, D1, D2, D3);
 }
 
 void computeD(float* R0, float* R1, float* R2, float* R3, float* T0, float* T1, float* T2, float* T3, const int width, const int height, GaussianHandle& gaussianhandle, hipStream_t stream){
@@ -88,8 +88,9 @@ __global__ void computeD_baseband_kernel(float* Lbkg, float* p1, float* p2, int 
     const int64_t thid = threadIdx.x + blockIdx.x * blockDim.x;
     if (thid >= width*height) return;
 
-    const float S = csfhandle.computeSensitivityGPU(Lbkg[thid], band, channel);
-    p1[thid] = abs(p1[thid] - p2[thid])*S;
+    const float S = csfhandle.computeSensitivityGPU(Lbkg[0], band, channel);
+    p1[thid] = abs(p1[thid] - p2[thid])*S * baseband_weight[channel]; //the weight is put here to avoid another kernel later doing that
+    //if (thid == 128) printf("ComputeDbasedband: %f\n", p1[thid]);
 }
 
 void computeD_baseband(float* Lbkg, float* p1, float* p2, int width, int height, int channel, int band, CSF_Handler& csfhandle, hipStream_t stream){
