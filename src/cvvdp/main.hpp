@@ -13,10 +13,11 @@
 #include "temporalFilter.hpp"
 #include "lpyr.hpp"
 #include "csf.hpp"
+#include "gaussianBlur.hpp"
 
 namespace cvvdp{
 
-double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& temporalRing1, TemporalRing& temporalRing2, CSF_Handler& csf_handler, DisplayModel* model, int64_t maxshared, hipStream_t stream1, hipStream_t stream2, hipEvent_t event){
+double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& temporalRing1, TemporalRing& temporalRing2, CSF_Handler& csf_handler, GaussianHandle& gaussianhandle, DisplayModel* model, int64_t maxshared, hipStream_t stream1, hipStream_t stream2, hipEvent_t event){
     int64_t width = temporalRing1.width;
     int64_t height = temporalRing1.height;
 
@@ -77,6 +78,7 @@ class CVVDPComputingImplementation{
     TemporalRing temporalRing1; //source
     TemporalRing temporalRing2; //encoded
     CSF_Handler csf_handler;
+    GaussianHandle gaussianhandle;
     int64_t source_width = 0;
     int64_t source_height = 0;
     int64_t resize_width = 0;
@@ -112,6 +114,7 @@ public:
         temporalRing1.init(fps, resize_width, resize_height);
         temporalRing2.init(fps, resize_width, resize_height);
         csf_handler.init(resize_width, resize_height, model->get_screen_ppd());
+        gaussianhandle.init();
 
         hipStreamCreate(&stream1);
         hipStreamCreate(&stream2);
@@ -128,6 +131,7 @@ public:
         temporalRing1.destroy();
         temporalRing2.destroy();
         csf_handler.destroy();
+        gaussianhandle.destroy();
         delete model;
         hipStreamDestroy(stream1);
         hipStreamDestroy(stream2);
@@ -221,7 +225,7 @@ public:
     template <InputMemType T>
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
         loadImageToRing<T>(srcp1, srcp2, stride, stride2);
-        return CVVDPprocess(dstp, dststride, temporalRing1, temporalRing2, csf_handler, model, maxshared, stream1, stream2, event);
+        return CVVDPprocess(dstp, dststride, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event);
     }
     //empties the history.
     void flushTemporalRing(){
