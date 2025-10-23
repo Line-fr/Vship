@@ -123,7 +123,7 @@ void aggregate_scores_function(score_queue_t& input_score_queue,
         }
 
         const auto &[frame_index, scores_tuple] = *maybe_score;
-        const bool should_store_first_score = (metric == MetricType::SSIMULACRA2);
+        const bool should_store_first_score = (metric == MetricType::CVVDP || metric == MetricType::SSIMULACRA2);
 
         if (should_store_first_score) {
             aggregated_scores[frame_index] = std::get<0>(scores_tuple);
@@ -397,7 +397,7 @@ int main(int argc, char **argv) {
                              std::ref(score_queue), &error);
     }
 
-    const int score_vector_size = (cli_args.metric == MetricType::SSIMULACRA2)
+    const int score_vector_size = (cli_args.metric == MetricType::CVVDP || cli_args.metric == MetricType::SSIMULACRA2)
                                       ? num_frames
                                       : num_frames * 3;
     std::vector<float> scores(score_vector_size);
@@ -498,7 +498,9 @@ int main(int argc, char **argv) {
     } else if (cli_args.metric == MetricType::SSIMULACRA2) {
         print_aggergate_metric_statistics(scores, "SSIMULACRA2");
     } else if (cli_args.metric == MetricType::CVVDP){
-        print_aggergate_metric_statistics(scores, "CVVDP");
+        const double cvvdp_val = scores[scores.size()-1];
+        std::cout << "----------------CVVDP---------------" << std::endl;
+        std::cout << "Video Score: " << cvvdp_val << std::endl;
     }
     return 0;
 }

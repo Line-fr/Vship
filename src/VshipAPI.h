@@ -163,23 +163,18 @@ EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);
 //Unlike recreating the handler, this function is basically free perf wise, it is setting a variable to 0, that's it!
 EXPORTPREPROCESS Vship_Exception Vship_ResetCVVDP(Vship_CVVDPHandler handler);
 
-//the frames are not overwritten
-//this video allows loading images to the temporal filter of CVVDP without computing the whole metric.
-//this is useful to start computing at the middle of a video, you can put previous frames with this.
-EXPORTPREPROCESS Vship_Exception Vship_LoadCVVDPUint16(Vship_CVVDPHandler handler, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
-
-EXPORTPREPROCESS Vship_Exception Vship_LoadCVVDPFloat(Vship_CVVDPHandler handler, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
-
 //dstp must either be NULL (in this case, the distortion map will never be retrieved from the gpu)
 //or be allocated of size dststride*height
 //when input is RGB with BT709 transfer function uint16_t frame
-//output in score
+//output the score of the whole sequence that it has already seen. You can reset the CVVDP handler to start over on a new sequence
+//ideally, for a video, you feed all the frames, and then only at the very last frame submitted you take the score
 EXPORTPREPROCESS Vship_Exception Vship_ComputeCVVDPUint16(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
 
 //dstp must either be NULL (in this case, the distortion map will never be retrieved from the gpu)
 //or be allocated of size dststride*height
 //when input is RGB with BT709 transfer function float frame
-//output in score
+//output the score of the whole sequence that it has already seen. You can reset the CVVDP handler to start over on a new sequence
+//ideally, for a video, you feed all the frames, and then only at the very last frame submitted you take the score
 EXPORTPREPROCESS Vship_Exception Vship_ComputeCVVDPFloat(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
 
 
