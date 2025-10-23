@@ -36,6 +36,7 @@ __global__ void gaussPyrReduce_Kernel(float* dst, float* src, int64_t source_wid
     }
 
     dst[y*nw+x] = nval;
+    //if (y*nw+x == 0) printf("We got %f at width %lld\n", nval, source_width);
 }
 
 void gaussPyrReduce(float* dst, float* src, int64_t source_width, int64_t source_height, hipStream_t stream){
@@ -52,6 +53,7 @@ template<bool subdst>
 __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width, int64_t new_height){
     const int64_t thid = threadIdx.x + blockIdx.x * blockDim.x;
     int ow = (new_width+1)/2;
+    int oh = (new_height+1)/2;
     if (thid >= new_width*new_height) return;
 
     //in new space
@@ -65,10 +67,14 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
 
     for (int dx = -2+parity_x; dx <= 2; dx+=2){
         const float kernel_x = 2*gaussPyrKernel[dx+2];
-        const int ref_ind_x = (x + dx)/2; //funny: x+dx is always even
-        for (int dy = -2-parity_y; dy <= 2; dy+=2){
+        int ref_ind_x = (x + dx)/2; //funny: x+dx is always even
+        if (ref_ind_x < 0) ref_ind_x = -ref_ind_x;
+        if (ref_ind_x >= ow) ref_ind_x = 2*ow - ref_ind_x;
+        for (int dy = -2+parity_y; dy <= 2; dy+=2){
             const float kernel_y = 2*gaussPyrKernel[dy+2];
-            const int ref_ind_y = (y+dy)/2; //(y+dy) is always even
+            int ref_ind_y = (y+dy)/2; //(y+dy) is always even
+            if (ref_ind_y < 0) ref_ind_y = -ref_ind_y;
+            if (ref_ind_y >= oh) ref_ind_y = 2*oh - ref_ind_y;
 
             nval += kernel_x*kernel_y*src[ref_ind_y*ow+ref_ind_x];
         }
@@ -76,8 +82,10 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
 
     if constexpr (subdst) {
         dst[thid] -= nval;
+        //if (thid == 0) printf("We got %f at width %lld from %f\n", dst[0], new_width, src[0]);
     } else {
         dst[thid] = nval;
+        //if (thid == 0) printf("We got %f at width %lld from %f\n", dst[0] , new_width, src[0]);
     }
 }
 
@@ -96,13 +104,14 @@ __global__ void baseBandPyrRefine_Kernel(float* p, float* Lbkg, int64_t width){
     float val;
     if constexpr (!isMean){
         val = min(p[thid]/max(0.01f, Lbkg[thid]), 1000.f);
+        //if (thid == 0) printf("baseBandPyrRefine %f at width %d\n", p[thid], width);
     } else {
         //if (thid == 0) printf("value %f %f\n", Lbkg[0], p[thid]);
         //then our adress is the mean, a single float at 0
         val = min(p[thid]/max(0.01f, Lbkg[0]), 1000.f);
     }
     p[thid] = val*multiplier;
-    //if (thid == 0) printf("baseBandPytRefine %f\n", p[thid]);
+    //if (thid == 0) printf("baseBandPyrRefine %f at width %d\n", p[thid], width);
 }
 
 //gets the contrast from the layers

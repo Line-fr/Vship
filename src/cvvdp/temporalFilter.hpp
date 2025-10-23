@@ -86,11 +86,11 @@ public:
 // It will be able to apply the temporal filter to write 4 planes that corresponds to the 4 temporally filtered channels
 class TemporalRing{
     float* internal_memory_d = NULL;
-    int temporal_size = 0;
     //to get index of frame i, you need to do internal_memory+(3*plane_size)*((ind0+i)%max_temporal_size)
     //3* is because the 3 color planes of a single plane are stored together.
     int ind0 = 0; //index of current frame, past frames are stored after it up to temporal_size frames.
 public:
+    int temporal_size = 0;
     TemporalFilter tempFilterPreprocessor;
     int max_temporal_size = 0;
     int64_t width = -1;
@@ -137,6 +137,15 @@ __global__ void temporalConvolutionKernel_d(TemporalRing ring, float* Y_sustaine
     const int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
     const int64_t planeSize = ring.width*ring.height;
     if (x >= planeSize) return;
+
+    if (ring.temporal_size == 1){
+        const float* srcptr = ring.getFramePointer(0);
+        Y_sustained[x] = srcptr[x];
+        RG_sustained[x] = srcptr[x+planeSize];
+        YV_sustained[x] = srcptr[x+2*planeSize];
+        Y_transient[x] = 0.f;
+        return;
+    }
 
     //we use float2 to use double issue float ALU computing units.
     float2 valueTemp;
