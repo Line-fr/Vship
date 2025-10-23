@@ -108,6 +108,12 @@ struct DisplayModel{
         cached_ppd = 1/pix_deg;
         return cached_ppd;
     }
+    float getBlackLevel(){
+        return E_ambient*k_refl/PI;
+    }
+    float getReflLevel(){
+        return max_luminance/contrast;
+    }
 };
 
 }

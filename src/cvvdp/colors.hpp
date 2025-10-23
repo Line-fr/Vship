@@ -73,7 +73,7 @@ __global__ void linrgb_to_dklKernel(float* p1, float* p2, float* p3, int64_t wid
     xyz_to_LMS2006(src);
     LMS2006_to_DKLd65(src);
 
-    //if (x == 0) printf("value %f %f %f %f %f %f\n", src.x, src.y, src.z, p1[x], p2[x], p3[x]);
+    //if (x == 0) printf("value at DKL / Linrgb %f %f %f %f %f %f\n", src.x, src.y, src.z, p1[x], p2[x], p3[x]);
 
     p1[x] = src.x; p2[x] = src.y; p3[x] = src.z;
 }
@@ -84,17 +84,24 @@ void inline linrgb_to_dkl(float* src_d[3], int64_t width, hipStream_t stream){
     linrgb_to_dklKernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d[0], src_d[1], src_d[2], width);
 }
 
-__global__ void rgb_to_linrgbKernel(float* p, int64_t width){
+__global__ void rgb_to_linrgbKernel(float* p, int64_t width, float Y_peak, float Y_black, float Y_refl, float exposure){
     const int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
     if (x >= width) return;
 
-    rgb_to_linrgbfunc(p[x]);
+    float res = p[x];
+    rgb_to_linrgbfunc(res);
+
+    res = (Y_peak - Y_black)*res + Y_black + Y_refl;
+
+    p[x] = res;
+
+    //if (x == 0) printf("value at display %f\n", p[x]);
 }
 
-void inline rgb_to_linrgb(float* src_d, int64_t width, hipStream_t stream){
+void inline rgb_to_linrgb(float* src_d, int64_t width, float Y_peak, float Y_black, float Y_refl, float exposure, hipStream_t stream){
     int th_x = 256;
     int64_t bl_x = (width+th_x-1)/th_x;
-    rgb_to_linrgbKernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d, width);
+    rgb_to_linrgbKernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d, width, Y_peak, Y_black, Y_refl, exposure);
 }
 
 
