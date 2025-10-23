@@ -69,7 +69,7 @@ public:
         }
         std::cout << ss.str() << std::flush;
     }
-    void add_value(int64_t val){
+    void add_value(double val){
         total_sum += val;
         num++;
         refresh();
