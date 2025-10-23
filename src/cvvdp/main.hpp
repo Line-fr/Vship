@@ -131,7 +131,9 @@ double toJOD(double a){
 class CVVDPComputingImplementation{
     DisplayModel* model = NULL;
     float fps = 0;
-    std::vector<float> all_scores; //for past frames
+    //std::vector<float> all_scores; //for past frames
+    int numFrame = 0;
+    double score_squareSum; //to avoid recomputing it all the time
     TemporalRing temporalRing1; //source
     TemporalRing temporalRing2; //encoded
     CSF_Handler csf_handler;
@@ -288,22 +290,20 @@ public:
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
         loadImageToRing<T>(srcp1, srcp2, stride, stride2);
         const float current_score = CVVDPprocess(dstp, dststride, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event);
-        all_scores.push_back(current_score);
-        float resQ = 0;
-        if (all_scores.size() == 1){
+        score_squareSum += std::pow(current_score, beta_t);
+        float resQ;
+        if (numFrame == 0){
             resQ = current_score * image_int;
         } else {
-            double sum_power = 0.;
-            for (const auto& el: all_scores){
-                sum_power += std::pow(el, beta_t);
-            }
-            resQ = std::pow(sum_power/(double)all_scores.size(), 1./beta_t);
+            resQ = std::pow(score_squareSum/(double)numFrame, 1./beta_t);
         }
+        numFrame++;
         return toJOD(resQ);
     }
     //empties the history.
     void flushTemporalRing(){
-        all_scores.clear();
+        numFrame = 0;
+        score_squareSum = 0.;
         temporalRing1.reset();
         temporalRing2.reset();
     }
