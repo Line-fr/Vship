@@ -16,6 +16,7 @@ __global__ void reduceSum(float* dst, float* src, int64_t size, bool divide){
     } else {
         if constexpr (applyPower) {
             pointerJumpingBuffer[local_thid] = powf(src[global_thid], power);
+            //if (global_thid == 60) printf("%lld .. %f\n", size, pointerJumpingBuffer[local_thid]);
         } else {
             pointerJumpingBuffer[local_thid] = src[global_thid];
         }
@@ -25,6 +26,7 @@ __global__ void reduceSum(float* dst, float* src, int64_t size, bool divide){
 
     int next = 1;
     while (next < threadnum){
+        //if (global_thid == 60) printf("width: %lld, next: %d, val: %f\n", size, next, pointerJumpingBuffer[local_thid]);
         if (local_thid + next < threadnum && (local_thid%(next*2) == 0)){
             pointerJumpingBuffer[local_thid] += pointerJumpingBuffer[local_thid+next];
         }
@@ -34,12 +36,13 @@ __global__ void reduceSum(float* dst, float* src, int64_t size, bool divide){
 
     if (local_thid == 0){
         float res = pointerJumpingBuffer[0];
+        //if (!applyInversePower && power == 2 && global_thid == 0) printf("We got0 %f at size %lld\n", res, size);
         if (divide) res /= size;
-        //if (inversePower && power == 4 && global_thid == 0) printf("We got1 %f\n", res);
+        //if (applyInversePower && power == 2 && global_thid == 0) printf("We got1 %f\n", res);
         if constexpr (applyInversePower) {
             res = powf(res, 1.f/(float)power);
         }
-        //if (inversePower && power == 4 && global_thid == 0) printf("We got2 %f\n", res);
+        //if (applyInversePower && power == 2 && global_thid == 0) printf("We got2 %f\n", res);
         dst[blockIdx.x] = res;
     }
 }

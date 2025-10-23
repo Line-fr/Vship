@@ -102,6 +102,7 @@ __global__ void baseBandPyrRefine_Kernel(float* p, float* Lbkg, int64_t width){
         val = min(p[thid]/max(0.01f, Lbkg[0]), 1000.f);
     }
     p[thid] = val*multiplier;
+    //if (thid == 0) printf("baseBandPytRefine %f\n", p[thid]);
 }
 
 //gets the contrast from the layers
@@ -115,13 +116,14 @@ void baseBandPyrRefine(float* p, float* Lbkg, int64_t width, hipStream_t stream)
 std::vector<float> get_frequencies(const int64_t width, const int64_t height, const float ppd){
     const float min_freq = 0.2;
     const int maxLevel_forRes = std::log2(std::min(width, height))-1;
-    const int maxLevel_forPPD = std::ceil(-std::log2(2*min_freq/0.3228/ppd));
+    const int maxLevel_forPPD = std::ceil(-std::log2(2*min_freq/0.3228/ppd))+1;
     const int maxLevel_hard = 14;
-    const int levels = std::min(maxLevel_forPPD, std::max(maxLevel_forRes, maxLevel_hard));
+    const int levels = std::min(maxLevel_forPPD, std::min(maxLevel_forRes, maxLevel_hard));
 
     std::vector<float> band_frequencies(levels);
-    for (int i = 0; i < levels; i++){
-        band_frequencies[i] = 0.3228*0.5*ppd/((float)(1 << i));
+    band_frequencies[0] = 0.5*ppd;
+    for (int i = 0; i < levels-1; i++){
+        band_frequencies[i+1] = 0.3228*0.5*ppd/((float)(1 << i));
     }
     return std::move(band_frequencies);
 }

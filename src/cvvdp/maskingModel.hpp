@@ -55,11 +55,14 @@ __global__ void computeD_Kernel(float* R0, float* R1, float* R2, float* R3, floa
     const float Cmask2 = fmaf(blurred_Cm0, powf(xcm_weights[8], 2), fmaf(blurred_Cm1, powf(xcm_weights[9], 2), fmaf(blurred_Cm2, powf(xcm_weights[10], 2), blurred_Cm3*powf(xcm_weights[11], 2))));
     const float Cmask3 = fmaf(blurred_Cm0, powf(xcm_weights[12], 2), fmaf(blurred_Cm1, powf(xcm_weights[13], 2), fmaf(blurred_Cm2, powf(xcm_weights[14], 2), blurred_Cm3*powf(xcm_weights[15], 2))));
 
-    if (id >= width*height) return;
+    if (x >= width || y >= height) return;
     const float Du0 = powf(abs(R0[id] - T0[id]), mask_p)/(1+Cmask0);
     const float Du1 = powf(abs(R1[id] - T1[id]), mask_p)/(1+Cmask1);
     const float Du2 = powf(abs(R2[id] - T2[id]), mask_p)/(1+Cmask2);
     const float Du3 = powf(abs(R3[id] - T3[id]), mask_p)/(1+Cmask3);
+
+    //if (id == 60) printf("D width %d: %f %f %f %f\n", width, R0[id], R1[id], R2[id], R3[id]);
+    //if (id == 60) printf("D width %d: %f %f %f %f\n", width, Du0, Du1, Du2, Du3);
 
     const float max_v = powf(10, d_max);
     const float D0 = max_v*Du0/(max_v+Du0);
@@ -73,7 +76,7 @@ __global__ void computeD_Kernel(float* R0, float* R1, float* R2, float* R3, floa
     R2[id] = D2 * ch_chrom_w;
     R3[id] = D3 * ch_trans_w;
 
-    //if (id == 128) printf("D width %d: %f %f %f %f\n", width, D0, D1, D2, D3);
+    //if (id == 60) printf("D width %d: %f %f %f %f\n", width, D0, D1, D2, D3);
 }
 
 void computeD(float* R0, float* R1, float* R2, float* R3, float* T0, float* T1, float* T2, float* T3, const int width, const int height, GaussianHandle& gaussianhandle, hipStream_t stream){
