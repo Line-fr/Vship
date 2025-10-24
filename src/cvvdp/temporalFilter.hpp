@@ -36,6 +36,7 @@ public:
     }
     void init(float fps){
         size = (ceil(0.25*fps/2)*2)+1;
+        size = max(size, 1);
         int fourrier_size = size/2 + 1; //only uses real FT
         
         std::vector<float> freq(fourrier_size);
