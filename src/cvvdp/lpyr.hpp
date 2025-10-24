@@ -142,6 +142,21 @@ std::vector<float> get_frequencies(const int64_t width, const int64_t height, co
     return std::move(band_frequencies);
 }
 
+//in float
+int64_t LpyrMemoryNeedPerPlane(int64_t width, int64_t height, float ppd){
+    std::vector<float> bands = get_frequencies(width, height, ppd);
+    int64_t res = 0;
+    int64_t w = width;
+    int64_t h = height;
+    for (int level = 0; level < bands.size(); level++){
+        res += h*w;
+
+        w = (w+1)/2;
+        h = (h+1)/2;
+    }
+    return res;
+}
+
 class LpyrManager{
     std::vector<std::pair<int64_t, int64_t>> resolutions; //for each band
     std::vector<float*> adresses;

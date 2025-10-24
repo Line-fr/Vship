@@ -25,11 +25,8 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& tempor
 
     int allocatedPlanes = 5;
     int stream1_supPlane = 0;
-    //to fit the pyramid, we need 5/3 the normal size for safety
-    int gaussianPyrSizeMultiplierNumerator = 5;
-    int gaussianPyrSizeMultiplierDenominator = 3;
 
-    const int64_t bandOffset = width*height*gaussianPyrSizeMultiplierNumerator/gaussianPyrSizeMultiplierDenominator;
+    const int64_t bandOffset = LpyrMemoryNeedPerPlane(width, height, model->get_screen_ppd());
     float* mem_d;
     hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*(allocatedPlanes+stream1_supPlane)*bandOffset, stream1);
     if (erralloc != hipSuccess){
