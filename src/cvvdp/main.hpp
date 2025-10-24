@@ -16,6 +16,7 @@
 #include "csf.hpp"
 #include "gaussianBlur.hpp"
 #include "maskingModel.hpp"
+#include "distmap_specifics.hpp"
 
 namespace cvvdp{
 
@@ -99,6 +100,16 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& tempor
         }
     }
     hipMemcpyDtoHAsync(scores.data(), temp, sizeof(float)*levels*4, stream1);
+
+    if (dstp != NULL){
+        //we want a distmap
+        getDistMap(LPyr1, stream1);
+        //result is in LPyr1.getLbkg(0), we can now discard other planes
+        //LPyr1.getContrast(0, 0) serves as a big buffer memory for the strided version
+        strideAdder(LPyr1.getLbkg(0), LPyr1.getContrast(0, 0), dststride, width, height, stream1);
+        GPU_CHECK(hipMemcpyDtoHAsync((void*)(dstp), LPyr1.getContrast(0, 0), dststride * height, stream1));
+    }
+
     hipStreamSynchronize(stream1);
     hipFreeAsync(mem_d, stream1);
 
@@ -113,15 +124,6 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& tempor
     finalValue = std::pow(finalValue/(float)(levels*4), 1./4.);
 
     return finalValue;
-}
-
-double toJOD(double a){
-    if (a > 0.1){
-        return 10. - jod_a * std::pow(a, jod_exp);
-    } else {
-        const double jod_a_p = jod_a * (std::pow(0.1, jod_exp-1.));
-        return 10. - jod_a_p * a;
-    }
 }
 
 //currently at 32 planes + 3*fps/2 planes consumed

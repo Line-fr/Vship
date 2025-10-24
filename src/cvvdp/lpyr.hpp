@@ -49,7 +49,7 @@ void gaussPyrReduce(float* dst, float* src, int64_t source_width, int64_t source
 }
 
 //separable, but not worth it for a kernel of size 5
-template<bool subdst, bool clampMin = false>
+template<bool subdst, bool adddst = false, bool clampMin = false>
 __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width, int64_t new_height){
     const int64_t thid = threadIdx.x + blockIdx.x * blockDim.x;
     int ow = (new_width+1)/2;
@@ -87,6 +87,8 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
     if constexpr (subdst) {
         dst[thid] -= nval;
         //if (thid == 0) printf("We got %f at width %lld from %f\n", dst[0], new_width, src[0]);
+    } else if constexpr(adddst) {
+        dst[thid] += nval;
     } else {
         dst[thid] = nval;
         //if (thid == 13*1024 + 64 && new_width*new_height == 1184264) printf("We got %f at width %lld from %f\n", dst[thid] , new_width, src[y/2*ow+x/2]);
@@ -94,7 +96,7 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
     }
 }
 
-template<bool subdst, bool clampMin = false>
+template<bool subdst, bool adddst = false, bool clampMin = false>
 void gaussPyrExpand(float* dst, float* src, int64_t new_width, int64_t new_height, hipStream_t stream){
     int th_x = 256;
     int64_t bl_x = (new_width*new_height+th_x-1)/th_x;
@@ -185,7 +187,7 @@ public:
             if (i != levels-1){
                 //first is Y_sustained, it governs L_BKG
                 gaussPyrReduce(p+w*h, p, w, h, stream);
-                gaussPyrExpand<false, true>(p+4*planeOffset, p+w*h, w, h, stream);
+                gaussPyrExpand<false, false, true>(p+4*planeOffset, p+w*h, w, h, stream);
                 subarray(p, p+4*planeOffset, p, w*h, stream);
                 if (i == 0){
                     baseBandPyrRefine<false, 1>(p, p+4*planeOffset, w*h, stream);
@@ -197,7 +199,7 @@ public:
                     //we first create the next step of the pyramid
                     gaussPyrReduce(p+w*h+channel*planeOffset, p+channel*planeOffset, w, h, stream);
                     //then we substract its upscaled version from the original to create the "layer"
-                    gaussPyrExpand<true>(p+channel*planeOffset, p+w*h+channel*planeOffset, w, h, stream);
+                    gaussPyrExpand<true, false, false>(p+channel*planeOffset, p+w*h+channel*planeOffset, w, h, stream);
                     //then we transform this layer into a contrast by using the L_BKG computed before the loop
                     if (i == 0){
                         baseBandPyrRefine<false, 1>(p+channel*planeOffset, p+4*planeOffset, w*h, stream);
