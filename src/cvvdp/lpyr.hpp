@@ -49,7 +49,7 @@ void gaussPyrReduce(float* dst, float* src, int64_t source_width, int64_t source
 }
 
 //separable, but not worth it for a kernel of size 5
-template<bool subdst>
+template<bool subdst, bool clampMin = false>
 __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width, int64_t new_height){
     const int64_t thid = threadIdx.x + blockIdx.x * blockDim.x;
     int ow = (new_width+1)/2;
@@ -80,20 +80,25 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
         }
     }
 
+    if constexpr (clampMin){
+        nval = max(nval, 0.01f);
+    }
+
     if constexpr (subdst) {
         dst[thid] -= nval;
         //if (thid == 0) printf("We got %f at width %lld from %f\n", dst[0], new_width, src[0]);
     } else {
         dst[thid] = nval;
+        //if (thid == 13*1024 + 64 && new_width*new_height == 1184264) printf("We got %f at width %lld from %f\n", dst[thid] , new_width, src[y/2*ow+x/2]);
         //if (thid == 0) printf("We got %f at width %lld from %f\n", dst[0] , new_width, src[0]);
     }
 }
 
-template<bool subdst>
+template<bool subdst, bool clampMin = false>
 void gaussPyrExpand(float* dst, float* src, int64_t new_width, int64_t new_height, hipStream_t stream){
     int th_x = 256;
     int64_t bl_x = (new_width*new_height+th_x-1)/th_x;
-    gaussPyrExpand_Kernel<subdst><<<dim3(bl_x), dim3(th_x), 0, stream>>>(dst, src, new_width, new_height);
+    gaussPyrExpand_Kernel<subdst, clampMin><<<dim3(bl_x), dim3(th_x), 0, stream>>>(dst, src, new_width, new_height);
 }
 
 template<bool isMean, int multiplier>
@@ -104,14 +109,14 @@ __global__ void baseBandPyrRefine_Kernel(float* p, float* Lbkg, int64_t width){
     float val;
     if constexpr (!isMean){
         val = min(p[thid]/max(0.01f, Lbkg[thid]), 1000.f);
-        //if (thid == 0) printf("baseBandPyrRefine %f at width %d\n", p[thid], width);
+        //if (thid == 13*1024 + 64 && width == 1184264) printf("baseBandPyrRefine %f at width %d\n", p[thid], width);
     } else {
         //if (thid == 0) printf("value %f %f\n", Lbkg[0], p[thid]);
         //then our adress is the mean, a single float at 0
         val = min(p[thid]/max(0.01f, Lbkg[0]), 1000.f);
     }
     p[thid] = val*multiplier;
-    //if (thid == 0) printf("baseBandPyrRefine %f at width %d\n", p[thid], width);
+    //if (thid == 13*1024 + 64 && width == 1184264) printf("baseBandPyrRefine %f at width %d\n", p[thid], width);
 }
 
 //gets the contrast from the layers
@@ -165,7 +170,7 @@ public:
             if (i != levels-1){
                 //first is Y_sustained, it governs L_BKG
                 gaussPyrReduce(p+w*h, p, w, h, stream);
-                gaussPyrExpand<false>(p+4*planeOffset, p+w*h, w, h, stream);
+                gaussPyrExpand<false, true>(p+4*planeOffset, p+w*h, w, h, stream);
                 subarray(p, p+4*planeOffset, p, w*h, stream);
                 if (i == 0){
                     baseBandPyrRefine<false, 1>(p, p+4*planeOffset, w*h, stream);

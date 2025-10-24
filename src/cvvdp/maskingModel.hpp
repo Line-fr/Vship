@@ -9,6 +9,7 @@ __global__ void preGaussianPreCompute_kernel(float* Lbkg, float* p1, float* p2, 
     const float S = csfhandle.computeSensitivityGPU(Lbkg[thid], band, channel);
     p1[thid] *= S;
     p2[thid] *= S;
+    //if (thid == 13*1024 + 64 && width == 827) printf("preGaussian ends with %f %f using sensi %f\n", p1[thid], p2[thid], S);
 }
 
 void preGaussianPreCompute(float* Lbkg, float* p1, float* p2, int width, int height, int channel, int band, CSF_Handler& csfhandle, hipStream_t stream){
@@ -61,8 +62,8 @@ __global__ void computeD_Kernel(float* R0, float* R1, float* R2, float* R3, floa
     const float Du2 = powf(abs(R2[id] - T2[id]), mask_p)/(1+Cmask2);
     const float Du3 = powf(abs(R3[id] - T3[id]), mask_p)/(1+Cmask3);
 
-    //if (id == 60) printf("D width %d: %f %f %f %f\n", width, R0[id], R1[id], R2[id], R3[id]);
-    //if (id == 60) printf("D width %d: %f %f %f %f\n", width, Du0, Du1, Du2, Du3);
+    //if (id == 13*1024 + 64 && width == 827) printf("D width %d: %f %f %f %f vs %f %f %f %f with mask %f %f %f %f\n", width, R0[id], R1[id], R2[id], R3[id], T0[id], T1[id], T2[id], T3[id], Cmask0, Cmask1, Cmask2, Cmask3);
+    //if (id == 13*1024 + 64 && width == 827) printf("D width %d: %f %f %f %f\n", width, Du0, Du1, Du2, Du3);
 
     const float max_v = powf(10, d_max);
     const float D0 = max_v*Du0/(max_v+Du0);
@@ -76,7 +77,7 @@ __global__ void computeD_Kernel(float* R0, float* R1, float* R2, float* R3, floa
     R2[id] = D2 * ch_chrom_w;
     R3[id] = D3 * ch_trans_w;
 
-    //if (id == 60) printf("D width %d: %f %f %f %f\n", width, D0, D1, D2, D3);
+    //if (id == 13*1024 + 64 && width == 827) printf("D id/width %lld/%d: %f %f %f %f\n", id, width, D0, D1, D2, D3);
 }
 
 void computeD(float* R0, float* R1, float* R2, float* R3, float* T0, float* T1, float* T2, float* T3, const int width, const int height, GaussianHandle& gaussianhandle, hipStream_t stream){

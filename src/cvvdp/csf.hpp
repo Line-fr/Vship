@@ -4,8 +4,6 @@
 
 namespace cvvdp{
 
-__device__ const float s_color_modulation[4] = {1, 1.7, 0.237, 1};
-
 //takes an ordered array of size 32 and a value and search the biggest index of element smaller
 //(except if x is smaller, then it returns 0)
 __device__ __host__ int indexSearch(const float xp[32], float x){
@@ -48,8 +46,8 @@ public:
             for (int channel = 0; channel < 4; channel++){
                 float res[32];
                 for (int i = 0; i < 32; i++){
-                    const float y0i = CSF_LUT::D2LUT[channel][x0][i];
-                    const float y1i = CSF_LUT::D2LUT[channel][x0+1][i];
+                    const float y0i = CSF_LUT::D2LUT[channel][i][x0];
+                    const float y1i = CSF_LUT::D2LUT[channel][i][x0+1];
                     res[i] = y0i + (y1i - y0i)*slope;
                 }
                 hipMemcpyHtoD(mem_d+32*(1+band*4+channel), res, sizeof(float)*32);
@@ -66,9 +64,17 @@ public:
         const float x = log10(src);
         const int imin = indexSearch(LUTx, x);
         const int imax = min(31, imin+1);
-        const float frac = x - (float)imin;
+        const float yx0 = LUTx[imin];
+        const float yx1 = LUTx[imax];
+        float frac;
+        if (imin == imax) {
+            frac = 0.;
+        } else {
+            frac = (x - yx0)/(yx1-yx0);
+        }
         const float logS = LUTy[imin] * frac + LUTy[imax] * (1.f-frac) + sensitivity_correction/20.f;
-        return powf(10, logS) * s_color_modulation[channel];
+        //if (threadIdx.x + blockIdx.x == 0) printf("SensitivityCompute: inp log: %f, imin %d imax %d frac %f -> logS %f\n", x, imin, imax, frac, logS);
+        return powf(10, logS);
     }
 };
 
