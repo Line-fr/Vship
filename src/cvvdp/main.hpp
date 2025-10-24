@@ -168,7 +168,7 @@ public:
             resize_width = width;
             resize_height = height;
         }
-        std::cout << "base/resize : " << width << "x" << height << "/" << resize_width << "x" << resize_height << std::endl;
+        //std::cout << "base/resize : " << width << "x" << height << "/" << resize_width << "x" << resize_height << std::endl;
 
         this->fps = fps;
 
