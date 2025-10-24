@@ -23,13 +23,13 @@ __global__ void gaussPyrReduce_Kernel(float* dst, float* src, int64_t source_wid
         int ref_ind_x = 2*x + dx;
         //symmetric padding
         if (ref_ind_x < 0) ref_ind_x = -ref_ind_x;
-        if (ref_ind_x >= source_width) ref_ind_x = 2*source_width - ref_ind_x;
+        if (ref_ind_x >= source_width) ref_ind_x = 2*source_width - ref_ind_x - 1;
         for (int dy = -2; dy <= 2; dy++){
             const float kernel_y = gaussPyrKernel[dy+2];
             int ref_ind_y = 2*y + dy;
             //symmetric padding
             if (ref_ind_y < 0) ref_ind_y = -ref_ind_y;
-            if (ref_ind_y >= source_height) ref_ind_y = 2*source_height - ref_ind_y;
+            if (ref_ind_y >= source_height) ref_ind_y = 2*source_height - ref_ind_y - 1;
 
             nval += kernel_x*kernel_y*src[ref_ind_y*source_width+ref_ind_x];
         }
@@ -69,12 +69,12 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
         const float kernel_x = 2*gaussPyrKernel[dx+2];
         int ref_ind_x = (x + dx)/2; //funny: x+dx is always even
         if (ref_ind_x < 0) ref_ind_x = -ref_ind_x;
-        if (ref_ind_x >= ow) ref_ind_x = 2*ow - ref_ind_x;
+        if (ref_ind_x >= ow) ref_ind_x = 2*ow - ref_ind_x -1;
         for (int dy = -2+parity_y; dy <= 2; dy+=2){
             const float kernel_y = 2*gaussPyrKernel[dy+2];
             int ref_ind_y = (y+dy)/2; //(y+dy) is always even
             if (ref_ind_y < 0) ref_ind_y = -ref_ind_y;
-            if (ref_ind_y >= oh) ref_ind_y = 2*oh - ref_ind_y;
+            if (ref_ind_y >= oh) ref_ind_y = 2*oh - ref_ind_y -1;
 
             nval += kernel_x*kernel_y*src[ref_ind_y*ow+ref_ind_x];
         }
