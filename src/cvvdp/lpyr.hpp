@@ -68,8 +68,8 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
     for (int dx = -2+parity_x; dx <= 2; dx+=2){
         const float kernel_x = 2*gaussPyrKernel[dx+2];
         int ref_ind_x = (x + dx)/2; //funny: x+dx is always even
-        if (ref_ind_x < 0) ref_ind_x = -ref_ind_x -1;
-        if (ref_ind_x >= ow) ref_ind_x = 2*ow - ref_ind_x -1;
+        if (ref_ind_x < 0) ref_ind_x = -ref_ind_x;
+        if (ref_ind_x >= ow) ref_ind_x = 2*ow - ref_ind_x -2;
         for (int dy = -2+parity_y; dy <= 2; dy+=2){
             const float kernel_y = 2*gaussPyrKernel[dy+2];
             int ref_ind_y = (y+dy)/2; //(y+dy) is always even
