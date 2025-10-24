@@ -19,7 +19,7 @@
 
 namespace cvvdp{
 
-double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& temporalRing1, TemporalRing& temporalRing2, CSF_Handler& csfhandle, GaussianHandle& gaussianhandle, DisplayModel* model, int64_t maxshared, hipStream_t stream1, hipStream_t stream2, hipEvent_t event){
+double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& temporalRing1, TemporalRing& temporalRing2, CSF_Handler& csfhandle, GaussianHandle& gaussianhandle, DisplayModel* model, int64_t maxshared, hipStream_t stream1, hipStream_t stream2, hipEvent_t event, hipEvent_t event2){
     int64_t width = temporalRing1.width;
     int64_t height = temporalRing1.height;
 
@@ -85,8 +85,8 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& tempor
         h = (h+1)/2;
     }
     //stream2 waits for stream1 to be done before freeing memory (memory of Lpyr2)
-    hipEventRecord(event, stream1);
-    hipStreamWaitEvent(stream2, event);
+    hipEventRecord(event2, stream1);
+    hipStreamWaitEvent(stream2, event2);
     hipFreeAsync(mem_d2, stream2);
     //the complete full distortion map is stored in Lpyr1
     //and we can use Lpyr1 Lbkg place as temporary storage for pooling
@@ -146,6 +146,7 @@ class CVVDPComputingImplementation{
     hipStream_t stream1 = 0;
     hipStream_t stream2 = 0;
     hipEvent_t event;
+    hipEvent_t event2;
 public:
     void init(int64_t width, int64_t height, float fps, bool resizeToDisplay, std::string model_key){
         model = new DisplayModel(model_key);
@@ -178,6 +179,7 @@ public:
         hipStreamCreate(&stream1);
         hipStreamCreate(&stream2);
         hipEventCreate(&event);
+        hipEventCreate(&event2);
 
         int device;
         hipDeviceProp_t devattr;
@@ -195,6 +197,7 @@ public:
         hipStreamDestroy(stream1);
         hipStreamDestroy(stream2);
         hipEventDestroy(event);
+        hipEventDestroy(event2);
     }
     template <InputMemType T>
     void loadImageToRing(const uint8_t *srcp1[3], const uint8_t *srcp2[3], int64_t stride, int64_t stride2){
@@ -289,7 +292,7 @@ public:
     template <InputMemType T>
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
         loadImageToRing<T>(srcp1, srcp2, stride, stride2);
-        const float current_score = CVVDPprocess(dstp, dststride, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event);
+        const float current_score = CVVDPprocess(dstp, dststride, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event, event2);
         score_squareSum += std::pow(current_score, beta_t);
         float resQ;
         if (numFrame == 0){
