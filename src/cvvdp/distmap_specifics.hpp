@@ -59,7 +59,7 @@ void getDistMap(LpyrManager& Lpyr, hipStream_t stream){
     }
     const auto [w0, h0] = Lpyr.getResolution(0);
     hipMemcpyDtoDAsync(Lpyr.getLbkg(0), Lpyr.getContrast(0, 0), sizeof(float)*w0*h0, stream);
-    JODIZE_Kernel<<<dim3(256), dim3((w0*h0+255)/256), 0, stream>>>(Lpyr.getLbkg(0), w0*h0);
+    //JODIZE_Kernel<<<dim3((w0*h0+255)/256), dim3(256), 0, stream>>>(Lpyr.getLbkg(0), w0*h0);
 }
 
 }
