@@ -79,7 +79,7 @@ public:
         }
         */
         const float logS = LUTy[imin] * frac + LUTy[imax] * (1.f-frac) + sensitivity_correction/20.f;
-        if (threadIdx.x + blockIdx.x == 0) printf("SensitivityCompute: inp log: %f, imin %d imax %d frac %f -> logS %f\n", x, imin, imax, frac, logS);
+        //if (threadIdx.x + blockIdx.x == 0) printf("SensitivityCompute: inp log: %f, imin %d imax %d frac %f -> logS %f\n", x, imin, imax, frac, logS);
         return powf(10, logS);
     }
 };
