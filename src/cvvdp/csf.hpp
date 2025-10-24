@@ -62,6 +62,11 @@ public:
         const float* LUTx = log_Lbkg_LUTIndex;
         const float* LUTy = mem_d+32*(1+band*4+channel);
         const float x = log10(src);
+        float frac = 31*(x - LUTx[0])/(LUTx[31] - LUTx[0]);
+        const int imin = frac;
+        const int imax = min(31, imin+1);
+        frac -= imin;
+        /*
         const int imin = indexSearch(LUTx, x);
         const int imax = min(31, imin+1);
         const float yx0 = LUTx[imin];
@@ -72,8 +77,9 @@ public:
         } else {
             frac = (x - yx0)/(yx1-yx0);
         }
+        */
         const float logS = LUTy[imin] * frac + LUTy[imax] * (1.f-frac) + sensitivity_correction/20.f;
-        //if (threadIdx.x + blockIdx.x == 0) printf("SensitivityCompute: inp log: %f, imin %d imax %d frac %f -> logS %f\n", x, imin, imax, frac, logS);
+        if (threadIdx.x + blockIdx.x == 0) printf("SensitivityCompute: inp log: %f, imin %d imax %d frac %f -> logS %f\n", x, imin, imax, frac, logS);
         return powf(10, logS);
     }
 };
