@@ -157,17 +157,18 @@ public:
         if (resizeToDisplay){
             //we resize to match width since display_width/width <= display_height/height
             if (width*model->resolution[1] <= height*model->resolution[0]){
-                resize_width = width;
+                resize_width = model->resolution[0];
                 resize_height = (height*model->resolution[0])/width;
             } else {
                 //here we resize to match height
-                resize_height = height;
+                resize_height = model->resolution[1];
                 resize_width = (width*model->resolution[1])/height;
             }
         } else {
             resize_width = width;
             resize_height = height;
         }
+        std::cout << "base/resize : " << width << "x" << height << "/" << resize_width << "x" << resize_height << std::endl;
 
         this->fps = fps;
 
