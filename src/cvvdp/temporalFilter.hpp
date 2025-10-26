@@ -103,6 +103,7 @@ public:
         tempFilterPreprocessor.init(fps);
         const int num_channel = 3;
         max_temporal_size = tempFilterPreprocessor.size;
+        //std::cout << "allocationBytes temporalRing : " << sizeof(float)*width*height*max_temporal_size*num_channel << " for temporal buffer of size " << max_temporal_size << std::endl;
         hipError_t erralloc = hipMalloc(&internal_memory_d, sizeof(float)*width*height*max_temporal_size*num_channel);
         if (erralloc != hipSuccess){
             throw VshipError(OutOfRAM, __FILE__, __LINE__);

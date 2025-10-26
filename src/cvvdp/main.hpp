@@ -28,6 +28,7 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& tempor
     int stream1_supPlane = 0;
 
     const int64_t bandOffset = LpyrMemoryNeedPerPlane(width, height, model->get_screen_ppd());
+    //std::cout << "allocation bytes : " << sizeof(float)*(allocatedPlanes+stream1_supPlane)*bandOffset << std::endl;
     float* mem_d;
     hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*(allocatedPlanes+stream1_supPlane)*bandOffset, stream1);
     if (erralloc != hipSuccess){
@@ -155,7 +156,7 @@ public:
 
         if (resizeToDisplay){
             //we resize to match width since display_width/width <= display_height/height
-            if (width*model->resolution[1] <= height*model->resolution[0]){
+            if (width*model->resolution[1] >= height*model->resolution[0]){
                 resize_width = model->resolution[0];
                 resize_height = (height*model->resolution[0])/width;
             } else {

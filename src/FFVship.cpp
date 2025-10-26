@@ -350,7 +350,7 @@ int main(int argc, char **argv) {
 
     float source_fps = v1.reader->fps;
     if (source_fps <= 0 || source_fps > 1000){ //not acceptable range so probably an error
-        source_fps = 60;
+        source_fps = 1;
     }
 
     std::vector<GpuWorker> gpu_workers;
