@@ -59,8 +59,8 @@ __device__ constexpr float baseband_weight[4] = {
     4.11874532699585,
     25.25969886779785
 };
-const float d_max = 2.5642454624176025;
-const float image_int = 0.577918291091919;
-const float bfilt_duration = 0.4;
+constexpr float d_max = 2.5642454624176025;
+constexpr float image_int = 0.577918291091919;
+constexpr float bfilt_duration = 0.4;
 
 }
