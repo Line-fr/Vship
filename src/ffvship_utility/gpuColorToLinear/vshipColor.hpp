@@ -138,10 +138,10 @@ int linearize(float* outplane[3], float* tempplane[3], const uint8_t* source_pla
     }
 
     //first step, transform current integer/float format into a pure float
-    int res = 1;
-    res &= convertToFloatPlaneSwitch(outplane[0], source_plane[0], strides[0], width, height, sample_type, stream); //get to outplane directly
-    res &= convertToFloatPlaneSwitch(tempplane[1], source_plane[1], strides[1], width >> subw, height >> subh, sample_type, stream);
-    res &= convertToFloatPlaneSwitch(tempplane[2], source_plane[2], strides[2], width >> subw, height >> subh, sample_type, stream);
+    bool res = 1;
+    res &&= convertToFloatPlaneSwitch(outplane[0], source_plane[0], strides[0], width, height, sample_type, stream); //get to outplane directly
+    res &&= convertToFloatPlaneSwitch(tempplane[1], source_plane[1], strides[1], width >> subw, height >> subh, sample_type, stream);
+    res &&= convertToFloatPlaneSwitch(tempplane[2], source_plane[2], strides[2], width >> subw, height >> subh, sample_type, stream);
     if (res != 0) {
         std::cout << "sample_type not supported" << std::endl;
         return res;

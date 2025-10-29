@@ -26,7 +26,7 @@ extern "C" {
 #include <zimg.h>
 }
 
-#include "ffvship_utility/gpuColorToLinear/vshipColor.hpp"
+//#include "ffvship_utility/gpuColorToLinear/vshipColor.hpp"
 
 using score_tuple_t = std::tuple<float, float, float>;
 using score_queue_t = ClosableThreadSet<std::tuple<int, score_tuple_t>>;
