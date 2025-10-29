@@ -100,7 +100,7 @@ template<bool subdst, bool adddst = false, bool clampMin = false>
 void gaussPyrExpand(float* dst, float* src, int64_t new_width, int64_t new_height, hipStream_t stream){
     int th_x = 256;
     int64_t bl_x = (new_width*new_height+th_x-1)/th_x;
-    gaussPyrExpand_Kernel<subdst, clampMin><<<dim3(bl_x), dim3(th_x), 0, stream>>>(dst, src, new_width, new_height);
+    gaussPyrExpand_Kernel<subdst, adddst, clampMin><<<dim3(bl_x), dim3(th_x), 0, stream>>>(dst, src, new_width, new_height);
 }
 
 template<bool isMean, int multiplier>

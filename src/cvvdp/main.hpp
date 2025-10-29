@@ -244,6 +244,8 @@ public:
         const float Y_refl = model->getReflLevel();
         const float exposure = model->exposure;
 
+        //std::cout << "Y_peak, Y_black, Y_refl, exposure : " << Y_peak << " " <<  Y_black << " " << Y_refl << " " << exposure << std::endl;
+
         //we put the frame's planes on GPU
         //do we write directly in final after stride eliminaation?
         tempStrideEliminated = is_resized ? tempStrideEliminated : src1_d[0];

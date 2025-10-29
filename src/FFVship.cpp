@@ -349,7 +349,7 @@ int main(int argc, char **argv) {
     frame_queue_t frame_queue(queue_capacity);
 
     float source_fps = v1.reader->fps;
-    if (source_fps <= 0 || source_fps > 1000){ //not acceptable range so probably an error
+    if (source_fps <= 0 || source_fps > 1000 || num_frames == 1){ //not acceptable range so probably an error
         source_fps = 1;
     }
 
