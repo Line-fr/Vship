@@ -349,7 +349,11 @@ int main(int argc, char **argv) {
     frame_queue_t frame_queue(queue_capacity);
 
     float source_fps = v1.reader->fps;
-    if (source_fps <= 0 || source_fps > 1000 || num_frames == 1){ //not acceptable range so probably an error
+    if (num_frames == 1){
+        source_fps = 1;
+    }
+    if (source_fps <= 0 || source_fps > 1000){ //not acceptable range so probably an error
+        std::cerr << "Warning: The source fps is either <= 0 or > 1000 which is probably an error. CVVDP needs an accurate fps value: default to 1 for now (no temporal behavior)" << std::endl;
         source_fps = 1;
     }
 
