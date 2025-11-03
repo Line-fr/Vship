@@ -146,6 +146,7 @@ __global__ void temporalConvolutionKernel_d(TemporalRing ring, float* Y_sustaine
         RG_sustained[x] = srcptr[x+planeSize];
         YV_sustained[x] = srcptr[x+2*planeSize];
         Y_transient[x] = 0.f;
+        //if (x == 13*1024 + 64) printf("after temporalFilter: %f %f %f %f\n", Y_sustained[x], RG_sustained[x], YV_sustained[x], Y_transient[x]);
         return;
     }
 
@@ -180,7 +181,7 @@ __global__ void temporalConvolutionKernel_d(TemporalRing ring, float* Y_sustaine
     RG_sustained[x] = resRG_YV.x;
     YV_sustained[x] = resRG_YV.y;
 
-    //if (x == 0) printf("after temporalFilter: %f %f %f %f\n", resY_Y.x, resRG_YV.x, resRG_YV.y, resY_Y.y);
+    //if (x == 13*1024 + 64) printf("after temporalFilter: %f %f %f %f\n", resY_Y.x, resRG_YV.x, resRG_YV.y, resY_Y.y);
 }
 
 //give it planes, it will overwrite with the 4 temporal channels

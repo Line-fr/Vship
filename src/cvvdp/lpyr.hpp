@@ -111,14 +111,14 @@ __global__ void baseBandPyrRefine_Kernel(float* p, float* Lbkg, int64_t width){
     float val;
     if constexpr (!isMean){
         val = min(p[thid]/max(0.01f, Lbkg[thid]), 1000.f);
-        //if (thid == 13*1024 + 64 && width == 1184264) printf("baseBandPyrRefine %f at width %d\n", p[thid], width);
+        //if (thid == 13*1024 + 64 && width == 1920*1080) printf("baseBandPyrRefine %f at width %d\n", p[thid], width);
     } else {
         //if (thid == 0) printf("value %f %f\n", Lbkg[0], p[thid]);
         //then our adress is the mean, a single float at 0
         val = min(p[thid]/max(0.01f, Lbkg[0]), 1000.f);
     }
     p[thid] = val*multiplier;
-    //if (thid == 13*1024 + 64 && width == 1184264) printf("baseBandPyrRefine %f at width %d\n", p[thid], width);
+    //if (thid == 13*1024 + 64 && width == 1920*1080) printf("baseBandPyrRefine %f at width %lld\n", p[thid], width);
 }
 
 //gets the contrast from the layers

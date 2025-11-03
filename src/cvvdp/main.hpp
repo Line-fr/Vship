@@ -140,14 +140,14 @@ class CVVDPComputingImplementation{
     GaussianHandle gaussianhandle;
     int64_t source_width = 0;
     int64_t source_height = 0;
-    int64_t resize_width = 0;
-    int64_t resize_height = 0;
     int maxshared = 0;
     hipStream_t stream1 = 0;
     hipStream_t stream2 = 0;
     hipEvent_t event;
     hipEvent_t event2;
 public:
+    int64_t resize_width = 0;
+    int64_t resize_height = 0;
     void init(int64_t width, int64_t height, float fps, bool resizeToDisplay, std::string model_key){
         model = new DisplayModel(model_key);
         

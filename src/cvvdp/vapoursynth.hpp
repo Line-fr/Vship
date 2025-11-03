@@ -12,6 +12,7 @@ namespace cvvdp{
         int streamnum = 0;
         threadSet<int>* streamSet;
         std::mutex* mutex;
+        int new_width, new_height;
     } CVVDPData;
     
     static const VSFrame *VS_CC CVVDPGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
@@ -28,12 +29,12 @@ namespace cvvdp{
             int width = vsapi->getFrameWidth(src1, 0);
             int stride = vsapi->getStride(src1, 0);
             int stride2 = vsapi->getStride(src2, 0);
-    
+
             VSFrame *dst;
             if (d->diffmap){
                 VSVideoFormat formatout;
                 vsapi->queryVideoFormat(&formatout, cfGray, stFloat, 32, 0, 0, core);
-                dst = vsapi->newVideoFrame(&formatout, width, height, NULL, core);
+                dst = vsapi->newVideoFrame(&formatout, d->new_width, d->new_height, NULL, core);
             } else {
                 dst = vsapi->copyFrame(src2, core);
             }
@@ -171,6 +172,10 @@ namespace cvvdp{
 
         try{
             data->CVVDPStreams.init(viref->width, viref->height, fps, resizeToDisplay, model_key);
+            
+            //save resize width for the distmap
+            data->new_width = data->CVVDPStreams.resize_width;
+            data->new_height = data->CVVDPStreams.resize_height;
         } catch (const VshipError& e){
             vsapi->mapSetError(out, e.getErrorMessage().c_str());
             return;

@@ -93,9 +93,9 @@ __global__ void rgb_to_linrgbKernel(float* p, int64_t width, float Y_peak, float
 
     res = (Y_peak - Y_black)*res + Y_black + Y_refl;
 
-    p[x] = res;
+    //if (x == 13*1024+64) printf("value at display %f from %f\n", res, p[x]);
 
-    //if (x == 0) printf("value at display %f\n", p[x]);
+    p[x] = res;
 }
 
 void inline rgb_to_linrgb(float* src_d, int64_t width, float Y_peak, float Y_black, float Y_refl, float exposure, hipStream_t stream){
