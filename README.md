@@ -1,9 +1,7 @@
-# Vapoursynth-HIP (vship)
+# Vship : Fast Metric Computation on GPU
 
-A high-performance VapourSynth plugin for GPU-accelerated visual fidelity
-metrics, focusing on SSIMULACRA2 & Butteraugli.
-
-**New : CLI Tool without vapoursynth named FFVship**
+An easy to use high-performance Library for GPU-accelerated visual fidelity
+metrics with SSIMULACRA2, Butteraugli & CVVDP.
 
 ## Overview
 
@@ -12,15 +10,17 @@ metrics, focusing on SSIMULACRA2 & Butteraugli.
 - **SSIMULACRA2**: A perceptual image quality metric from Cloudinary's
   SSIMULACRA2
 - **Butteraugli**: Google's psychovisual image difference metric from libjxl
+- **CVVDP**: University of Cambridge's psychovisual video quality metric
 
 The plugin uses HIP/CUDA for GPU acceleration, providing significant performance
-improvements over CPU implementations.
+improvements over CPU implementations. It can be used with a simple binary (FFVship), as a vapoursynth plugin and has a C API.
 
 ## Projects Featuring Vship
 
 If you want to use Vship with a pre-defined workflow, here are some projects
 featuring Vship:
 - [Av1an](https://github.com/rust-av/Av1an): A Cross-platform command-line AV1 / VP9 / HEVC / H264 encoding framework with per scene quality encoding 
+- [xav](https://github.com/emrakyz/xav): A simpler alternative to Av1an dedicated to Target Quality Encoding trying to be as fast as possible.
 - [SSIMULACRApy](https://codeberg.org/Kosaka/ssimulacrapy): A Python script to
   compare videos and output their SSIMU2 scores using various metrics (by
   [Kosaka](https://codeberg.org/Kosaka))
@@ -42,13 +42,9 @@ The steps to build `vship` from source are provided below.
 For all build options the following are requried:
 
 - `make`
-- `hipcc` (AMD) or `nvcc` (NVIDIA)
+- `hipcc` (AMD HIP SDK) or `nvcc` (NVIDIA Cuda SDK)
 
-Building the plugin to use with Vapoursynth:
-
-- VapourSynth
-
-Building the FFvship cli tool:
+Additionaly, to build the FFvship cli tool:
 
 - ffms2
 - zimg
@@ -59,7 +55,7 @@ Building the FFvship cli tool:
 1. Use the appropriate target for your gpu or use case.
 
 ```bash
-#Vship Vapoursynth Plugin Build
+#libvship Build
 make buildcuda     # Build for the current systems Nvidia gpu
 make buildcudaall  # Build for all supported Nvidia gpus
 make build         # Build for the current systems AMD gpu
@@ -72,7 +68,8 @@ make buildFFVSHIP          # Build for the current systems AMD gpu
 make buildFFVSHIPall       # Build for all supported AMD gpus
 ```
 
-2. Install the Vapoursynth plugin and/or the FFVship executable.
+2. Install libvship and/or the FFVship executable.
+
 The `install` target automatically detects and installs only the components that were built.
 ```bash
 make install
@@ -84,6 +81,8 @@ make install PREFIX=/usr
 
 ### FFVship
 
+This contains only some of the numerous options offered by Vship
+I recommend checking the doc or using -h to get the full list.
 ```
 usage: ./FFVship [-h] [--source SOURCE] [--encoded ENCODED]
                     [-m {SSIMULACRA2, Butteraugli}]
@@ -91,8 +90,6 @@ usage: ./FFVship [-h] [--source SOURCE] [--encoded ENCODED]
                     [-t THREADS] [-g gpuThreads] [--gpu-id gpu_id]
                     [--json OUTPUT]
                     [--list-gpu]
-                    Specific to Butteraugli: 
-                    [--intensity-target Intensity(nits)]
 ```
 
 ### Vapoursynth
@@ -114,6 +111,11 @@ VRAM requirements per active Stream:
 
 - **SSIMULACRA2**: `12 * 4 * width * height` bytes
 - **Butteraugli**: `31 * 4 * width * height` bytes
+- **CVVDP**: ~`4 * width * height * (10*4/3 + fps*3*0.25)` bytes
+
+where width is the width of the input image/video
+height is the height of the input image/video
+and fps is the frame per second of the input video
 
 ### SSIMULACRA2
 
@@ -177,6 +179,38 @@ distmap_result = ref.vship.BUTTERAUGLI(dist, distmap=1)
 distmap_result.set_output()
 ```
 
+### CVVDP
+
+```python
+import vapoursynth as vs
+core = vs.core
+
+# Load reference and distorted clips
+ref = core.bs.VideoSource("reference.mp4")
+dist = core.bs.VideoSource("distorted.mp4")
+
+# Calculate Butteraugli scores
+# intensity_multiplier controls sensitivity
+result = ref.vship.CVVDP(dist, distmap=0)
+
+# Extract scores from frame properties
+scores = [frame.props["_CVVDP"] for frame in result.frames()]
+
+# Only use the last score of CVVDP. (it takes into account every frame that it has seen up to now)
+#it is different because it is an actually temporal metric unlike others
+print(f"CVVDP Video Score: {scores[-1]}")
+```
+
+You are also able to generate visual distortion maps with Butteraugli:
+
+```python
+# Set distmap=1 to visualize distortion
+distmap_result = ref.vship.CVVDP(dist, distmap=1)
+
+# The resulting clip is a grayscale visualization of distortions
+distmap_result.set_output()
+```
+
 ## Performance
 
 ![Performance Comparison](Images/vshipjxl.webp)
@@ -190,6 +224,8 @@ while preserving a high degree of accuracy.
   [libjxl/libjxl](https://github.com/libjxl/libjxl/tree/main/lib/jxl/butteraugli)
 - SSIMULACRA2 Source Code:
   [cloudinary/ssimulacra2](https://github.com/cloudinary/ssimulacra2)
+- CVVDP Source Code: 
+  [gfxdisp/ColorVideoVDP](https://github.com/gfxdisp/ColorVideoVDP/tree/main?tab=readme-ov-file)
 
 ## Credits
 
