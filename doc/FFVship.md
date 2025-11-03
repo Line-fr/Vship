@@ -4,14 +4,27 @@
 
 ```
 usage: ./FFVship [-h] [--source SOURCE] [--encoded ENCODED]
-                    [-m {SSIMULACRA2, Butteraugli}]
+                    [-m {SSIMULACRA2, Butteraugli, CVVDP}]
+
                     [--start start] [--end end] [-e --every every]
                     [--encoded-offset offset]
+                    [--source-indices indexList] [--encoded-indices indexList]
+
                     [-t THREADS] [-g gpuThreads] [--gpu-id gpu_id]
                     [--json OUTPUT]
                     [--list-gpu]
+
+                    [--cropTopSource cropSize] [--cropTopEncoded cropSize]
+                    [--cropBottomSource cropSize] [--cropBottomEncoded cropSize]
+                    [--cropLeftSource cropSize] [--cropLeftEncoded cropSize]
+                    [--cropRightSource cropSize] [--cropRightEncoded cropSize]
+
                     Specific to Butteraugli: 
                     [--intensity-target Intensity(nits)]
+                    [--qnorm MinwoskiInteger]
+
+                    Specific to CVVDP:
+                    [--displayModel modelKey] [--resizeToDisplay]
 ```
 
 ## Arguments
@@ -26,10 +39,13 @@ Name | Type | Required | Default
 --every | `Integer` | No | 1
 -t | `Integer` | No | 1
 -g | `int` | No | 8
---intensity-target | `float` | No | `203`
 --gpu-id | `int` | No | 0
 --json | `output path` | No | None
 --list-gpu | None | No | None
+--crop* | `int` | No | 0
+--intensity-target | `float` | No | `203`
+--displayModel | `str` | No | `standard_fhd`
+--resizeToDisplay | None | No | None
 
 ## Details
 
@@ -104,6 +120,18 @@ The output in stdout possesses as a first line the number of frames to be comput
 Each next line is in format : {subjective_frame_index} {score0} {score1} ...
 Frames can be given in the wrong order due to parallelism.
 
+### --displayModel
+
+Argument used for CVVDP, it allows to specify a display defined in the [CVVDP configuration](../src/cvvdp/display_models.hpp).
+
+The list of possible model is here:
+- standard_4k
+- standard_fhd
+- standard_hdr_pq
+- standard_hdr_hlg
+- standard_hdr_dark
+- standard_hdr_linear_zoom
+
 ### --version
 
 Returns the version of ffvship to check for functionalities and bugs as a dependency.
@@ -119,4 +147,8 @@ This method is made to be able to retrieve per-frame scores from the computation
 #Butteraugli
 [[NormQ_score_frame_0, Norm3_score_frame_0, NormINF_score_frame_0], [NormQ_score_frame_1, Norm3_score_frame_1, NormINF_score_frame_1], ... ]
 
+#CVVDP
+[[score_frame_cumulated_0_to_0], [score_frame_cumulated_0_to_1], [score_frame_cumulated_0_to_2], ...]
+
+(the last cvvdp score is the cvvdp score of the whole clip)
 ```

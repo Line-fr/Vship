@@ -1,5 +1,9 @@
 # SSIMULACRA2
 
+## Overview of SSIMULACRA2
+
+SSIMULACRA2 is a colorspace aware metric which tries to correlate with MOS on a wide quality range using similar technics as VMAF or MSSIM.
+
 ## Arguments
 
 Name | Type | Required | Default

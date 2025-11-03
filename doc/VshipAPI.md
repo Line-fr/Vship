@@ -129,6 +129,10 @@ It is important if you wish to maximize throughput to create about 3 handlers th
 
 Note that it can increase VRAM usage. You can verify the amount of VRAM used per working handler [here (SSIMU2)](SSIMULACRA2.md) and [here (Butteraugli)](BUTTERAUGLI.md). You can also retrieve the total amount of VRAM of the GPU using `Vship_GetDeviceInfo`.
 
+### Video Metrics
+
+CVVDP is a Video Metric, as such, a fully score can only be gotten by processing every single frames through a single handler in the right order. 
+
 ## Details on every function
 
 ### Vship_GetVersion

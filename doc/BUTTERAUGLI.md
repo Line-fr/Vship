@@ -1,5 +1,11 @@
 # Butteraugli
 
+## Overview of Butteraugli
+
+Butteraugli is a metric made to measure the estimated distance you would need to be to a screen to not perceive the difference between reference and distorded.
+Its correlation to MOS is mainly interesting at Very high quality since it is extremely relevant in a Supra Threshold setting (lower quality).
+This metric tends to be used since it has very few false negative: if Butteraugli says your frame is of high quality, you can rest assured that it is of high quality. However, it tends to have a non negligible amount of false positive, when it sees issues that a typical human would not see.
+
 ## Arguments
 
 Name | Type | Required | Default

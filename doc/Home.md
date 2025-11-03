@@ -24,6 +24,7 @@ VSHIP offers the following metrics for evaluating video:
 
 * [Butteraugli](BUTTERAUGLI.md)
 * [SSIMULACRA2](SSIMULACRA2.md)
+* [CVVDP](CVVDP.md)
 
 ## Utilities
 
