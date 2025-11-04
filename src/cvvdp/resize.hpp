@@ -39,7 +39,7 @@ __global__ void horizontalResizeTranspose_Kernel(float* dst, float* src, int64_t
     const float v0 = (x_oriBase-1 >= 0) ? src[y*source_width+x_oriBase-1] : v1;
     const float v2 = (x_oriBase+1 < source_width) ? src[y*source_width+x_oriBase+1] : v1;
     const float v3 = (x_oriBase+2 < source_width) ? src[y*source_width+x_oriBase+2] : v2;
-    CubicHermitSplineInterpolator interpolator(v0, v1, v2, v3);
+    CubicHermitSplineInterpolator interpolator(v1, (v2-v0)/2.f, v2, (v3-v1)/2.f);
     const float res = interpolator.get(approx_source_x - (float)x_oriBase);
 
     //dst is transposed
