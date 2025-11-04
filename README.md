@@ -213,9 +213,28 @@ distmap_result.set_output()
 
 ## Performance
 
-![Performance Comparison](Images/vshipjxl.webp)
+Testing Hardware: Ryzen 7940HS + RTX 4050 Mobile (strong CPU - weak GPU configuration)
 
-`vship` dramatically outperforms CPU-based implementations of these metrics
+SSIMU2 Implementation | HW Type | Time
+--- | --- | ---
+JXL | CPU | 115s
+VSZIP | CPU | 68s
+Vapoursynth Vship | GPU | 25s
+FFVship | GPU | 15s
+
+Butteraugli Implementation | HW Type | Time
+--- | --- | ---
+JXL | CPU | 239s
+Vapoursynth Vship | GPU | 47s
+FFVship | GPU | 37s
+
+CVVDP Implementation | HW Type | Score | Time
+--- | --- | --- | ---
+Original Repo | GPU | 9.4808 | 162s
+FFVship | GPU | 9.54324 | 22s
+
+
+`vship` dramatically outperforms CPU-based and GPU-based implementations of these metrics
 while preserving a high degree of accuracy.
 
 ## References
