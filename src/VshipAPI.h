@@ -1,6 +1,8 @@
 #ifndef VSHIP_API_HEADER
 #define VSHIP_API_HEADER
 
+#include "VshipColor.h"
+
 #include <stdint.h>
 #include <stdbool.h>
 

@@ -24,18 +24,26 @@ public:
 };
 
 __device__ CubicHermitSplineInterpolator getHorizontalInterpolator_device(float* src, int64_t x, int64_t y, int64_t width, int64_t height){ //width and height must be the one of source!!!!
-    const float el0 = src[min(y, height-1)*width + min(x, width-1)];
-    const float elm1 = src[min(y, height-1)*width + min(max(x-1, (int64_t)0), width-1)]; //left element
-    const float el1 = src[min(y, height-1)*width + min(x+1, width-1)];
-    const float el2 = src[min(y, height-1)*width + min(x+2, width-1)];
+    y = min(y, height-1);
+    x = min(x, width); //extra space beware
+
+    const float elm1 = (x == 0) ? src[y*width] : src[y*width+x-1];
+    const float el0 = (x == width) ? src[y*width+width-1] : src[y*width+x];
+    const float el1 = (x == width-1) ? el0 : src[y*width+x+1];
+    const float el2 = (x == width-1) ? el1 : src[y*width+x+2];
+
     return CubicHermitSplineInterpolator(el0, (el1 - elm1)/2, el1, (el2 - el0)/2);
 }
 
 __device__ CubicHermitSplineInterpolator getVerticalInterpolator_device(float* src, int64_t x, int64_t y, int64_t width, int64_t height){ //width and height must be the one of source!!!!
-    const float el0 = src[min(y, height-1)*width + min(x, width-1)];
-    const float elm1 = src[min(max(y-1, (int64_t)0), height-1)*width + min(x, width-1)]; //left element
-    const float el1 = src[min(y+1, height-1)*width + min(x, width-1)];
-    const float el2 = src[min(y+2, height-1)*width + min(x, width-1)];
+    y = min(y, height);
+    x = min(x, width-1);
+
+    const float elm1 = (y == 0) ? src[x] : src[(y-1)*width+x];
+    const float el0 = (y == height) ? src[(height-1)*width + x] : src[y*height+x];
+    const float el1 = (y == height-1) ? el0 : src[(y+1)*height+x];
+    const float el2 = (y == height-2) ? el1 : src[(y+2)*height+x];
+
     return CubicHermitSplineInterpolator(el0, (el1 - elm1)/2, el1, (el2 - el0)/2);
 }
 
@@ -128,7 +136,10 @@ __global__ void bicubicVerticalTopUpscaleX2_Kernel(float* dst, float* src, int64
 }
 
 //source is of size width * height possibly chroma downsampled
-__host__ int inline upsample(float* dst[3], float* src[3], int64_t width, int64_t height, AVChromaLocation location, int subw, int subh, hipStream_t stream){
+__host__ int inline upsample(float* dst[3], float* src[3], int64_t width, int64_t height, Vship_ChromaLocation_t location, Vship_ChromaSubsample_t subsampledata, hipStream_t stream){
+    const int subw = subsampledata.subw;
+    const int subh = subsampledata.subh;
+    
     if (subw == 0 && subh == 0) return 0;
     width >>= subw; //get chroma plane size
     height >>= subh; 
@@ -140,8 +151,8 @@ __host__ int inline upsample(float* dst[3], float* src[3], int64_t width, int64_
     const int bly2 = (height+1 + thy-1)/thy;
 
     switch (location){
-        case (AVCHROMA_LOC_LEFT):
-        case (AVCHROMA_LOC_TOPLEFT):
+        case (Vship_ChromaLoc_Left):
+        case (Vship_ChromaLoc_TopLeft):
             if (subw == 0){
             } else if (subw == 1){
                 bicubicHorizontalLeftUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(dst[1], src[1], width, height);
@@ -155,8 +166,8 @@ __host__ int inline upsample(float* dst[3], float* src[3], int64_t width, int64_
                 return 1; //not implemented
             }
             break;
-        case (AVCHROMA_LOC_CENTER):
-        case (AVCHROMA_LOC_TOP):
+        case (Vship_ChromaLoc_Center):
+        case (Vship_ChromaLoc_Top):
             if (subw == 0){
             } else if (subw == 1){
                 bicubicHorizontalCenterUpscaleX2_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(dst[1], src[1], width, height);
@@ -175,8 +186,8 @@ __host__ int inline upsample(float* dst[3], float* src[3], int64_t width, int64_
     }
 
     switch (location){
-        case (AVCHROMA_LOC_TOP):
-        case (AVCHROMA_LOC_TOPLEFT):
+        case (Vship_ChromaLoc_Top):
+        case (Vship_ChromaLoc_TopLeft):
             if (subh == 0){
             } else if (subh == 1){
                 bicubicVerticalTopUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(dst[1], src[1], width, height);
@@ -186,8 +197,8 @@ __host__ int inline upsample(float* dst[3], float* src[3], int64_t width, int64_
                 return 1; //not implemented
             }
             break;
-        case (AVCHROMA_LOC_CENTER):
-        case (AVCHROMA_LOC_LEFT):
+        case (Vship_ChromaLoc_Center):
+        case (Vship_ChromaLoc_Left):
             if (subh == 0){
             } else if (subh == 1){
                 bicubicVerticalCenterUpscaleX2_Kernel<<<dim3(blx1, bly2), dim3(thx, thy), 0, stream>>>(dst[1], src[1], width, height);
