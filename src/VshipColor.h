@@ -2,14 +2,14 @@
 #define VSHIPCOLOR_API_HEADER
 
 enum Vship_Sample_t{
-    Vship_SampleFLOAT,
-    Vship_SampleHALF,
-    Vship_SampleUINT8,
-    Vship_SampleUINT9,
-    Vship_SampleUINT10,
-    Vship_SampleUINT12,
-    Vship_SampleUINT14,
-    Vship_SampleUINT16,
+    Vship_SampleFLOAT = 0,
+    Vship_SampleHALF = 1,
+    Vship_SampleUINT8 = 2,
+    Vship_SampleUINT9 = 3,
+    Vship_SampleUINT10 = 5,
+    Vship_SampleUINT12 = 7,
+    Vship_SampleUINT14 = 9,
+    Vship_SampleUINT16 = 11,
 };
 
 enum Vship_Range_t{
