@@ -135,8 +135,9 @@ __global__ void bicubicVerticalTopUpscaleX2_Kernel(float* dst, float* src, int64
     }
 }
 
+//temp is of size 2 planes
 //source is of size width * height possibly chroma downsampled
-__host__ int inline upsample(float* dst[3], float* src[3], int64_t width, int64_t height, Vship_ChromaLocation_t location, Vship_ChromaSubsample_t subsampledata, hipStream_t stream){
+__host__ int inline upsample(float* temp, float* src[3], int64_t width, int64_t height, Vship_ChromaLocation_t location, Vship_ChromaSubsample_t subsampledata, hipStream_t stream){
     const int subw = subsampledata.subw;
     const int subh = subsampledata.subh;
     
@@ -155,12 +156,12 @@ __host__ int inline upsample(float* dst[3], float* src[3], int64_t width, int64_
         case (Vship_ChromaLoc_TopLeft):
             if (subw == 0){
             } else if (subw == 1){
-                bicubicHorizontalLeftUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(dst[1], src[1], width, height);
-                bicubicHorizontalLeftUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(dst[2], src[2], width, height);
+                bicubicHorizontalLeftUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
+                bicubicHorizontalLeftUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp+width*height, src[2], width, height);
                 width *= 2;
             } else if (subw == 2){
-                bicubicHorizontalLeftUpscaleX4_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(dst[1], src[1], width, height);
-                bicubicHorizontalLeftUpscaleX4_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(dst[2], src[2], width, height);
+                bicubicHorizontalLeftUpscaleX4_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
+                bicubicHorizontalLeftUpscaleX4_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp+width*height, src[2], width, height);
                 width *= 4;
             } else {
                 return 1; //not implemented
@@ -170,12 +171,12 @@ __host__ int inline upsample(float* dst[3], float* src[3], int64_t width, int64_
         case (Vship_ChromaLoc_Top):
             if (subw == 0){
             } else if (subw == 1){
-                bicubicHorizontalCenterUpscaleX2_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(dst[1], src[1], width, height);
-                bicubicHorizontalCenterUpscaleX2_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(dst[2], src[2], width, height);
+                bicubicHorizontalCenterUpscaleX2_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
+                bicubicHorizontalCenterUpscaleX2_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp+width*height, src[2], width, height);
                 width *= 2;
             } else if (subw == 2){
-                bicubicHorizontalCenterUpscaleX4_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(dst[1], src[1], width, height);
-                bicubicHorizontalCenterUpscaleX4_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(dst[2], src[2], width, height);
+                bicubicHorizontalCenterUpscaleX4_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
+                bicubicHorizontalCenterUpscaleX4_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp+width*height, src[2], width, height);
                 width *= 4;
             } else {
                 return 1; //not implemented
@@ -190,8 +191,8 @@ __host__ int inline upsample(float* dst[3], float* src[3], int64_t width, int64_
         case (Vship_ChromaLoc_TopLeft):
             if (subh == 0){
             } else if (subh == 1){
-                bicubicVerticalTopUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(dst[1], src[1], width, height);
-                bicubicVerticalTopUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(dst[2], src[2], width, height);
+                bicubicVerticalTopUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(src[1], temp, width, height);
+                bicubicVerticalTopUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(src[2], temp+width*height, width, height);
                 height *= 2;
             } else {
                 return 1; //not implemented
@@ -201,8 +202,8 @@ __host__ int inline upsample(float* dst[3], float* src[3], int64_t width, int64_
         case (Vship_ChromaLoc_Left):
             if (subh == 0){
             } else if (subh == 1){
-                bicubicVerticalCenterUpscaleX2_Kernel<<<dim3(blx1, bly2), dim3(thx, thy), 0, stream>>>(dst[1], src[1], width, height);
-                bicubicVerticalCenterUpscaleX2_Kernel<<<dim3(blx1, bly2), dim3(thx, thy), 0, stream>>>(dst[2], src[2], width, height);
+                bicubicVerticalCenterUpscaleX2_Kernel<<<dim3(blx1, bly2), dim3(thx, thy), 0, stream>>>(src[1], temp, width, height);
+                bicubicVerticalCenterUpscaleX2_Kernel<<<dim3(blx1, bly2), dim3(thx, thy), 0, stream>>>(src[2], temp+width*height, width, height);
                 height *= 2;
             } else {
                 return 1; //not implemented

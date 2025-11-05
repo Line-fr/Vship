@@ -3,160 +3,88 @@
 //define enums for colorspaces
 #include "../VshipColor.h"
 
-#include "anyDepthToFloat.hpp"
-#include "chromaUpsample.hpp"
-#include "YUVToLinRGB.hpp"
-#include "primaries.hpp"
+#include "anyDepthToFloat.hpp" //manages range and sample type
+#include "chromaUpsample.hpp" //manages chroma location and chroma subsampling
+#include "YUVToLinRGB.hpp" //manages transfer function and YUV Matrix
+#include "primaries.hpp" //manages primaries
 
 namespace VshipColorConvert{
 
-//accept only YUV format
-int extractInfoFromPixelFormat(AVPixelFormat pix_fmt, Vship_Sample_t& sample_type, int& subw, int& subh){
-    switch (pix_fmt){
-        case AV_PIX_FMT_YUV420P:
-            sample_type = Vship_SampleUINT8;
-            subw = 1;
-            subh = 1;
-            break;
-        case AV_PIX_FMT_YUV422P:
-            sample_type = Vship_SampleUINT8;
-            subw = 1;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV444P:
-            sample_type = Vship_SampleUINT8;
-            subw = 0;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV410P:
-            sample_type = Vship_SampleUINT8;
-            subw = 2;
-            subh = 1;
-            break;
-        case AV_PIX_FMT_YUV411P:
-            sample_type = Vship_SampleUINT8;
-            subw = 2;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV440P:
-            sample_type = Vship_SampleUINT8;
-            subw = 0;
-            subh = 1;
-            break;
-        case AV_PIX_FMT_YUV420P16:
-            sample_type = Vship_SampleUINT16;
-            subw = 1;
-            subh = 1;
-            break;
-        case AV_PIX_FMT_YUV422P16:
-            sample_type = Vship_SampleUINT16;
-            subw = 1;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV444P16:
-            sample_type = Vship_SampleUINT16;
-            subw = 0;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV420P9:
-            sample_type = Vship_SampleUINT9;
-            subw = 1;
-            subh = 1;
-            break;
-        case AV_PIX_FMT_YUV422P9:
-            sample_type = Vship_SampleUINT9;
-            subw = 1;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV444P9:
-            sample_type = Vship_SampleUINT9;
-            subw = 0;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV420P10:
-            sample_type = Vship_SampleUINT10;
-            subw = 1;
-            subh = 1;
-            break;
-        case AV_PIX_FMT_YUV422P10:
-            sample_type = Vship_SampleUINT10;
-            subw = 1;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV444P10:
-            sample_type = Vship_SampleUINT10;
-            subw = 0;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV440P10:
-            sample_type = Vship_SampleUINT10;
-            subw = 0;
-            subh = 1;
-            break;
-        case AV_PIX_FMT_YUV420P12:
-            sample_type = Vship_SampleUINT10;
-            subw = 1;
-            subh = 1;
-            break;
-        case AV_PIX_FMT_YUV422P12:
-            sample_type = Vship_SampleUINT12;
-            subw = 1;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV444P12:
-            sample_type = Vship_SampleUINT12;
-            subw = 0;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV420P14:
-            sample_type = Vship_SampleUINT14;
-            subw = 1;
-            subh = 1;
-            break;
-        case AV_PIX_FMT_YUV422P14:
-            sample_type = Vship_SampleUINT14;
-            subw = 1;
-            subh = 0;
-            break;
-        case AV_PIX_FMT_YUV444P14:
-            sample_type = Vship_SampleUINT14;
-            subw = 0;
-            subh = 0;
-            break;
-        default:
-            return 1;
+enum ConverterDestination_t{
+    XYZ,
+    linRGBBT709,
+    linRGB, //no primaries conversion
+};
+
+class Converter{
+    Vship_Colorspace_t source_colorspace;
+    ConverterDestination_t destination;
+    int64_t width;
+    int64_t height;
+    hipStream_t stream;
+    float* mem_d = NULL;
+public:
+    Converter() = default;
+    void init(int64_t width, int64_t height, Vship_Colorspace_t colorspace, ConverterDestination_t destination, hipStream_t stream){
+        this->width = width;
+        this->height = height;
+        this->source_colorspace = colorspace;
+        this->destination = destination;
+        this->stream = stream;
+
+        //initiliaze buffer -> 2 frames for chroma upsampling if needed
+        if (colorspace.subsampling.subw != 0 || colorspace.subsampling.subh != 0){
+            hipError_t erralloc = hipMalloc(&mem_d, sizeof(float)*width*height*2);
+            if (erralloc != hipSuccess){
+                throw VshipError(OutOfVRAM, __FILE__, __LINE__);
+            }
+        }
     }
-    return 0;
-}
-
-//strides are for the source, width and height are for end video output (generally luma plane)
-int linearize(float* outplane[3], float* tempplane[3], const uint8_t* source_plane[3], int strides[3], int width, int height, AVPixelFormat pix_fmt, AVChromaLocation location, hipStream_t stream){
-    //Vship_Colorspace_t colorspace;
-
-    /*
-    if (extractInfoFromPixelFormat(pix_fmt, sample_type, subw, subh) != 0) {
-        std::cout << "pixel format not supported : " << (int)pix_fmt << std::endl;
-        return 1;
+    void destroy(){
+        if (mem_d != NULL){
+            hipFree(mem_d);
+            mem_d = NULL;
+        }
     }
+    void convert(float* out[3], const uint8_t *inp[3], int64_t stride){
+        uint8_t* src_d = (uint8_t*)mem_d;
+        if (stride > sizeof(float)*width*2){
+            //we need to allocate another plane to export the current data to gpu
+            hipError_t erralloc = hipMallocAsync(&src_d, stride*height, stream);
+            if (erralloc != hipSuccess){
+                throw VshipError(OutOfVRAM, __FILE__, __LINE__);
+            }
+        }
+        for (int i = 0; i < 3; i++){
+            hipMemcpyHtoDAsync(src_d, inp[i], stride*height, stream);
+            convertToFloatPlane(out[i], (uint8_t*)src_d, stride, width, height, source_colorspace.sample, source_colorspace.range, stream);
+        }
+        if (stride > sizeof(float)*width*2){
+            hipFreeAsync(src_d, stream);
+        }
+        //now we have our float data with the right range in out
+        //let's upsample chroma using mem_d as a temporary plane
+        upsample(mem_d, out, width, height, source_colorspace.chromaLocation, source_colorspace.subsampling, stream);
 
-    //first step, transform current integer/float format into a pure float
-    bool res = 1;
-    res &= convertToFloatPlane(outplane[0], source_plane[0], strides[0], width, height, sample_type, stream); //get to outplane directly
-    res &= convertToFloatPlane(tempplane[1], source_plane[1], strides[1], width >> subw, height >> subh, sample_type, stream);
-    res &= convertToFloatPlane(tempplane[2], source_plane[2], strides[2], width >> subw, height >> subh, sample_type, stream);
-    if (res != 0) {
-        std::cout << "sample_type not supported" << std::endl;
-        return res;
+        //now, we need to transform the YUV into linRGB
+        YUVToLinRGBPipeline(out[0], out[1], out[2], width*height, source_colorspace.YUVMatrix, source_colorspace.transferFunction, stream);
+
+        //then we manage primaries, it depends on the destination
+        switch(destination){
+            case linRGB:
+                break; //we are done already
+            case XYZ:
+                if (source_colorspace.primaries != Vship_PRIMARIES_INTERNAL){
+                    primariesToPrimaries(out[0], out[1], out[2], width*height, source_colorspace.primaries, Vship_PRIMARIES_INTERNAL, stream);
+                }
+                break;
+            case linRGBBT709:
+                if (source_colorspace.primaries != Vship_PRIMARIES_BT709){
+                    primariesToPrimaries(out[0], out[1], out[2], width*height, source_colorspace.primaries, Vship_PRIMARIES_BT709, stream);
+                }
+                break;
+        }
     }
-
-    //second step, chroma upsample
-    if (upsample(outplane, tempplane, width, height, location, subw, subh, stream) != 0){ //this function does not transfer luma plane from temp to out!! so we directly get luma plane to out instead of temp since no modification is needed
-        std::cout << "Failed to upscale" << std::endl;
-        return 1;
-    }
-    */
-
-    return 0;
-}
+};
 
 }
