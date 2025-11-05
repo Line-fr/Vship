@@ -75,6 +75,7 @@ __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT709>(float3 val)
     return val;
 }
 
+//source https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.601-7-201103-I!!PDF-E.pdf
 template <>
 __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT470_BG>(float3 val){
     constexpr float Kr = 0.299f;
@@ -172,8 +173,9 @@ __device__ float3 inline gammaLightYUVConversion<matrix>(float3 val){
 template <Vship_YUVMatrix_t matrix, Vship_TransferFunction_t transfer>
 __device__ float3 inline YUVToLinRGBPipeline_Device(float3 val){
     val = gammaLightYUVConversion<matrix>(val);
-    val = transferLinearize<transfer>(val);
+    transferLinearize<transfer>(val);
     val = linearLightYUVConversion<matrix>(val);
+    return val;
 }
 
 template <Vship_YUVMatrix_t matrix, Vship_TransferFunction_t transfer>
@@ -188,6 +190,63 @@ __global__ void YUVToLinRGBPipeline_Kernel(float* p0, float* p1, float* p2, int6
     p0[x] = val.x;
     p1[x] = val.y;
     p2[x] = val.z;
+}
+
+template <Vship_YUVMatrix_t matrix, Vship_TransferFunction_t transfer>
+void YUVToLinRGBPipeline_alltemplate(float* p0, float* p1, float* p2, int64_t width, hipStream_t stream){
+    const int thx = 256;
+    const int blx = (width + thx -1)/thx;
+    YUVToLinRGBPipeline_Kernel<matrix, transfer><<<dim3(blx), dim3(thx), 0, stream>>>(p0, p1, p2, width);
+}
+
+template <Vship_TransferFunction_t transfer>
+void YUVToLinRGBPipeline_templateTransfer(float* p0, float* p1, float* p2, int64_t width, Vship_YUVMatrix_t matrix, hipStream_t stream){
+    switch (matrix){
+        case Vship_MATRIX_RGB:
+            YUVToLinRGBPipeline_alltemplate<Vship_MATRIX_RGB, transfer>(p0, p1, p2, width, stream);
+            break;
+        case Vship_MATRIX_BT709:
+            YUVToLinRGBPipeline_alltemplate<Vship_MATRIX_BT709, transfer>(p0, p1, p2, width, stream);
+            break;
+        case Vship_MATRIX_BT470_BG:
+            YUVToLinRGBPipeline_alltemplate<Vship_MATRIX_BT470_BG, transfer>(p0, p1, p2, width, stream);
+            break;
+        case Vship_MATRIX_ST170_M:
+            YUVToLinRGBPipeline_alltemplate<Vship_MATRIX_ST170_M, transfer>(p0, p1, p2, width, stream);
+            break;
+        case Vship_MATRIX_BT2020_NCL:
+            YUVToLinRGBPipeline_alltemplate<Vship_MATRIX_BT2020_NCL, transfer>(p0, p1, p2, width, stream);
+            break;
+        case Vship_MATRIX_BT2020_CL:
+            YUVToLinRGBPipeline_alltemplate<Vship_MATRIX_BT2020_CL, transfer>(p0, p1, p2, width, stream);
+            break;
+        case Vship_MATRIX_BT2100_ICTCP:
+            YUVToLinRGBPipeline_alltemplate<Vship_MATRIX_BT2100_ICTCP, transfer>(p0, p1, p2, width, stream);
+            break;
+    }
+}
+
+void YUVToLinRGBPipeline(float* p0, float* p1, float* p2, int64_t width, Vship_YUVMatrix_t matrix, Vship_TransferFunction_t transfer, hipStream_t stream){
+    switch (transfer){
+        case Vship_TRC_BT709:
+            YUVToLinRGBPipeline_templateTransfer<Vship_TRC_BT709>(p0, p1, p2, width, matrix, stream);
+            break;
+        case Vship_TRC_Linear:
+            YUVToLinRGBPipeline_templateTransfer<Vship_TRC_Linear>(p0, p1, p2, width, matrix, stream);
+            break;
+        case Vship_TRC_sRGB:
+            YUVToLinRGBPipeline_templateTransfer<Vship_TRC_sRGB>(p0, p1, p2, width, matrix, stream);
+            break;
+        case Vship_TRC_PQ:
+            YUVToLinRGBPipeline_templateTransfer<Vship_TRC_PQ>(p0, p1, p2, width, matrix, stream);
+            break;
+        case Vship_TRC_ST428:
+            YUVToLinRGBPipeline_templateTransfer<Vship_TRC_ST428>(p0, p1, p2, width, matrix, stream);
+            break;
+        case Vship_TRC_HLG:
+            YUVToLinRGBPipeline_templateTransfer<Vship_TRC_HLG>(p0, p1, p2, width, matrix, stream);
+            break;
+    }
 }
 
 }
