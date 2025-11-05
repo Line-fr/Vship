@@ -13,8 +13,8 @@ enum Vship_Sample_t{
 };
 
 enum Vship_Range_t{
-    Vship_RangeLimited,
-    Vship_RangeFull,
+    Vship_RangeLimited = 0,
+    Vship_RangeFull = 1,
 };
 
 typedef struct {
@@ -23,16 +23,17 @@ typedef struct {
 } Vship_ChromaSubsample_t;
 
 enum Vship_ChromaLocation_t{
-    Vship_ChromaLoc_Top,
-    Vship_ChromaLoc_TopLeft,
-    Vship_ChromaLoc_Left,
-    Vship_ChromaLoc_Center,
+    Vship_ChromaLoc_Left = 0,
+    Vship_ChromaLoc_Center = 1,
+    Vship_ChromaLoc_TopLeft = 2,
+    Vship_ChromaLoc_Top = 3,
 };
 
 enum Vship_YUVMatrix_t{
     Vship_MATRIX_RGB = 0,
     Vship_MATRIX_BT709 = 1,
     Vship_MATRIX_BT470_BG = 5,
+    Vship_MATRIX_ST170_M = 6, //same as 5
     Vship_MATRIX_BT2020_NCL = 9,
     Vship_MATRIX_BT2020_CL = 10,
     Vship_MATRIX_BT2100_ICTCP = 14,
@@ -48,6 +49,7 @@ enum Vship_TransferFunction_t{
 };
 
 enum Vship_Primaries_t{
+    Vship_PRIMARIES_INTERNAL = -1, //corresponds to XYZ really
     Vship_PRIMARIES_BT709 = 1,
     Vship_PRIMARIES_BT2020 = 9,
 };
