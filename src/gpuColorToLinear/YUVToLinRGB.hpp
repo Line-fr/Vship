@@ -7,6 +7,9 @@ namespace VshipColorConvert{
 template <Vship_YUVMatrix_t matrix>
 __device__ float3 inline linearLightYUVConversion(float3 val);
 
+template <Vship_YUVMatrix_t matrix>
+__device__ float3 inline gammaLightYUVConversion(float3 val);
+
 //source https://professional.dolby.com/siteassets/pdfs/ictcp_dolbywhitepaper_v071.pdf
 //please set the correct transfer metadata to use here (PQ)
 template <>
@@ -23,6 +26,26 @@ __device__ float3 inline linearLightYUVConversion<Vship_MATRIX_BT2100_ICTCP>(flo
     //=> L = 0.4103923143895743*R + 0.5185664708598834*G + 0.12836926542557514*S
     //=> B = -0.02684381778741865*R + -0.08378524945770065*G + 1.106879231557486*S
     val.z = fmaf(val.x, -0.02684381778741865f, fmaf(val.y, -0.08378524945770065f, val.z*1.106879231557486));
+    return val;
+}
+
+//source https://professional.dolby.com/siteassets/pdfs/ictcp_dolbywhitepaper_v071.pdf
+//please set the correct transfer metadata to use here (PQ)
+template <>
+__device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT2100_ICTCP>(float3 val){
+    //at this point, we have ICtCp
+    //ICtCp => L'M'S'
+    //L' = I + 0.0086090370379327566f* Ct + 0.11102962500302595655f* Cp
+    val.x = fmaf(val.y, 0.0086090370379327566f, fmaf(val.z, 0.11102962500302595655f, val.x));
+    //M' = I - 0.0086090370379327566f* Ct - 0.11102962500302595655* Cp
+    //=> M' = L' - 0.01721807407586551* Ct - 0.22205925000605192* Cp
+    val.y = fmaf(val.y, -0.01721807407586551f, fmaf(val.z, -0.22205925000605192f, val.x));
+    //S' = I + 0.560031335710679118f* Ct - 0.32062717498731885184f* Cp
+    //we have Ct = (L' - M' - 0.22205925000605192* Cp)/0.01721807407586551
+    //and I = 0.5L' + 0.5M'
+    //=> S' = 33.025782688766114 * L' - 32.025782688766114 * M' - 7.543278084714549 * Cp
+    val.z = fmaf(val.x, 33.025782688766114f, fmaf(val.y, -32.025782688766114f, -val.z*7.543278084714549f));
+
     return val;
 }
 
@@ -44,13 +67,21 @@ __device__ float3 inline linearLightYUVConversion<Vship_MATRIX_BT2020_CL>(float3
     return val;
 }
 
-template <Vship_YUVMatrix_t matrix>
-__device__ float3 inline linearLightYUVConversion<matrix>(float3 val){
+//source https://en.wikipedia.org/wiki/Rec._2020 (inverse by hand)
+template <>
+__device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT2020_CL>(float3 val){
+    constexpr float Kr = 0.2627f;
+    constexpr float Kb = 0.0593f;
+    //constexpr float Kg = 1.f - Kr - Kb;
+    //we got YcCbcCrc right now
+    //Cbc => B'
+    val.y = val.x + 2.f*val.y*(1-Kb);
+    //Crc => R'
+    val.z = val.x + 2.f*val.z*(1-Kr);
+
+    //then we apply the inverse of transfer function to go from Yc'B'R' -> YcBR
     return val;
 }
-
-template <Vship_YUVMatrix_t matrix>
-__device__ float3 inline gammaLightYUVConversion(float3 val);
 
 template <>
 __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT709>(float3 val){
@@ -129,44 +160,14 @@ __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT2020_NCL>(float3
     return val;
 }
 
-//source https://en.wikipedia.org/wiki/Rec._2020 (inverse by hand)
-template <>
-__device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT2020_CL>(float3 val){
-    constexpr float Kr = 0.2627f;
-    constexpr float Kb = 0.0593f;
-    //constexpr float Kg = 1.f - Kr - Kb;
-    //we got YcCbcCrc right now
-    //Cbc => B'
-    val.y = val.x + 2.f*val.y*(1-Kb);
-    //Crc => R'
-    val.z = val.x + 2.f*val.z*(1-Kr);
-
-    //then we apply the inverse of transfer function to go from Yc'B'R' -> YcBR
-    return val;
-}
-
-//source https://professional.dolby.com/siteassets/pdfs/ictcp_dolbywhitepaper_v071.pdf
-//please set the correct transfer metadata to use here (PQ)
-template <>
-__device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT2100_ICTCP>(float3 val){
-    //at this point, we have ICtCp
-    //ICtCp => L'M'S'
-    //L' = I + 0.0086090370379327566f* Ct + 0.11102962500302595655f* Cp
-    val.x = fmaf(val.y, 0.0086090370379327566f, fmaf(val.z, 0.11102962500302595655f, val.x));
-    //M' = I - 0.0086090370379327566f* Ct - 0.11102962500302595655* Cp
-    //=> M' = L' - 0.01721807407586551* Ct - 0.22205925000605192* Cp
-    val.y = fmaf(val.y, -0.01721807407586551f, fmaf(val.z, -0.22205925000605192f, val.x));
-    //S' = I + 0.560031335710679118f* Ct - 0.32062717498731885184f* Cp
-    //we have Ct = (L' - M' - 0.22205925000605192* Cp)/0.01721807407586551
-    //and I = 0.5L' + 0.5M'
-    //=> S' = 33.025782688766114 * L' - 32.025782688766114 * M' - 7.543278084714549 * Cp
-    val.z = fmaf(val.x, 33.025782688766114f, fmaf(val.y, -32.025782688766114f, -val.z*7.543278084714549f));
-
+//default is identity
+template <Vship_YUVMatrix_t matrix>
+__device__ float3 inline gammaLightYUVConversion<matrix>(float3 val){
     return val;
 }
 
 template <Vship_YUVMatrix_t matrix>
-__device__ float3 inline gammaLightYUVConversion<matrix>(float3 val){
+__device__ float3 inline linearLightYUVConversion<matrix>(float3 val){
     return val;
 }
 

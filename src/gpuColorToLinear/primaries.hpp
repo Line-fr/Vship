@@ -2,25 +2,13 @@
 
 namespace VshipColorConvert{
 
-template<Vship_Primaries_t T>
-__device__ float3 inline PrimariesToXYZ(float3 a);
-
-template<Vship_Primaries_t T>
-__device__ float3 inline XYZToPrimaries(float3 a);
-
-template<>
-__device__ float3 inline PrimariesToXYZ<Vship_PRIMARIES_INTERNAL>(float3 a){
-    return a;
-}
-
-template<>
-__device__ float3 inline XYZToPrimaries<Vship_PRIMARIES_INTERNAL>(float3 a){
-    return a;
-}
+//T1 is source, T2 is destination
+template<Vship_Primaries_t T1, Vship_Primaries_t T2>
+__device__ float3 inline primariesToPrimaries_device(float3 a);
 
 //https://www.itu.int/dms_pub/itu-r/opb/rep/R-REP-BT.2407-2017-PDF-E.pdf
 template<>
-__device__ float3 inline PrimariesToXYZ<Vship_PRIMARIES_BT709>(float3 a){
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_BT709, Vship_PRIMARIES_INTERNAL>(float3 a){
     float3 res;
     res.x = fmaf(a.x, 0.4124f, fmaf(a.y, 0.3576f, a.z*0.1805f));
     res.y = fmaf(a.x, 0.2126f, fmaf(a.y, 0.7152f, a.z*0.0722f));
@@ -29,7 +17,7 @@ __device__ float3 inline PrimariesToXYZ<Vship_PRIMARIES_BT709>(float3 a){
 }
 
 template<>
-__device__ float3 inline XYZToPrimaries<Vship_PRIMARIES_BT709>(float3 a){
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, Vship_PRIMARIES_BT709>(float3 a){
     float3 res;
     res.x = fmaf(a.x, 3.2410f, fmaf(a.y, -1.5374f, -a.z*0.4986f));
     res.y = fmaf(a.x, -0.9692f, fmaf(a.y, 1.8760f, a.z*0.0416f));
@@ -39,7 +27,7 @@ __device__ float3 inline XYZToPrimaries<Vship_PRIMARIES_BT709>(float3 a){
 
 //https://www.itu.int/dms_pub/itu-r/opb/rep/R-REP-BT.2407-2017-PDF-E.pdf
 template<>
-__device__ float3 inline PrimariesToXYZ<Vship_PRIMARIES_BT2020>(float3 a){
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_BT2020, Vship_PRIMARIES_INTERNAL>(float3 a){
     float3 res;
     res.x = fmaf(a.x, 0.6370f, fmaf(a.y, 0.1446f, a.z*0.1689f));
     res.y = fmaf(a.x, 0.2627f, fmaf(a.y, 0.6780f, a.z*0.0593f));
@@ -48,17 +36,13 @@ __device__ float3 inline PrimariesToXYZ<Vship_PRIMARIES_BT2020>(float3 a){
 }
 
 template<>
-__device__ float3 inline XYZToPrimaries<Vship_PRIMARIES_BT2020>(float3 a){
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, Vship_PRIMARIES_BT2020>(float3 a){
     float3 res;
     res.x = fmaf(a.x, 1.71650251f, fmaf(a.y, -0.35558469f, -a.z*0.25337521f));
     res.y = fmaf(a.x, -0.66662561f, fmaf(a.y, 1.61644657f, a.z*0.01577548f));
     res.z = fmaf(a.x, 0.01765521f, fmaf(a.y, -0.0428107f, a.z*0.94208926f));
     return res;
 }
-
-//T1 is source, T2 is destination
-template<Vship_Primaries_t T1, Vship_Primaries_t T2>
-__device__ float3 inline primariesToPrimaries_device(float3 a);
 
 //this one is used a lot so we do it in one matrix instead of 2
 template<>
@@ -73,7 +57,7 @@ __device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_BT2020, Vsh
 //by default, we go through XYZ
 template<Vship_Primaries_t T1, Vship_Primaries_t T2>
 __device__ float3 inline primariesToPrimaries_device<T1, T2>(float3 a){
-    return XYZToPrimaries<T2>(PrimariesToXYZ<T1>(a));
+    return primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, T2>(primariesToPrimaries_device<T1, Vship_PRIMARIES_INTERNAL>(a));
 }
 
 template<Vship_Primaries_t T1, Vship_Primaries_t T2>
