@@ -113,6 +113,7 @@ void inline primariesToPrimaries_template1(float* p0, float* p1, float* p2, int6
 }
 
 void inline primariesToPrimaries(float* p0, float* p1, float* p2, int64_t width, Vship_Primaries_t src_primary, Vship_Primaries_t dst_primary, hipStream_t stream){
+    if (dst_primary == src_primary) return;
     switch (dst_primary){
         case Vship_PRIMARIES_INTERNAL:
             primariesToPrimaries_template1<Vship_PRIMARIES_INTERNAL>(p0, p1, p2, width, src_primary, stream);

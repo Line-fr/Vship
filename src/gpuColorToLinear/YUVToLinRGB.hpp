@@ -227,6 +227,7 @@ void YUVToLinRGBPipeline_templateTransfer(float* p0, float* p1, float* p2, int64
 }
 
 void YUVToLinRGBPipeline(float* p0, float* p1, float* p2, int64_t width, Vship_YUVMatrix_t matrix, Vship_TransferFunction_t transfer, hipStream_t stream){
+    if (transfer == Vship_TRC_Linear && matrix == Vship_MATRIX_RGB) return;
     switch (transfer){
         case Vship_TRC_BT709:
             YUVToLinRGBPipeline_templateTransfer<Vship_TRC_BT709>(p0, p1, p2, width, matrix, stream);
