@@ -59,13 +59,13 @@ public:
     int64_t getHeight(){
         return source_colorspace.target_height - source_colorspace.crop.top - source_colorspace.crop.bottom;
     }
-    void convert(float* out[3], const uint8_t *inp[3], const int lineSize[3]){
+    void convert(float* out[3], const uint8_t *inp[3], const int64_t lineSize[3]){
         int64_t maxWidth = std::max(source_colorspace.target_width, source_colorspace.width);
         int64_t maxHeight= std::max(source_colorspace.target_height, source_colorspace.height);
 
         float* preCropOut[3] = {mem_d, mem_d+width*height, mem_d+width*height*2};
         uint8_t* src_d = (uint8_t*)mem_d+3*width*height;
-        int maxstride = std::max(lineSize[0], std::max(lineSize[1], lineSize[2]));
+        int64_t maxstride = std::max(lineSize[0], std::max(lineSize[1], lineSize[2]));
         if (maxstride*height > sizeof(float)*maxWidth*maxHeight*2){
             //we need to allocate another plane to export the current data to gpu
             hipError_t erralloc = hipMallocAsync(&src_d, maxstride*height, stream);

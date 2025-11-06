@@ -3,11 +3,10 @@
 extern "C" {
 #include <ffms.h>
 #include <libavutil/pixfmt.h>
-#include <zimg.h>
 }
 
 // #include "util/CLI_Parser.hpp"
-#include "ffmpegToZimgFormat.hpp"
+#include "ffmpegToVshipColorFormat.hpp"
 #include "unpack.hpp"
 #include "../util/preprocessor.hpp"
 
@@ -25,24 +24,6 @@ if (!(condition)) {\
 
 enum class MetricType { SSIMULACRA2, Butteraugli, CVVDP, Unknown };
 
-struct CropRectangle{
-    int top = 0;
-    int bottom = 0;
-    int left = 0;
-    int right = 0;
-};
-
-int inline align_stride(int stride){
-    return ((stride-1)/32+1)*32;
-}
-
-static void print_zimg_error(void) {
-    char err_msg[1024];
-    int err_code = zimg_get_last_error(err_msg, sizeof(err_msg));
-
-    fprintf(stderr, "zimg error %d: %s\n", err_code, err_msg);
-}
-
 struct MetricParameters{
     //CVVDP
     bool resizeToDisplay = 0;
@@ -55,16 +36,11 @@ struct MetricParameters{
 
 class GpuWorker {
   private:
-    int image_width;
-    int image_height;
-    int image_stride;
+    Vship_Colorspace_t image_colorspace;
+    int64_t lineSize[3];
 
-    CropRectangle cropSource;
-    CropRectangle cropEncoded;
-
-    int widthEncoded;
-    int heightEncoded;
-    int strideEncoded;
+    Vship_Colorspace_t encoded_colorspace;
+    int64_t lineSize2[3];
 
     MetricType selected_metric;
 
@@ -73,10 +49,14 @@ class GpuWorker {
     cvvdp::CVVDPComputingImplementation cvvdpworker;
 
   public:
-    GpuWorker(MetricType metric, int width, int height, int stride, int strideEncoded, float fps, CropRectangle cropSource, CropRectangle cropEncoded, MetricParameters metricParam)
-        : image_width(width), image_height(height), selected_metric(metric), image_stride(stride), strideEncoded(strideEncoded), cropSource(cropSource), cropEncoded(cropEncoded){
-        widthEncoded = width - cropSource.left - cropSource.right + cropEncoded.left + cropEncoded.right;
-        heightEncoded = height - cropSource.top - cropSource.bottom + cropEncoded.top + cropEncoded.bottom;
+    GpuWorker(MetricType metric, Vship_Colorspace_t source_colorspace, Vship_Colorspace_t encoded_colorspace, const int64_t lineSize[3], const int64_t lineSize2[3], float fps, MetricParameters metricParam){
+        selected_metric = metric;
+        this->image_colorspace = source_colorspace;
+        this->encoded_colorspace = encoded_colorspace;
+        for (int i = 0; i < 3; i++){
+            this->lineSize[i] = lineSize[i];
+            this->lineSize2[i] = lineSize2[i];
+        }
         allocate_gpu_memory(fps, metricParam);
     }
     ~GpuWorker(){
@@ -84,38 +64,19 @@ class GpuWorker {
     }
 
     std::tuple<float, float, float>
-    compute_metric_score(uint8_t *source_frame, uint8_t *encoded_frame) {
-        const int channel_offset_bytes =
-            image_stride * image_height;
-        const int channel_offset_bytesEncoded =
-            strideEncoded * heightEncoded;
-        
-        //for crop
-        int64_t topleftOffset = cropSource.top * image_stride + sizeof(uint16_t)*cropSource.left;
-        int64_t topleftOffsetEncoded = cropEncoded.top * strideEncoded + sizeof(uint16_t)*cropEncoded.left;
-
-        const uint8_t *source_channels[3] = {
-            source_frame + topleftOffset, source_frame + channel_offset_bytes + topleftOffset,
-            source_frame + 2 * channel_offset_bytes + topleftOffset};
-
-        const uint8_t *encoded_channels[3] = {
-            encoded_frame + topleftOffsetEncoded, encoded_frame + channel_offset_bytesEncoded + topleftOffsetEncoded,
-            encoded_frame + 2 * channel_offset_bytesEncoded + topleftOffsetEncoded};
+    compute_metric_score(const uint8_t* srcp1[3], const uint8_t* srcp2[3]) {
 
         if (selected_metric == MetricType::SSIMULACRA2) {
-            const double score = ssimu2worker.run<UINT16>(
-                source_channels, encoded_channels, image_stride, strideEncoded); 
-            float s = static_cast<float>(score);
+            const float s = ssimu2worker.run(srcp1, srcp2, lineSize, lineSize2); 
             return {s, s, s};
         }
 
         if (selected_metric == MetricType::Butteraugli) {
-            return butterworker.run<UINT16>(
-                nullptr, 0, source_channels, encoded_channels, image_stride, strideEncoded);
+            return butterworker.run(nullptr, 0, srcp1, srcp2, lineSize, lineSize2);
         }
 
         if (selected_metric == MetricType::CVVDP){
-            const float s = cvvdpworker.run<UINT16>(nullptr, 0, source_channels, encoded_channels, image_stride, strideEncoded);
+            const float s = cvvdpworker.run(nullptr, 0, srcp1, srcp2, lineSize, lineSize2);
             return {s, s, s};
         }
 
@@ -147,7 +108,7 @@ class GpuWorker {
     void allocate_gpu_memory(float fps, MetricParameters metricParam) {
         if (selected_metric == MetricType::SSIMULACRA2) {
             try {
-                ssimu2worker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom);
+                ssimu2worker.init(image_colorspace, encoded_colorspace);
             } catch (const VshipError& e){
                 std::cerr << e.getErrorMessage() << std::endl;
                 ASSERT_WITH_MESSAGE(false, "Failed to initialize SSIMULACRA2 Worker");
@@ -155,7 +116,7 @@ class GpuWorker {
             }
         } else if (selected_metric == MetricType::Butteraugli) {
             try {
-                butterworker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom, metricParam.Qnorm, metricParam.intensity_target_nits);
+                butterworker.init(image_colorspace, encoded_colorspace, metricParam.Qnorm, metricParam.intensity_target_nits);
             } catch (const VshipError& e){
                 std::cerr << e.getErrorMessage() << std::endl;
                 ASSERT_WITH_MESSAGE(false, "Failed to initialize Butteraugli Worker");
@@ -163,7 +124,7 @@ class GpuWorker {
             }
         } else if (selected_metric == MetricType::CVVDP){
             try {
-                cvvdpworker.init(image_width-cropSource.left-cropSource.right, image_height-cropSource.top-cropSource.bottom, fps, metricParam.resizeToDisplay, metricParam.model_key);
+                cvvdpworker.init(image_colorspace, encoded_colorspace, fps, metricParam.resizeToDisplay, metricParam.model_key);
             } catch (const VshipError& e){
                 std::cerr << e.getErrorMessage() << std::endl;
                 ASSERT_WITH_MESSAGE(false, "Failed to initialize CVVDP Worker");
@@ -419,111 +380,50 @@ class FFMSFrameReader {
     }
 };
 
-class ZimgProcessor {
+class BasicConverterProcessor {
   public:
-    zimg_filter_graph *graph = nullptr;
-    zimg_image_format src_format = {};
-    zimg_image_format dst_format = {};
-    zimg_image_buffer_const src_buffer = {ZIMG_API_VERSION};
-    zimg_image_buffer dst_buffer = {ZIMG_API_VERSION};
-    void *tmp_buffer = nullptr;
-    size_t tmp_size = 0;
-
     AVPixelFormat src_pixfmt;
-    uint8_t* unpack_buffer[3] = {nullptr, nullptr, nullptr};
-    int unpack_stride[3] = {0, 0, 0};
+    int64_t width;
+    int64_t height;
+    int64_t unpack_stride[3];
+    int64_t planeSizeUnpack[3];
+    bool require_unpack = true;
 
-    ZimgProcessor(const FFMS_Frame *ref_frame, int target_width,
-                  int target_height) {
-        initialize_formats(ref_frame, target_width, target_height);
-        build_unpack();
-        build_graph();
-        allocate_tmp_buffer();
+    BasicConverterProcessor(const FFMS_Frame *ref_frame) {
+        initialize_formats(ref_frame);
+        build_unpack(ref_frame);
     }
 
-    ~ZimgProcessor() {
-        if (unpack_buffer[0]) {
-            free(unpack_buffer[0]);
-            unpack_buffer[0] = NULL;
-        }
-        if (graph) zimg_filter_graph_free(graph);
-        if (tmp_buffer) {
-            free(tmp_buffer);
-            tmp_buffer = NULL;
-        }
+    ~BasicConverterProcessor() {
     }
 
-    void process(const FFMS_Frame *src, uint8_t *dst, int stride,
-                 int plane_size) {
-
-        if (unpack_buffer[0] != NULL){
-            unpack(src);
-        }
-
-        for (int p = 0; p < 3; ++p) {
-            dst_buffer.plane[p].data = dst + p * plane_size;
-            dst_buffer.plane[p].stride = stride;
-            dst_buffer.plane[p].mask = ZIMG_BUFFER_MAX;
-
-            src_buffer.plane[p].mask = ZIMG_BUFFER_MAX;
-            if (unpack_buffer[0] == NULL){
-                src_buffer.plane[p].data = src->Data[p];
-                src_buffer.plane[p].stride = src->Linesize[p];
-            } else {
-                //we have unpacked so we choose the data in unpack_buffer
-                src_buffer.plane[p].data = unpack_buffer[p];
-                src_buffer.plane[p].stride = unpack_stride[p];
-            }
-        }
-
-        int ret = zimg_filter_graph_process(graph, &src_buffer, &dst_buffer,
-                                            tmp_buffer, 0, 0, 0, 0);
-
-        ASSERT_WITH_MESSAGE(ret == 0, "zimg: Filter graph processing failed.");
+    //dst planes should have size given by planeSizeUnpack
+    void process(const FFMS_Frame *src, uint8_t *dst[3]) {
+        unpack(src, dst);
     }
 
   private:
-    void initialize_formats(const FFMS_Frame *frame, int width, int height) {
-        int result = ffmpegToZimgFormat(src_format, frame);
-        ASSERT_WITH_MESSAGE(
-            result == 0, "zimg: Failed to convert source format from FFmpeg.");
+    void initialize_formats(const FFMS_Frame *frame) {
 
-        zimg_image_format_default(&dst_format, ZIMG_API_VERSION);
-        dst_format.width = width;
-        dst_format.height = height;
-        dst_format.pixel_type = ZIMG_PIXEL_WORD;
-        dst_format.subsample_w = 0;
-        dst_format.subsample_h = 0;
-        dst_format.color_family = ZIMG_COLOR_RGB;
-        dst_format.matrix_coefficients = ZIMG_MATRIX_RGB;
-        dst_format.transfer_characteristics = ZIMG_TRANSFER_BT709;
-        dst_format.color_primaries = ZIMG_PRIMARIES_BT709;
-        dst_format.depth = 16;
-        dst_format.pixel_range = ZIMG_RANGE_FULL;
-
+        width = frame->EncodedWidth;
+        height = frame->EncodedHeight;
         src_pixfmt = (AVPixelFormat)frame->EncodedPixelFormat;
     }
 
-    void build_unpack(){
-        int depth;
+    void build_unpack(const FFMS_Frame *frame){
         //list supported formats (they are repeated in ffmpegToZimgFormat to handle them correctly)
+        require_unpack = true;
         switch (src_pixfmt){
 
             //bitdepth 8, 422
             case AV_PIX_FMT_YUYV422:
-            depth = 8;
-            unpack_stride[0] = src_format.width * depth; //in bits
-            unpack_stride[1] = (src_format.width/2) * depth; //in bits
-            unpack_stride[0] = ((unpack_stride[0]-1)/256+1)*256; //align to 32 bytes for zimg
-            unpack_stride[1] = ((unpack_stride[1]-1)/256+1)*256; //align to 32 bytes for zimg
-            unpack_stride[0] >>= 3; //in bytes
-            unpack_stride[1] >>= 3; //in bytes
-
+            unpack_stride[0] = width;
+            unpack_stride[1] = (width/2);
             unpack_stride[2] = unpack_stride[1]; //same for both chroma
 
-            unpack_buffer[0] = (uint8_t*)aligned_alloc(32, sizeof(uint8_t)*(unpack_stride[0]+unpack_stride[1]+unpack_stride[2])*src_format.height);
-            unpack_buffer[1] = unpack_buffer[0] + unpack_stride[0]*src_format.height;
-            unpack_buffer[2] = unpack_buffer[1] + unpack_stride[1]*src_format.height;
+            planeSizeUnpack[0] = unpack_stride[0]*height;
+            planeSizeUnpack[1] = unpack_stride[1]*height;
+            planeSizeUnpack[2] = unpack_stride[2]*height;
             break;
 
             //bitdepth 8, 444
@@ -532,43 +432,52 @@ class ZimgProcessor {
             case AV_PIX_FMT_RGBA:
             case AV_PIX_FMT_ABGR:
             case AV_PIX_FMT_BGRA:
-            depth = 8;
-            unpack_stride[0] = src_format.width * depth; //in bits
-            unpack_stride[0] = ((unpack_stride[0]-1)/256+1)*256; //align to 32 bytes for zimg
-            unpack_stride[0] >>= 3; //in bytes
-            unpack_stride[1] = unpack_stride[0]; //444, same stride everywhere
-            unpack_stride[2] = unpack_stride[0];
+            unpack_stride[0] = width;
+            unpack_stride[1] = unpack_stride[0];
+            unpack_stride[2] = unpack_stride[0]; //same for both chroma
 
-            unpack_buffer[0] = (uint8_t*)aligned_alloc(32, unpack_stride[0]*src_format.height*3);
-            unpack_buffer[1] = unpack_buffer[0] + unpack_stride[0]*src_format.height;
-            unpack_buffer[2] = unpack_buffer[1] + unpack_stride[0]*src_format.height;
+            planeSizeUnpack[0] = unpack_stride[0]*height;
+            planeSizeUnpack[1] = unpack_stride[1]*height;
+            planeSizeUnpack[2] = unpack_stride[2]*height;
             break;
 
             //depth 16, 444
             case AV_PIX_FMT_RGB48LE:
             case AV_PIX_FMT_RGBA64LE:
-            depth = 16;
-            unpack_stride[0] = src_format.width * depth; //in bits
-            unpack_stride[0] = ((unpack_stride[0]-1)/256+1)*256; //align to 32 bytes for zimg
-            unpack_stride[0] >>= 3; //in bytes
-            unpack_stride[1] = unpack_stride[0]; //444, same stride everywhere
-            unpack_stride[2] = unpack_stride[0];
+            unpack_stride[0] = width*2;
+            unpack_stride[1] = unpack_stride[0];
+            unpack_stride[2] = unpack_stride[0]; //same for both chroma
 
-            unpack_buffer[0] = (uint8_t*)aligned_alloc(32, unpack_stride[0]*src_format.height*3);
-            unpack_buffer[1] = unpack_buffer[0] + unpack_stride[0]*src_format.height;
-            unpack_buffer[2] = unpack_buffer[1] + unpack_stride[0]*src_format.height;
+            planeSizeUnpack[0] = unpack_stride[0]*height;
+            planeSizeUnpack[1] = unpack_stride[1]*height;
+            planeSizeUnpack[2] = unpack_stride[2]*height;
             break;
 
             default:
+                Vship_Colorspace_t colorspace;
+                ffmpegToVshipFormat(colorspace, frame);
+                unpack_stride[0] = frame->Linesize[0];
+                unpack_stride[1] = frame->Linesize[1];
+                unpack_stride[2] = frame->Linesize[2];
+                planeSizeUnpack[0] = unpack_stride[0]*height;
+                planeSizeUnpack[1] = (height >> colorspace.subsampling.subh)*unpack_stride[1];
+                planeSizeUnpack[2] = (height >> colorspace.subsampling.subh)*unpack_stride[2];
+                require_unpack = false;
                 return; //no unpack
         }
     }
 
-    void unpack(const FFMS_Frame *src){
+    void unpack(const FFMS_Frame *src, uint8_t* unpack_buffer[3]){
+        if (!require_unpack){
+            memcpy(unpack_buffer[0], src->Data[0], planeSizeUnpack[0]);
+            memcpy(unpack_buffer[0], src->Data[0], planeSizeUnpack[1]);
+            memcpy(unpack_buffer[0], src->Data[0], planeSizeUnpack[2]);
+            return;
+        }
         switch (src_pixfmt){
             case AV_PIX_FMT_YUYV422:
-                for (int j = 0; j < src_format.height; j++){
-                    for (int i = 0; i < src_format.width/2; i++){
+                for (int j = 0; j < height; j++){
+                    for (int i = 0; i < width/2; i++){
                         //Y
                         unpack_buffer[0][j*unpack_stride[0]+2*i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i];
                         //U
@@ -581,8 +490,8 @@ class ZimgProcessor {
                 }
             break;
             case AV_PIX_FMT_RGB48LE:
-                for (int j = 0; j < src_format.height; j++){
-                    for (int i = 0; i < src_format.width; i++){
+                for (int j = 0; j < height; j++){
+                    for (int i = 0; i < width; i++){
                         ((uint16_t*)(unpack_buffer[0]+j*unpack_stride[0]))[i] = ((uint16_t*)(src->Data[0]+j*src->Linesize[0]))[3*i];
                         ((uint16_t*)(unpack_buffer[1]+j*unpack_stride[1]))[i] = ((uint16_t*)(src->Data[0]+j*src->Linesize[0]))[3*i+1];
                         ((uint16_t*)(unpack_buffer[2]+j*unpack_stride[2]))[i] = ((uint16_t*)(src->Data[0]+j*src->Linesize[0]))[3*i+2];
@@ -590,8 +499,8 @@ class ZimgProcessor {
                 }
             break;
             case AV_PIX_FMT_RGBA64LE:
-                for (int j = 0; j < src_format.height; j++){
-                    for (int i = 0; i < src_format.width; i++){
+                for (int j = 0; j < height; j++){
+                    for (int i = 0; i < width; i++){
                         ((uint16_t*)(unpack_buffer[0]+j*unpack_stride[0]))[i] = ((uint16_t*)(src->Data[0]+j*src->Linesize[0]))[4*i];
                         ((uint16_t*)(unpack_buffer[1]+j*unpack_stride[1]))[i] = ((uint16_t*)(src->Data[0]+j*src->Linesize[0]))[4*i+1];
                         ((uint16_t*)(unpack_buffer[2]+j*unpack_stride[2]))[i] = ((uint16_t*)(src->Data[0]+j*src->Linesize[0]))[4*i+2];
@@ -600,8 +509,8 @@ class ZimgProcessor {
             break;
 
             case AV_PIX_FMT_RGB24:
-                for (int j = 0; j < src_format.height; j++){
-                    for (int i = 0; i < src_format.width; i++){
+                for (int j = 0; j < height; j++){
+                    for (int i = 0; i < width; i++){
                         unpack_buffer[0][j*unpack_stride[0]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+3*i];
                         unpack_buffer[1][j*unpack_stride[1]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+3*i+1];
                         unpack_buffer[2][j*unpack_stride[2]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+3*i+2];
@@ -609,8 +518,8 @@ class ZimgProcessor {
                 }
             break;
             case AV_PIX_FMT_RGBA:
-                for (int j = 0; j < src_format.height; j++){
-                    for (int i = 0; i < src_format.width; i++){
+                for (int j = 0; j < height; j++){
+                    for (int i = 0; i < width; i++){
                         unpack_buffer[0][j*unpack_stride[0]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i];
                         unpack_buffer[1][j*unpack_stride[1]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+1];
                         unpack_buffer[2][j*unpack_stride[2]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+2];
@@ -618,8 +527,8 @@ class ZimgProcessor {
                 }
             break;
             case AV_PIX_FMT_ARGB:
-                for (int j = 0; j < src_format.height; j++){
-                    for (int i = 0; i < src_format.width; i++){
+                for (int j = 0; j < height; j++){
+                    for (int i = 0; i < width; i++){
                         unpack_buffer[0][j*unpack_stride[0]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+1];
                         unpack_buffer[1][j*unpack_stride[1]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+2];
                         unpack_buffer[2][j*unpack_stride[2]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+3];
@@ -627,8 +536,8 @@ class ZimgProcessor {
                 }
             break;
             case AV_PIX_FMT_ABGR:
-                for (int j = 0; j < src_format.height; j++){
-                    for (int i = 0; i < src_format.width; i++){
+                for (int j = 0; j < height; j++){
+                    for (int i = 0; i < width; i++){
                         unpack_buffer[0][j*unpack_stride[0]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+3];
                         unpack_buffer[1][j*unpack_stride[1]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+2];
                         unpack_buffer[2][j*unpack_stride[2]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+1];
@@ -636,8 +545,8 @@ class ZimgProcessor {
                 }
             break;
             case AV_PIX_FMT_BGRA:
-                for (int j = 0; j < src_format.height; j++){
-                    for (int i = 0; i < src_format.width; i++){
+                for (int j = 0; j < height; j++){
+                    for (int i = 0; i < width; i++){
                         unpack_buffer[0][j*unpack_stride[0]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+2];
                         unpack_buffer[1][j*unpack_stride[1]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+1];
                         unpack_buffer[2][j*unpack_stride[2]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+0];
@@ -651,62 +560,34 @@ class ZimgProcessor {
                 return;
         }
     }
-
-    void build_graph() {
-        zimg_graph_builder_params params;
-        zimg_graph_builder_params_default(&params, ZIMG_API_VERSION);
-
-        graph = zimg_filter_graph_build(&src_format, &dst_format, &params);
-        ASSERT_WITH_MESSAGE(graph != nullptr,
-                            "zimg: Failed to build filter graph.");
-    }
-
-    void allocate_tmp_buffer() {
-        int result = zimg_filter_graph_get_tmp_size(graph, &tmp_size);
-        ASSERT_WITH_MESSAGE(result == 0,
-                            "zimg: Failed to get temporary buffer size.");
-
-        tmp_buffer = aligned_alloc(32, tmp_size);
-        ASSERT_WITH_MESSAGE(tmp_buffer != nullptr,
-                            "zimg: Failed to allocate temporary buffer.");
-    }
 };
 
 class VideoManager {
   public:
-    int plane_size_bytes = 0;
-    int plane_stride_bytes = 0;
-
+    Vship_Colorspace_t colorspace;
     std::unique_ptr<FFMSFrameReader> reader;
-    std::unique_ptr<ZimgProcessor> processor;
+    std::unique_ptr<BasicConverterProcessor> processor;
 
-    VideoManager(const std::string &file_path, FFMS_Index *index,
-                 int video_track_index, int resize_width = -1,
-                 int resize_height = -1) {
+    VideoManager(const std::string &file_path, FFMS_Index *index, int video_track_index) {
 
         reader = std::make_unique<FFMSFrameReader>(file_path, index,
                                                    video_track_index);
 
-        if (resize_width < 0)
-            resize_width = reader->frame_width;
-        if (resize_height < 0)
-            resize_height = reader->frame_height;
+        processor = std::make_unique<BasicConverterProcessor>(reader->current_frame);
 
-        plane_stride_bytes = align_stride(resize_width * sizeof(uint16_t)); //this needs to be divisible by 32
-        plane_size_bytes = plane_stride_bytes * resize_height;
-
-        processor = std::make_unique<ZimgProcessor>(
-            reader->current_frame, resize_width, resize_height);
+        ffmpegToVshipFormat(colorspace, reader->current_frame);
 
         ASSERT_WITH_MESSAGE(
             processor != nullptr,
             "VideoManager: Failed to initialize ZimgProcessor.");
     }
-
+    int64_t getBufferSize(){
+        return processor->planeSizeUnpack[0]+processor->planeSizeUnpack[1]+processor->planeSizeUnpack[2];
+    }
     void fetch_frame_into_buffer(int frame_index, uint8_t *output_buffer) {
         reader->fetch_frame(frame_index);
-        processor->process(reader->current_frame, output_buffer,
-                           plane_stride_bytes, plane_size_bytes);
+        uint8_t* srcp[3] = {output_buffer, output_buffer+processor->planeSizeUnpack[0], output_buffer+processor->planeSizeUnpack[0]+processor->planeSizeUnpack[1]};
+        processor->process(reader->current_frame, srcp);
     }
 };
 
@@ -722,8 +603,8 @@ struct CommandLineOptions {
     int every_nth_frame = 1;
     int encoded_offset = 0;
 
-    CropRectangle cropSource;
-    CropRectangle cropEncoded;
+    Vship_CropRectangle_t cropSource;
+    Vship_CropRectangle_t cropEncoded;
 
     std::vector<int> source_indices_list;
     std::vector<int> encoded_indices_list;

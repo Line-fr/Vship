@@ -63,13 +63,13 @@ __global__ void linrgb_to_loglms_dklKernel(float* p1, float* p2, float* p3, int6
 }
 
 
-__global__ void linrgb_to_dklKernel(float* p1, float* p2, float* p3, int64_t width){
+__global__ void XYZ_to_dklKernel(float* p1, float* p2, float* p3, int64_t width){
     const int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
     if (x >= width) return;
 
     float3 src = {p1[x], p2[x], p3[x]};
 
-    linrgb_to_xyz(src);
+    //linrgb_to_xyz(src);
     xyz_to_LMS2006(src);
     LMS2006_to_DKLd65(src);
 
@@ -78,18 +78,17 @@ __global__ void linrgb_to_dklKernel(float* p1, float* p2, float* p3, int64_t wid
     p1[x] = src.x; p2[x] = src.y; p3[x] = src.z;
 }
 
-void inline linrgb_to_dkl(float* src_d[3], int64_t width, hipStream_t stream){
+void inline XYZ_to_dkl(float* src_d[3], int64_t width, hipStream_t stream){
     int th_x = 256;
     int64_t bl_x = (width+th_x-1)/th_x;
-    linrgb_to_dklKernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d[0], src_d[1], src_d[2], width);
+    XYZ_to_dklKernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d[0], src_d[1], src_d[2], width);
 }
 
-__global__ void rgb_to_linrgbKernel(float* p, int64_t width, float Y_peak, float Y_black, float Y_refl, float exposure){
+__global__ void displayEncode_Kernel(float* p, int64_t width, float Y_peak, float Y_black, float Y_refl, float exposure){
     const int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
     if (x >= width) return;
 
     float res = p[x];
-    rgb_to_linrgbfunc(res);
 
     res = (Y_peak - Y_black)*res + Y_black + Y_refl;
 
@@ -98,10 +97,10 @@ __global__ void rgb_to_linrgbKernel(float* p, int64_t width, float Y_peak, float
     p[x] = res;
 }
 
-void inline rgb_to_linrgb(float* src_d, int64_t width, float Y_peak, float Y_black, float Y_refl, float exposure, hipStream_t stream){
+void inline displayEncode(float* src_d, int64_t width, float Y_peak, float Y_black, float Y_refl, float exposure, hipStream_t stream){
     int th_x = 256;
     int64_t bl_x = (width+th_x-1)/th_x;
-    rgb_to_linrgbKernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d, width, Y_peak, Y_black, Y_refl, exposure);
+    displayEncode_Kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d, width, Y_peak, Y_black, Y_refl, exposure);
 }
 
 

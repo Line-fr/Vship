@@ -1,3 +1,5 @@
+#pragma once
+
 template <InputMemType T>
 __launch_bounds__(256)
 __global__ void strideEliminator_kernel(float* mem_d, const uint8_t* src, int64_t stride, int64_t width, int64_t height){

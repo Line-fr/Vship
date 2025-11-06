@@ -8,6 +8,8 @@
 #include "../util/float3operations.hpp"
 #include "../util/concurrency.hpp"
 #include "../util/Planed.hpp"
+#include "../gpuColorToLinear/vshipColor.hpp"
+
 #include "gaussianblur.hpp" 
 #include "downupsample.hpp"
 #include "colors.hpp" //OpsinDynamicsImage
@@ -138,8 +140,7 @@ float* getmultiscalediffmap(float* src1_d[3], float* src2_d[3], float* mem_d, in
     return diffmap;
 }
 
-template <InputMemType T>
-std::tuple<float, float, float> butterprocess(const uint8_t *dstp, int64_t dststride, const uint8_t *srcp1[3], const uint8_t *srcp2[3], float* pinned, GaussianHandle& gaussianHandle, int64_t stride, int64_t stride2, int64_t width, int64_t height, int Qnorm, float intensity_multiplier, int64_t maxshared, hipStream_t stream){
+std::tuple<float, float, float> butterprocess(const uint8_t *dstp, int64_t dststride, const uint8_t *srcp1[3], const uint8_t *srcp2[3], float* pinned, GaussianHandle& gaussianHandle, VshipColorConvert::Converter converter1, VshipColorConvert::Converter converter2, const int64_t lineSize[3], const int64_t lineSize2[3], int64_t width, int64_t height, int Qnorm, float intensity_multiplier, int64_t maxshared, hipStream_t stream){
     int64_t wh = width*height;
     const int64_t totalscalesize = wh;
 
@@ -147,31 +148,16 @@ std::tuple<float, float, float> butterprocess(const uint8_t *dstp, int64_t dstst
 
     const int totalplane = 31;
     float* mem_d;
-    erralloc = hipMallocAsync(&mem_d, std::max(std::max(stride, stride2)*height+6*sizeof(float)*totalscalesize, sizeof(float)*totalscalesize*(totalplane)), stream); //max just in case stride is ridiculously large
+    erralloc = hipMallocAsync(&mem_d, sizeof(float)*totalscalesize*(totalplane), stream); //max just in case stride is ridiculously large
     if (erralloc != hipSuccess){
         throw VshipError(OutOfVRAM, __FILE__, __LINE__);
     }
     //initial color planes
     float* src1_d[3] = {mem_d, mem_d+width*height, mem_d+2*width*height};
     float* src2_d[3] = {mem_d+3*width*height, mem_d+4*width*height, mem_d+5*width*height};
-
-    //we put the frame's planes on GPU
-    GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp1[0]), stride * height, stream));
-    strideEliminator<T>(src1_d[0], mem_d+6*width*height, stride, width, height, stream);
-    GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp1[1]), stride * height, stream));
-    strideEliminator<T>(src1_d[1], mem_d+6*width*height, stride, width, height, stream);
-    GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp1[2]), stride * height, stream));
-    strideEliminator<T>(src1_d[2], mem_d+6*width*height, stride, width, height, stream);
-
-    GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp2[0]), stride2 * height, stream));
-    strideEliminator<T>(src2_d[0], mem_d+6*width*height, stride2, width, height, stream);
-    GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp2[1]), stride2 * height, stream));
-    strideEliminator<T>(src2_d[1], mem_d+6*width*height, stride2, width, height, stream);
-    GPU_CHECK(hipMemcpyHtoDAsync(mem_d+6*width*height, (void*)(srcp2[2]), stride2 * height, stream));
-    strideEliminator<T>(src2_d[2], mem_d+6*width*height, stride2, width, height, stream);
-
-    linearRGB(src1_d, width, height, stream);
-    linearRGB(src2_d, width, height, stream);
+    
+    converter1.convert(src1_d, srcp1, lineSize);
+    converter2.convert(src2_d, srcp2, lineSize2);
 
     float* diffmap = getmultiscalediffmap(src1_d, src2_d, mem_d+6*width*height, width, height, intensity_multiplier, maxshared, gaussianHandle, stream);
 
@@ -197,6 +183,8 @@ std::tuple<float, float, float> butterprocess(const uint8_t *dstp, int64_t dstst
 class ButterComputingImplementation{
     float* pinned;
     GaussianHandle gaussianhandle;
+    VshipColorConvert::Converter converter1;
+    VshipColorConvert::Converter converter2;
     int Qnorm;
     float intensity_multiplier;
     int64_t width;
@@ -205,14 +193,23 @@ class ButterComputingImplementation{
     hipStream_t stream;
 public:
     //Qnorm replace the old norm2 and allows getting really any norm wanted
-    void init(int64_t width, int64_t height, int Qnorm, float intensity_multiplier){
-        this->width = width;
-        this->height = height;
+    void init(Vship_Colorspace_t source_colorspace, Vship_Colorspace_t source_colorspace2, int Qnorm, float intensity_multiplier){
+        hipStreamCreate(&stream);
+        converter1.init(source_colorspace, VshipColorConvert::linRGBBT709, stream);
+        converter2.init(source_colorspace2, VshipColorConvert::linRGBBT709, stream);
+
+        this->width = converter1.getWidth();
+        this->height = converter1.getHeight();
+
+        //assert they have the same width/height
+        if (converter2.getWidth() != width || converter2.getHeight() != height){
+            throw VshipError(DifferingInputType, __FILE__, __LINE__);            
+        }
+
         this->Qnorm = Qnorm;
         this->intensity_multiplier = intensity_multiplier;
 
         gaussianhandle.init();
-        hipStreamCreate(&stream);
 
         int device;
         hipDeviceProp_t devattr;
@@ -230,13 +227,14 @@ public:
     }
     void destroy(){
         gaussianhandle.destroy();
+        converter1.destroy();
+        converter2.destroy();
         hipStreamDestroy(stream);
         hipHostFree(pinned);
     }
     //if dstp is NULL, distmap won't be retrieved
-    template <InputMemType T>
-    std::tuple<float, float, float> run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
-        return butterprocess<T>(dstp, dststride, srcp1, srcp2, pinned, gaussianhandle, stride, stride2, width, height, Qnorm, intensity_multiplier, maxshared, stream);
+    std::tuple<float, float, float> run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
+        return butterprocess(dstp, dststride, srcp1, srcp2, pinned, gaussianhandle, converter1, converter2, lineSize, lineSize2, width, height, Qnorm, intensity_multiplier, maxshared, stream);
     }
 };
 

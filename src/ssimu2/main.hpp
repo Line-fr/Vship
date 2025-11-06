@@ -5,6 +5,7 @@
 #include "../util/gpuhelper.hpp"
 #include "../util/float3operations.hpp"
 #include "../util/concurrency.hpp"
+#include "../gpuColorToLinear/vshipColor.hpp"
 #include "makeXYB.hpp"
 #include "downsample.hpp"
 #include "gaussianblur.hpp"
@@ -12,23 +13,21 @@
 
 namespace ssimu2{
 
-template <InputMemType T>
 __launch_bounds__(256)
-__global__ void memoryorganizer_kernel(float3* out, const uint8_t *srcp0, const uint8_t *srcp1, const uint8_t *srcp2, int64_t stride, int64_t width, int64_t height){
+__global__ void memoryorganizer_kernel(float3* out, float* srcp0, float* srcp1, float* srcp2, int64_t width, int64_t height){
     int64_t x = threadIdx.x + blockIdx.x*blockDim.x;
     if (x >= width*height) return;
     int j = x%width;
     int i = x/width;
-    out[i*width + j].x = convertPointer<T>(srcp0, i, j, stride);
-    out[i*width + j].y = convertPointer<T>(srcp1, i, j, stride);
-    out[i*width + j].z = convertPointer<T>(srcp2, i, j, stride);
+    out[i*width + j].x = srcp0[i*width+j];
+    out[i*width + j].y = srcp1[i*width+j];
+    out[i*width + j].z = srcp2[i*width+j];
 }
 
-template <InputMemType T>
-void memoryorganizer(float3* out, const uint8_t *srcp0, const uint8_t *srcp1, const uint8_t *srcp2, int64_t stride, int64_t width, int64_t height, hipStream_t stream){
+void memoryorganizer(float3* out, float* srcp0, float* srcp1, float* srcp2, int64_t width, int64_t height, hipStream_t stream){
     int th_x = std::min((int64_t)256, width*height);
     int bl_x = (width*height-1)/th_x + 1;
-    memoryorganizer_kernel<T><<<dim3(bl_x), dim3(th_x), 0, stream>>>(out, srcp0, srcp1, srcp2, stride, width, height);
+    memoryorganizer_kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(out, srcp0, srcp1, srcp2, width, height);
 }
 
 int64_t getTotalScaleSize(int64_t width, int64_t height){
@@ -103,67 +102,30 @@ double ssimu2GPUProcess(float3* src1_d, float3* src2_d, float3* temp_d, float3* 
     return ssim;
 }
 
-template <InputMemType T>
-double ssimu2process(const uint8_t *srcp1[3], const uint8_t *srcp2[3], float3* pinned, int64_t stride, int64_t stride2, int64_t width, int64_t height, GaussianHandle& gaussianhandle, int64_t maxshared, hipStream_t stream){
-
-    const int64_t totalscalesize = getTotalScaleSize(width, height);
-    int64_t max_stride = std::max(stride, stride2);
-
-    //big memory allocation, we will try it multiple time if failed to save when too much threads are used
-    hipError_t erralloc;
-
-    float3* mem_d;
-    erralloc = hipMallocAsync(&mem_d, sizeof(float3)*totalscalesize*(2) + std::max((int64_t)sizeof(float3)*totalscalesize, max_stride*height*3), stream); //2 base image and 1 reduction+copy buffer
-    if (erralloc != hipSuccess){
-        throw VshipError(OutOfVRAM, __FILE__, __LINE__);
-    }
-
-    float3* src1_d = mem_d; //length totalscalesize
-    float3* src2_d = mem_d + totalscalesize;
-
-    float3* temp_d = mem_d + 2*totalscalesize;
-
-    uint8_t *memory_placeholder[3] = {(uint8_t*)temp_d, (uint8_t*)temp_d+max_stride*height, (uint8_t*)temp_d+2*max_stride*height};
-    GPU_CHECK(hipMemcpyHtoDAsync(memory_placeholder[0], (void*)srcp1[0], stride * height, stream));
-    GPU_CHECK(hipMemcpyHtoDAsync(memory_placeholder[1], (void*)srcp1[1], stride * height, stream));
-    GPU_CHECK(hipMemcpyHtoDAsync(memory_placeholder[2], (void*)srcp1[2], stride * height, stream));
-    memoryorganizer<T>(src1_d, memory_placeholder[0], memory_placeholder[1], memory_placeholder[2], stride, width, height, stream);
-
-    GPU_CHECK(hipMemcpyHtoDAsync(memory_placeholder[0], (void*)srcp2[0], stride2 * height, stream));
-    GPU_CHECK(hipMemcpyHtoDAsync(memory_placeholder[1], (void*)srcp2[1], stride2 * height, stream));
-    GPU_CHECK(hipMemcpyHtoDAsync(memory_placeholder[2], (void*)srcp2[2], stride2 * height, stream));
-    memoryorganizer<T>(src2_d, memory_placeholder[0], memory_placeholder[1], memory_placeholder[2], stride2, width, height, stream);
-
-    rgb_to_linear(src1_d, totalscalesize, stream);
-    rgb_to_linear(src2_d, totalscalesize, stream);
-
-    double res;
-    try {
-        res = ssimu2GPUProcess(src1_d, src2_d, temp_d, pinned, width, height, gaussianhandle, maxshared, stream);
-    } catch (const VshipError& e){
-        hipFree(mem_d);
-        throw e;
-    }
-
-    hipFreeAsync(mem_d, stream);
-
-    return res;
-}
-
 class SSIMU2ComputingImplementation{
     float3* pinned;
     GaussianHandle gaussianhandle;
+    VshipColorConvert::Converter converter1;
+    VshipColorConvert::Converter converter2;
     int64_t width;
     int64_t height;
     int maxshared;
     hipStream_t stream;
 public:
-    void init(int64_t width, int64_t height){
-        this->width = width;
-        this->height = height;
+    void init(Vship_Colorspace_t source_colorspace, Vship_Colorspace_t source_colorspace2){
+        hipStreamCreate(&stream);
+        converter1.init(source_colorspace, VshipColorConvert::linRGBBT709, stream);
+        converter2.init(source_colorspace2, VshipColorConvert::linRGBBT709, stream);
+
+        this->width = converter1.getWidth();
+        this->height = converter1.getHeight();
+
+        //assert they have the same width/height
+        if (converter2.getWidth() != width || converter2.getHeight() != height){
+            throw VshipError(DifferingInputType, __FILE__, __LINE__);            
+        }
 
         gaussianhandle.init();
-        hipStreamCreate(&stream);
 
         int device;
         hipDeviceProp_t devattr;
@@ -181,12 +143,44 @@ public:
     }
     void destroy(){
         gaussianhandle.destroy();
+        converter1.destroy();
+        converter2.destroy();
         hipStreamDestroy(stream);
         hipHostFree(pinned);
     }
-    template <InputMemType T>
-    double run(const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
-        return ssimu2process<T>(srcp1, srcp2, pinned, stride, stride2, width, height, gaussianhandle, maxshared, stream);
+    double run(const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
+        const int64_t totalscalesize = getTotalScaleSize(width, height);
+
+        float3* mem_d;
+        hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float3)*totalscalesize*3, stream); //2 base image and 1 reduction+copy buffer
+        if (erralloc != hipSuccess){
+            throw VshipError(OutOfVRAM, __FILE__, __LINE__);
+        }
+        float3* src1_d = mem_d;
+        float3* src2_d = mem_d + totalscalesize;
+        float3* temp_d = mem_d + 2*totalscalesize;
+
+        float* tempcolorconversionDST[3] = {((float*)temp_d), ((float*)temp_d)+width*height, ((float*)temp_d)+2*width*height};
+        //first we convert our srcp1 input inside temp_d
+        converter1.convert(tempcolorconversionDST, srcp1, lineSize);
+        //then we convert it to float3 and put it where it belongs in src1_d
+        memoryorganizer(src1_d, tempcolorconversionDST[0], tempcolorconversionDST[1], tempcolorconversionDST[2], width, height, stream);
+
+        //same for srcp2
+        converter2.convert(tempcolorconversionDST, srcp2, lineSize2);
+        memoryorganizer(src2_d, tempcolorconversionDST[0], tempcolorconversionDST[1], tempcolorconversionDST[2], width, height, stream);
+
+        double res;
+        try {
+            res = ssimu2GPUProcess(src1_d, src2_d, temp_d, pinned, width, height, gaussianhandle, maxshared, stream);
+        } catch (const VshipError& e){
+            hipFree(mem_d);
+            throw e;
+        }
+
+        hipFreeAsync(mem_d, stream);
+
+        return res;
     }
 };
 

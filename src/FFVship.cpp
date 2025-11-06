@@ -12,21 +12,19 @@
 #include "util/preprocessor.hpp"
 #include "util/concurrency.hpp"
 
+#include "VshipColor.h"
+#include "gpuColorToLinear/vshipColor.hpp"
 #include "butter/main.hpp"
 #include "ssimu2/main.hpp"
 #include "cvvdp/main.hpp"
 
 #include "ffvship_utility/ProgressBar.hpp"
 #include "ffvship_utility/ffmpegmain.hpp"
-#include "util/concurrency.hpp"
 
 extern "C" {
 #include <ffms.h>
 #include <libavutil/pixfmt.h>
-#include <zimg.h>
 }
-
-//#include "ffvship_utility/gpuColorToLinear/vshipColor.hpp"
 
 using score_tuple_t = std::tuple<float, float, float>;
 using score_queue_t = ClosableThreadSet<std::tuple<int, score_tuple_t>>;
@@ -69,13 +67,12 @@ struct frame_reader_thread2_arguments{
     int threadid; int threadnum;
     std::vector<int>* frames_source;
     std::vector<int>* frames_encoded;
-    int width = -1; int height = -1; int widthEncoded = -1; int heightEncoded = -1;
     frame_queue_t* frame_queue; frame_pool_t* frame_buffer_pool;
 };
 
 void frame_reader_thread2(frame_reader_thread2_arguments args){
-    VideoManager v1(args.source_path, args.source_index, args.source_video_track_index, args.width, args.height);
-    VideoManager v2(args.encoded_path, args.encoded_index, args.encoded_video_track_index, args.widthEncoded, args.heightEncoded);
+    VideoManager v1(args.source_path, args.source_index, args.source_video_track_index);
+    VideoManager v2(args.encoded_path, args.encoded_index, args.encoded_video_track_index);
     frame_reader_thread(v1, v2, args.frames_source, args.frames_encoded, args.threadid, args.threadnum, *args.frame_queue, *args.frame_buffer_pool);
 }
 
@@ -83,6 +80,8 @@ void frame_worker_thread(frame_queue_t &input_queue,
                          frame_pool_t &frame_buffer_pool, GpuWorker &gpu_worker,
                          MetricType metric,
                          score_queue_t &output_score_queue,
+                         int64_t planeSize[3],
+                         int64_t planeSize2[3],
                          int* error) {
     while (!*error) {
         std::optional<std::tuple<int, uint8_t *, uint8_t *>> maybe_task =
@@ -94,7 +93,9 @@ void frame_worker_thread(frame_queue_t &input_queue,
 
         std::tuple<float, float, float> scores;
         try {
-            scores = gpu_worker.compute_metric_score(src_buffer, enc_buffer);
+            const uint8_t* src_buffer_planes[3] = {src_buffer, src_buffer+planeSize[0], src_buffer+planeSize[0]+planeSize[1]};
+            const uint8_t* enc_buffer_planes[3] = {enc_buffer, enc_buffer+planeSize2[0], enc_buffer+planeSize2[0]+planeSize2[1]};
+            scores = gpu_worker.compute_metric_score(src_buffer_planes, enc_buffer_planes);
         } catch (const VshipError &e) {
             std::cerr << " error: " << e.getErrorMessage() << std::endl;
             frame_buffer_pool.insert(src_buffer);
@@ -206,7 +207,7 @@ int main(int argc, char **argv) {
     }
 
     if (cli_args.version){
-        std::cout << "FFVship 3.1.0-b" << std::endl;
+        std::cout << "FFVship 4.0.0-a" << std::endl;
         std::cout << "Repository : https://github.com/Line-fr/Vship" << std::endl;
         #if defined __CUDACC__
         std::cout << "Cuda version" << std::endl;
@@ -256,19 +257,28 @@ int main(int argc, char **argv) {
     FFMSIndexResult source_index = FFMSIndexResult(cli_args.source_file, cli_args.source_index, cli_args.cache_index, !cli_args.live_index_score_output, !cli_args.live_index_score_output);
     FFMSIndexResult encode_index = FFMSIndexResult(cli_args.encoded_file, cli_args.encoded_index, cli_args.cache_index, !cli_args.live_index_score_output, !cli_args.live_index_score_output);
 
+    Vship_Colorspace_t source_colorspace;
+    Vship_Colorspace_t encoded_colorspace;
+
     //initiliaze first sources to get width and height
     VideoManager v1(cli_args.source_file, source_index.index,
                     source_index.selected_video_track);
     int width = v1.reader->frame_width, height = v1.reader->frame_height;
-    int strideSource = align_stride(width*sizeof(uint16_t));
+    source_colorspace = v1.colorspace;
 
     //we want that when cropped, the encoded video matches the cropped source.
     int cropResizeWidth = width - cli_args.cropSource.left - cli_args.cropSource.right + cli_args.cropEncoded.left + cli_args.cropEncoded.right;
     int cropResizeHeight = height - cli_args.cropSource.top - cli_args.cropSource.bottom + cli_args.cropEncoded.top + cli_args.cropEncoded.bottom;
-    int strideEncoded = align_stride(cropResizeWidth*sizeof(uint16_t));
 
     VideoManager v2(cli_args.encoded_file, encode_index.index,
-                    encode_index.selected_video_track, cropResizeWidth, cropResizeHeight);
+                    encode_index.selected_video_track);
+    encoded_colorspace = v2.colorspace;
+
+    source_colorspace.crop = cli_args.cropSource;
+    encoded_colorspace.crop = cli_args.cropEncoded;
+    encoded_colorspace.target_width = cropResizeWidth;
+    encoded_colorspace.target_height = cropResizeHeight;
+    //colorspaces should be complete
 
     //sanitize start_frame, end_frame, every_nth_frame and encoded_offset
     int start = cli_args.start_frame;
@@ -342,7 +352,7 @@ int main(int argc, char **argv) {
     for (unsigned int i = 0; i < num_frame_buffer; ++i) {
         //we allocate so that each frame may it be source or encoded can fit in
         //we use +1 for the stride because by offsetting left border, we might go to after the last line slighly. (so we allocate one more line to make it defined in memory)
-        frame_buffers.insert(GpuWorker::allocate_external_rgb_buffer(std::max((strideSource+1)*height, (strideEncoded+1)*cropResizeHeight)));
+        frame_buffers.insert(GpuWorker::allocate_external_rgb_buffer(std::max(v1.getBufferSize(), v2.getBufferSize())));
     }
 
     frame_pool_t frame_buffer_pool(frame_buffers);
@@ -362,7 +372,7 @@ int main(int argc, char **argv) {
 
     for (int i = 0; i < num_gpus; i++){
         //size of encoded version gets deduced by crops but stride needs to be given
-        gpu_workers.emplace_back(cli_args.metric, width, height, strideSource, strideEncoded, source_fps, cli_args.cropSource, cli_args.cropEncoded, cli_args.metricParam);
+        gpu_workers.emplace_back(cli_args.metric, source_colorspace, encoded_colorspace, v1.processor->unpack_stride, v2.processor->unpack_stride, source_fps, cli_args.metricParam);
     }
 
     std::vector<std::thread> reader_threads;
@@ -377,10 +387,6 @@ int main(int argc, char **argv) {
         reader_args.threadnum = cli_args.cpu_threads;
         reader_args.frames_source = &frames_source;
         reader_args.frames_encoded = &frames_encoded;
-        reader_args.width = width;
-        reader_args.height = height;
-        reader_args.widthEncoded = width;
-        reader_args.heightEncoded = height;
         reader_args.frame_queue = &frame_queue;
         reader_args.frame_buffer_pool = &frame_buffer_pool;
 
@@ -398,7 +404,9 @@ int main(int argc, char **argv) {
         workers.emplace_back(frame_worker_thread, std::ref(frame_queue),
                              std::ref(frame_buffer_pool),
                              std::ref(gpu_workers[i]), cli_args.metric,
-                             std::ref(score_queue), &error);
+                             std::ref(score_queue),
+                             v1.processor->unpack_stride, v2.processor->unpack_stride,
+                             &error);
     }
 
     const int score_vector_size = (cli_args.metric == MetricType::CVVDP || cli_args.metric == MetricType::SSIMULACRA2)
