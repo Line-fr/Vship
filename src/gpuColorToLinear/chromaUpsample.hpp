@@ -2,6 +2,8 @@
 
 namespace VshipColorConvert{
 
+//defined in resize.hpp
+/*
 class CubicHermitSplineInterpolator{
     float v1; float v2; float v3; float v4;
 public:
@@ -21,7 +23,7 @@ public:
         res += v4;
         return res;
     }
-};
+};*/
 
 __device__ CubicHermitSplineInterpolator getHorizontalInterpolator_device(float* src, int64_t x, int64_t y, int64_t width, int64_t height){ //width and height must be the one of source!!!!
     y = min(y, height-1);

@@ -69,6 +69,9 @@ typedef struct {
 typedef struct {
     int64_t width;
     int64_t height;
+    int64_t target_width = -1; //we can resize at the end of conversion
+    int64_t target_height = -1; //we can resize at the end of conversion
+    //final size is target_width - crop/target_height - crop (resize is applied before cropping)
     Vship_Sample_t sample = Vship_SampleUINT8;
     Vship_Range_t range = Vship_RangeLimited;
     Vship_ChromaSubsample_t subsampling = {1, 1};
