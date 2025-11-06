@@ -56,20 +56,21 @@ public:
     int64_t getHeight(){
         return height - source_colorspace.crop.top - source_colorspace.crop.bottom;
     }
-    void convert(float* out[3], const uint8_t *inp[3], int64_t stride){
+    void convert(float* out[3], const uint8_t *inp[3], const int lineSize[3]){
         
         float* preCropOut[3] = {mem_d, mem_d+width*height, mem_d+width*height*2};
         uint8_t* src_d = (uint8_t*)mem_d+3*width*height;
-        if (stride > sizeof(float)*width*2){
+        int maxstride = std::max(lineSize[0], lineSize[1], lineSize[2]);
+        if (maxstride > sizeof(float)*width*2){
             //we need to allocate another plane to export the current data to gpu
-            hipError_t erralloc = hipMallocAsync(&src_d, stride*height, stream);
+            hipError_t erralloc = hipMallocAsync(&src_d, maxstride*height, stream);
             if (erralloc != hipSuccess){
                 throw VshipError(OutOfVRAM, __FILE__, __LINE__);
             }
         }
         for (int i = 0; i < 3; i++){
-            hipMemcpyHtoDAsync(src_d, inp[i], stride*height, stream);
-            convertToFloatPlane(preCropOut[i], (uint8_t*)src_d, stride, width, height, source_colorspace.sample, source_colorspace.range, stream);
+            hipMemcpyHtoDAsync(src_d, inp[i], lineSize[i]*height, stream);
+            convertToFloatPlane(preCropOut[i], (uint8_t*)src_d, lineSize[i], width, height, source_colorspace.sample, source_colorspace.range, stream);
         }
         if (stride > sizeof(float)*width*2){
             hipFreeAsync(src_d, stream);
