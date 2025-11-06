@@ -6,6 +6,46 @@ namespace VshipColorConvert{
 template<Vship_Primaries_t T1, Vship_Primaries_t T2>
 __device__ float3 inline primariesToPrimaries_device(float3 a);
 
+//http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
+//https://en.wikipedia.org/wiki/PAL
+template<>
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_BT470_BG, Vship_PRIMARIES_INTERNAL>(float3 a){
+    float3 res;
+    res.x = fmaf(a.x, 0.4305f, fmaf(a.y, 0.3416f, a.z*0.1783f));
+    res.y = fmaf(a.x, 0.2220f, fmaf(a.y, 0.7067f, a.z*0.07132f));
+    res.z = fmaf(a.x, 0.0202f, fmaf(a.y, 0.1296f, a.z*0.9391f));
+    return res;
+}
+
+template<>
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, Vship_PRIMARIES_BT470_BG>(float3 a){
+    float3 res;
+    res.x = fmaf(a.x, 3.064f, fmaf(a.y, -1.3935f, -a.z*0.4758f));
+    res.y = fmaf(a.x, -0.9692f, fmaf(a.y, 1.876f, a.z*0.04155f));
+    res.z = fmaf(a.x, 0.06788f, fmaf(a.y, -0.2289f, a.z*1.069f));
+    return res;
+}
+
+//http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
+//https://en.wikipedia.org/wiki/PAL
+template<>
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_BT470_M, Vship_PRIMARIES_INTERNAL>(float3 a){
+    float3 res;
+    res.x = fmaf(a.x, 0.6068f, fmaf(a.y, 0.1735f, a.z*0.2003f));
+    res.y = fmaf(a.x, 0.2989f, fmaf(a.y, 0.5866f, a.z*0.1145f));
+    res.z = fmaf(a.x, 0.f, fmaf(a.y, 0.06609f, a.z*1.116f));
+    return res;
+}
+
+template<>
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, Vship_PRIMARIES_BT470_M>(float3 a){
+    float3 res;
+    res.x = fmaf(a.x, 1.910f, fmaf(a.y, -0.5324f, -a.z*0.2882f));
+    res.y = fmaf(a.x, -0.9846f, fmaf(a.y, 1.999f, -a.z*0.02831f));
+    res.z = fmaf(a.x, 0.05831f, fmaf(a.y, -0.1184f, a.z*0.8976f));
+    return res;
+}
+
 //https://www.itu.int/dms_pub/itu-r/opb/rep/R-REP-BT.2407-2017-PDF-E.pdf
 template<>
 __device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_BT709, Vship_PRIMARIES_INTERNAL>(float3 a){
@@ -90,6 +130,12 @@ void inline primariesToPrimaries_template1(float* p0, float* p1, float* p2, int6
         case Vship_PRIMARIES_BT709:
             primariesToPrimaries_allTemplate<Vship_PRIMARIES_BT709, T2>(p0, p1, p2, width, stream);
             break;
+        case Vship_PRIMARIES_BT470_BG:
+            primariesToPrimaries_allTemplate<Vship_PRIMARIES_BT470_BG, T2>(p0, p1, p2, width, stream);
+            break;
+        case Vship_PRIMARIES_BT470_M:
+            primariesToPrimaries_allTemplate<Vship_PRIMARIES_BT470_M, T2>(p0, p1, p2, width, stream);
+            break;
         case Vship_PRIMARIES_BT2020:
             primariesToPrimaries_allTemplate<Vship_PRIMARIES_BT2020, T2>(p0, p1, p2, width, stream);
             break;
@@ -104,6 +150,12 @@ void inline primariesToPrimaries(float* p0, float* p1, float* p2, int64_t width,
             break;
         case Vship_PRIMARIES_BT709:
             primariesToPrimaries_template1<Vship_PRIMARIES_BT709>(p0, p1, p2, width, src_primary, stream);
+            break;
+        case Vship_PRIMARIES_BT470_BG:
+            primariesToPrimaries_template1<Vship_PRIMARIES_BT470_BG>(p0, p1, p2, width, src_primary, stream);
+            break;
+        case Vship_PRIMARIES_BT470_M:
+            primariesToPrimaries_template1<Vship_PRIMARIES_BT470_M>(p0, p1, p2, width, src_primary, stream);
             break;
         case Vship_PRIMARIES_BT2020:
             primariesToPrimaries_template1<Vship_PRIMARIES_BT2020>(p0, p1, p2, width, src_primary, stream);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../util/float3operations.hpp"
+
 //define enums for colorspaces
 #include "../VshipColor.h"
 

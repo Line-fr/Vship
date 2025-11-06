@@ -236,6 +236,15 @@ void YUVToLinRGBPipeline(float* p0, float* p1, float* p2, int64_t width, Vship_Y
         case Vship_TRC_Linear:
             YUVToLinRGBPipeline_templateTransfer<Vship_TRC_Linear>(p0, p1, p2, width, matrix, stream);
             break;
+        case Vship_TRC_BT470_BG:
+            YUVToLinRGBPipeline_templateTransfer<Vship_TRC_BT470_BG>(p0, p1, p2, width, matrix, stream);
+            break;
+        case Vship_TRC_BT470_M:
+            YUVToLinRGBPipeline_templateTransfer<Vship_TRC_BT470_M>(p0, p1, p2, width, matrix, stream);
+            break;
+        case Vship_TRC_BT601:
+            YUVToLinRGBPipeline_templateTransfer<Vship_TRC_BT601>(p0, p1, p2, width, matrix, stream);
+            break;
         case Vship_TRC_sRGB:
             YUVToLinRGBPipeline_templateTransfer<Vship_TRC_sRGB>(p0, p1, p2, width, matrix, stream);
             break;

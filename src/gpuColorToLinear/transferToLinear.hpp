@@ -125,16 +125,20 @@ __device__ inline void gamma_to_linrgbfunc(float& a, float gamma){
     }
 }
 
-/*
 template <>
-__device__ void inline transferLinearize<AVCOL_TRC_GAMMA22>(float& a){
+__device__ void inline transferLinearize<Vship_TRC_BT470_M>(float& a){
     gamma_to_linrgbfunc(a, 2.2f);
 }
 
 template <>
-__device__ void inline transferLinearize<AVCOL_TRC_GAMMA28>(float& a){
+__device__ void inline transferLinearize<Vship_TRC_BT470_BG>(float& a){
     gamma_to_linrgbfunc(a, 2.8f);
-}*/
+}
+
+template <>
+__device__ void inline transferLinearize<Vship_TRC_BT601>(float& a){
+    gamma_to_linrgbfunc(a, 2.8f);
+}
 
 //source https://github.com/haasn/libplacebo/blob/master/src/shaders/colorspace.c (14/05/2025 line 670)
 template <>

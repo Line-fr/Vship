@@ -41,6 +41,9 @@ enum Vship_YUVMatrix_t{
 
 enum Vship_TransferFunction_t{
     Vship_TRC_BT709 = 1,
+    Vship_TRC_BT470_M = 4,
+    Vship_TRC_BT470_BG = 5,
+    Vship_TRC_BT601 = 6, //same as 5
     Vship_TRC_Linear = 8,
     Vship_TRC_sRGB = 13,
     Vship_TRC_PQ = 16,
@@ -51,6 +54,8 @@ enum Vship_TransferFunction_t{
 enum Vship_Primaries_t{
     Vship_PRIMARIES_INTERNAL = -1, //corresponds to XYZ really
     Vship_PRIMARIES_BT709 = 1,
+    Vship_PRIMARIES_BT470_M = 4,
+    Vship_PRIMARIES_BT470_BG = 5,
     Vship_PRIMARIES_BT2020 = 9,
 };
 
@@ -62,6 +67,8 @@ typedef struct {
 } Vship_CropRectangle_t;
 
 typedef struct {
+    int64_t width;
+    int64_t height;
     Vship_Sample_t sample = Vship_SampleUINT8;
     Vship_Range_t range = Vship_RangeLimited;
     Vship_ChromaSubsample_t subsampling = {1, 1};
