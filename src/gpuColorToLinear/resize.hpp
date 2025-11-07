@@ -43,6 +43,7 @@ __global__ void horizontalResizeTranspose_Kernel(float* dst, float* src, int64_t
     const float res = interpolator.get(approx_source_x - (float)x_oriBase);
 
     //dst is transposed
+    //if (thid == 0) printf("horizontalTranspose: %f, height %lld\n", res, source_height);
     dst[x*source_height+y] = res;
 }
 
@@ -51,6 +52,11 @@ void resizePlane(float* dest, float* temp, float* src, int64_t source_width, int
     int th_x = 256;
     int64_t bl1_x = (resize_width*source_height + th_x-1)/th_x;
     int64_t bl2_x = (resize_width*resize_height + th_x-1)/th_x;
+
+    if (source_width == resize_width && source_height == resize_height){
+        hipMemcpyDtoDAsync(dest, src, sizeof(float)*source_width*source_height, stream);
+        return;
+    }
 
     horizontalResizeTranspose_Kernel<<<dim3(bl1_x), dim3(th_x), 0, stream>>>(temp, src, source_width, source_height, resize_width);
     horizontalResizeTranspose_Kernel<<<dim3(bl2_x), dim3(th_x), 0, stream>>>(dest, temp, source_height, resize_width, resize_height);

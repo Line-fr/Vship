@@ -159,11 +159,11 @@ __host__ int inline upsample(float* temp, float* src[3], int64_t width, int64_t 
             if (subw == 0){
             } else if (subw == 1){
                 bicubicHorizontalLeftUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
-                bicubicHorizontalLeftUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp+width*height, src[2], width, height);
+                bicubicHorizontalLeftUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp+2*width*height, src[2], width, height);
                 width *= 2;
             } else if (subw == 2){
                 bicubicHorizontalLeftUpscaleX4_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
-                bicubicHorizontalLeftUpscaleX4_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp+width*height, src[2], width, height);
+                bicubicHorizontalLeftUpscaleX4_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp+4*width*height, src[2], width, height);
                 width *= 4;
             } else {
                 return 1; //not implemented
@@ -174,11 +174,11 @@ __host__ int inline upsample(float* temp, float* src[3], int64_t width, int64_t 
             if (subw == 0){
             } else if (subw == 1){
                 bicubicHorizontalCenterUpscaleX2_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
-                bicubicHorizontalCenterUpscaleX2_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp+width*height, src[2], width, height);
+                bicubicHorizontalCenterUpscaleX2_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp+2*width*height, src[2], width, height);
                 width *= 2;
             } else if (subw == 2){
                 bicubicHorizontalCenterUpscaleX4_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
-                bicubicHorizontalCenterUpscaleX4_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp+width*height, src[2], width, height);
+                bicubicHorizontalCenterUpscaleX4_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp+4*width*height, src[2], width, height);
                 width *= 4;
             } else {
                 return 1; //not implemented
