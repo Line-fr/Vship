@@ -133,7 +133,7 @@ class CVVDPComputingImplementation{
     float fps = 0;
     //std::vector<float> all_scores; //for past frames
     int numFrame = 0;
-    double score_squareSum; //to avoid recomputing it all the time
+    double score_squareSum = 0; //to avoid recomputing it all the time
     TemporalRing temporalRing1; //source
     TemporalRing temporalRing2; //encoded
     CSF_Handler csf_handler;
@@ -176,6 +176,8 @@ public:
         temporalRing2.init(fps, resize_width, resize_height);
         csf_handler.init(resize_width, resize_height, model->get_screen_ppd());
         gaussianhandle.init();
+        score_squareSum = 0;
+        numFrame = 0;
 
         hipStreamCreate(&stream1);
         hipStreamCreate(&stream2);
