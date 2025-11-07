@@ -27,6 +27,9 @@ class Converter{
     int64_t height;
     hipStream_t stream;
     float* mem_d = NULL;
+
+    bool isCropped;
+    bool isResized;
 public:
     Converter() = default;
     //width and height are of the input (before crop)
@@ -37,11 +40,17 @@ public:
         this->destination = destination;
         this->stream = stream;
 
-        int maxplaneBuffer = 2;
+        isCropped = true;
+        if (colorspace.crop.top == 0 && colorspace.crop.bottom == 0 && colorspace.crop.left == 0 && colorspace.crop.right == 0) isCropped = false;
+
         if (colorspace.target_width == -1) source_colorspace.target_width = colorspace.width;
         if (colorspace.target_height == -1) source_colorspace.target_height = colorspace.height;
+        isResized = true;
+        if (source_colorspace.target_width == colorspace.width && source_colorspace.target_height == colorspace.height) isResized = false;
         int64_t maxWidth = std::max(source_colorspace.target_width, source_colorspace.width);
         int64_t maxHeight= std::max(source_colorspace.target_height, source_colorspace.height);
+        
+        int maxplaneBuffer = 2;
         hipError_t erralloc = hipMalloc(&mem_d, sizeof(float)*width*height*3 + sizeof(float)*maxWidth*maxHeight*maxplaneBuffer);
         if (erralloc != hipSuccess){
             throw VshipError(OutOfVRAM, __FILE__, __LINE__);
@@ -73,9 +82,12 @@ public:
                 throw VshipError(OutOfVRAM, __FILE__, __LINE__);
             }
         }
+        //before chroma upsampling
+        const int64_t plane_widths[3] = {width, width >> source_colorspace.subsampling.subw, width >> source_colorspace.subsampling.subw};
+        const int64_t plane_heights[3] = {height, height >> source_colorspace.subsampling.subh, height >> source_colorspace.subsampling.subh};
         for (int i = 0; i < 3; i++){
-            hipMemcpyHtoDAsync(src_d, inp[i], lineSize[i]*height, stream);
-            convertToFloatPlane(preCropOut[i], (uint8_t*)src_d, lineSize[i], width, height, source_colorspace.sample, source_colorspace.range, stream);
+            hipMemcpyHtoDAsync(src_d, inp[i], lineSize[i]*plane_heights[i], stream);
+            convertToFloatPlane(preCropOut[i], (uint8_t*)src_d, lineSize[i], plane_widths[i], plane_heights[i], source_colorspace.sample, source_colorspace.range, stream);
         }
         if (maxstride*height > sizeof(float)*maxWidth*maxHeight*2){
             hipFreeAsync(src_d, stream);

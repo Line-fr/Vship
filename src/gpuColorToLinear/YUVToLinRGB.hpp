@@ -88,6 +88,7 @@ __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT709>(float3 val)
     constexpr float Kr = 0.2126f;
     constexpr float Kb = 0.0722f;
     constexpr float Kg = 1.f - Kr - Kb;
+
     //Cb => B'
     val.y = val.x + 2.f*val.y*(1-Kb);
     //Cr => R'
@@ -112,6 +113,7 @@ __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT470_BG>(float3 v
     constexpr float Kr = 0.299f;
     constexpr float Kb = 0.114f;
     constexpr float Kg = 1.f - Kr - Kb;
+
     //Cb => B'
     val.y = val.x + 2.f*val.y*(1-Kb);
     //Cr => R'
@@ -187,6 +189,7 @@ __global__ void YUVToLinRGBPipeline_Kernel(float* p0, float* p1, float* p2, int6
     float3 val = {p0[x], p1[x], p2[x]};
 
     val = YUVToLinRGBPipeline_Device<matrix, transfer>(val);
+    //if (x == 0) printf("before YUVtoLinRGB: %f %f %f, after: %f %f %f\n", p0[x], p1[x], p2[x], val.x, val.y, val.z);
 
     p0[x] = val.x;
     p1[x] = val.y;

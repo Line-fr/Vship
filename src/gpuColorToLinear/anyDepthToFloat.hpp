@@ -69,8 +69,8 @@ __global__ void convertToFloatPlane_Kernel(float* output_plane, const uint8_t* c
     if (x >= width*height) return;
 
     float val = PickValue<SampleType>(source_plane, x, stride, width);
+    //if (x == 0) printf("val : %f\n", val);
     val = FullRange<Range, SampleType>(val);
-    //if (x == 900000) printf("val : %f\n", val);
     output_plane[x] = val;
 }
 

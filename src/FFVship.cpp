@@ -405,7 +405,7 @@ int main(int argc, char **argv) {
                              std::ref(frame_buffer_pool),
                              std::ref(gpu_workers[i]), cli_args.metric,
                              std::ref(score_queue),
-                             v1.processor->unpack_stride, v2.processor->unpack_stride,
+                             v1.processor->planeSizeUnpack, v2.processor->planeSizeUnpack,
                              &error);
     }
 

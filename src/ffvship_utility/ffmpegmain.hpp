@@ -470,8 +470,8 @@ class BasicConverterProcessor {
     void unpack(const FFMS_Frame *src, uint8_t* unpack_buffer[3]){
         if (!require_unpack){
             memcpy(unpack_buffer[0], src->Data[0], planeSizeUnpack[0]);
-            memcpy(unpack_buffer[0], src->Data[0], planeSizeUnpack[1]);
-            memcpy(unpack_buffer[0], src->Data[0], planeSizeUnpack[2]);
+            memcpy(unpack_buffer[1], src->Data[1], planeSizeUnpack[1]);
+            memcpy(unpack_buffer[2], src->Data[2], planeSizeUnpack[2]);
             return;
         }
         switch (src_pixfmt){
