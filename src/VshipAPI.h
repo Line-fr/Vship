@@ -1,7 +1,7 @@
 #ifndef VSHIP_API_HEADER
 #define VSHIP_API_HEADER
 
-#include "VshipColor.h"
+//#include "VshipColor.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -119,9 +119,9 @@ typedef struct{
 } Vship_ButteraugliHandler;
 
 typedef struct{
-    int norm2;
-    int norm3;
-    int norminf;
+    double norm2;
+    double norm3;
+    double norminf;
 } Vship_ButteraugliScore;
 
 //handler pointer will be replaced, it is a return value. Don't forget to free it after usage.

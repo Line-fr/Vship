@@ -17,7 +17,7 @@ enum Vship_Range_t{
     Vship_RangeFull = 1,
 };
 
-typedef struct {
+typedef struct Vship_ChromaSubsample_t {
     int subw = 0;
     int subh = 0;
 } Vship_ChromaSubsample_t;
@@ -59,7 +59,7 @@ enum Vship_Primaries_t{
     Vship_PRIMARIES_BT2020 = 9,
 };
 
-typedef struct {
+typedef struct Vship_CropRectangle_t {
     int top = 0;
     int bottom = 0;
     int left = 0;
