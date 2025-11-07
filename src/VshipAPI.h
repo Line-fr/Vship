@@ -68,7 +68,7 @@ EXPORTPREPROCESS Vship_Exception Vship_GetDeviceCount(int* number);
 EXPORTPREPROCESS Vship_Exception Vship_SetDevice(int gpu_id);
 
 //more features might be added later on in this struct
-typedef struct{
+typedef struct Vship_DeviceInfo{
     char name[256];
     uint64_t VRAMSize; //size in bytes
     int integrated; //iGPU? (boolean)
@@ -88,7 +88,7 @@ EXPORTPREPROCESS int Vship_GetErrorMessage(Vship_Exception exception, char* out_
 //for maximum throughput, it is recommend to use 3 SSIMU2Handler with each a thread to use in parallel
 //is only an id to refer to an object in an array in the API dll.
 //this is because the original object contains types that are not represented without hip and the original code.
-typedef struct{
+typedef struct Vship_SSIMU2Handler{
     int id;
 } Vship_SSIMU2Handler;
 
@@ -114,11 +114,11 @@ EXPORTPREPROCESS Vship_Exception Vship_ComputeSSIMU2Uint16(Vship_SSIMU2Handler h
 
 EXPORTPREPROCESS Vship_Exception Vship_ComputeSSIMU2Uint16v2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
 
-typedef struct{
+typedef struct Vship_ButteraugliHandler{
     int id;
 } Vship_ButteraugliHandler;
 
-typedef struct{
+typedef struct Vship_ButteraugliScore{
     double norm2;
     double norm3;
     double norminf;
@@ -151,7 +151,7 @@ EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugliUint16(Vship_Butteraugl
 
 EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugliUint16v2(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
 
-typedef struct{
+typedef struct Vship_CVVDPHandler{
     int id;
 } Vship_CVVDPHandler;
 
