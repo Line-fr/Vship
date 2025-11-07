@@ -487,7 +487,7 @@ int main(int argc, char **argv) {
 
     // console output
     std::cout << (cli_args.metric == MetricType::Butteraugli ? "Butteraugli"
-                                                             : ((cli_args.metric == MetricType::CVVDP) ? "SSIMU2" : "CVVDP"))
+                                                             : ((cli_args.metric == MetricType::CVVDP) ? "CVVDP" : "SSIMU2"))
               << " Result between " << cli_args.source_file << " and "
               << cli_args.encoded_file << std::endl;
     std::cout << "Computed " << num_frames << " frames at " << fps << " fps\n"
