@@ -4,6 +4,19 @@
 
 namespace VshipColorConvert{
 
+__device__ float3 inline ncl_yuv_to_rgb_from_kr_kb(float3 val, const float Kr, const float Kb){
+    const float Kg = 1.f-Kb-Kr;
+    const float uscale = 0.5f/(1.f-Kb);
+    const float vscale = 0.5f/(1.f-Kr);
+
+    float3 res;
+    res.x = (val.z + val.x * vscale)/(vscale*Kr + 0.5f);
+    res.z = (val.y + val.x * uscale)/(uscale*Kb + 0.5f);
+    res.y = (val.x - Kr*res.x - Kb*res.z)/Kg;
+
+    return res;
+}
+
 template <Vship_YUVMatrix_t matrix>
 __device__ float3 inline linearLightYUVConversion(float3 val);
 
@@ -56,13 +69,7 @@ __device__ float3 inline linearLightYUVConversion<Vship_MATRIX_BT2020_CL>(float3
     constexpr float Kb = 0.0593f;
     constexpr float Kg = 1.f - Kr - Kb;
 
-    //at this point we have YcBR, we need RGB
-    const float Y = val.x;
-    //put R and B at the right place
-    val.x = val.z;
-    val.z = val.y;
-    //restore G from Y, R and B
-    val.y = (Y - Kr*val.x - Kb*val.z)/Kg;
+    val.y = (val.y - Kr*val.x - Kb*val.z)/Kg;
 
     return val;
 }
@@ -74,37 +81,24 @@ __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT2020_CL>(float3 
     constexpr float Kb = 0.0593f;
     //constexpr float Kg = 1.f - Kr - Kb;
     //we got YcCbcCrc right now
-    //Cbc => B'
-    val.y = val.x + 2.f*val.y*(1-Kb);
-    //Crc => R'
-    val.z = val.x + 2.f*val.z*(1-Kr);
+    const float uscale = 0.5f/(1.f-Kb);
+    const float vscale = 0.5f/(1.f-Kr);
+
+    float3 res;
+    res.x = (val.z + val.x * vscale)/(vscale*Kr + 0.5f);
+    res.z = (val.y + val.x * uscale)/(uscale*Kb + 0.5f);
+    res.y = val.x;
 
     //then we apply the inverse of transfer function to go from Yc'B'R' -> YcBR
-    return val;
+    return res;
 }
 
 template <>
 __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT709>(float3 val){
     constexpr float Kr = 0.2126f;
     constexpr float Kb = 0.0722f;
-    constexpr float Kg = 1.f - Kr - Kb;
 
-    //Cb => B'
-    val.y = val.x + 2.f*val.y*(1-Kb);
-    //Cr => R'
-    val.z = val.x + 2.f*val.z*(1-Kr);
-
-    //is currently Y'
-    float Y = val.x;
-    
-    //replace B' and R' to the R'G'B' placement
-    val.x = val.z;
-    val.z = val.y;
-
-    //then we deduce G' from Y' R' and B'
-    val.y = (Y - Kr*val.x - Kb*val.z)/Kg;
-
-    return val;
+    return ncl_yuv_to_rgb_from_kr_kb(val, Kr, Kb);
 }
 
 //source https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.601-7-201103-I!!PDF-E.pdf
@@ -112,24 +106,8 @@ template <>
 __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT470_BG>(float3 val){
     constexpr float Kr = 0.299f;
     constexpr float Kb = 0.114f;
-    constexpr float Kg = 1.f - Kr - Kb;
 
-    //Cb => B'
-    val.y = val.x + 2.f*val.y*(1-Kb);
-    //Cr => R'
-    val.z = val.x + 2.f*val.z*(1-Kr);
-
-    //is currently Y'
-    float Y = val.x;
-    
-    //replace B' and R' to the R'G'B' placement
-    val.x = val.z;
-    val.z = val.y;
-
-    //then we deduce G' from Y' R' and B'
-    val.y = (Y - Kr*val.x - Kb*val.z)/Kg;
-
-    return val;
+    return ncl_yuv_to_rgb_from_kr_kb(val, Kr, Kb);
 }
 
 template <>
@@ -142,24 +120,8 @@ template <>
 __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT2020_NCL>(float3 val){
     constexpr float Kr = 0.2627f;
     constexpr float Kb = 0.0593f;
-    constexpr float Kg = 1.f - Kr - Kb;
-    //we got YcCbcCrc right now
-    //Cbc => B'
-    val.y = val.x + 2.f*val.y*(1-Kb);
-    //Crc => R'
-    val.z = val.x + 2.f*val.z*(1-Kr);
 
-    //is currently Y'
-    float Y = val.x;
-    
-    //replace B' and R' to the R'G'B' placement
-    val.x = val.z;
-    val.z = val.y;
-
-    //then we deduce G' from Y' R' and B'
-    val.y = (Y - Kr*val.x - Kb*val.z)/Kg;
-    
-    return val;
+    return ncl_yuv_to_rgb_from_kr_kb(val, Kr, Kb);
 }
 
 //default is identity
@@ -189,7 +151,7 @@ __global__ void YUVToLinRGBPipeline_Kernel(float* p0, float* p1, float* p2, int6
     float3 val = {p0[x], p1[x], p2[x]};
 
     val = YUVToLinRGBPipeline_Device<matrix, transfer>(val);
-    //if (x == 0) printf("before YUVtoLinRGB: %f %f %f, after: %f %f %f\n", p0[x], p1[x], p2[x], val.x, val.y, val.z);
+    //if (x == 0) printf("at x=%lld, before YUVtoLinRGB: %f %f %f, after: %f %f %f\n", x, p0[x], p1[x], p2[x], val.x, val.y, val.z);
 
     p0[x] = val.x;
     p1[x] = val.y;
