@@ -30,9 +30,9 @@ __device__ CubicHermitSplineInterpolator getHorizontalInterpolator_device(float*
     x = min(x, width); //extra space beware
 
     const float elm1 = (x == 0) ? src[y*width] : src[y*width+x-1];
-    const float el0 = (x == width) ? src[y*width+width-1] : src[y*width+x];
-    const float el1 = (x == width-1) ? el0 : src[y*width+x+1];
-    const float el2 = (x == width-1) ? el1 : src[y*width+x+2];
+    const float el0 = (x == width) ? elm1 : src[y*width+x];
+    const float el1 = (x >= width-1) ? el0 : src[y*width+x+1];
+    const float el2 = (x >= width-2) ? el1 : src[y*width+x+2];
 
     return CubicHermitSplineInterpolator(el0, (el1 - elm1)/2, el1, (el2 - el0)/2);
 }
@@ -42,9 +42,9 @@ __device__ CubicHermitSplineInterpolator getVerticalInterpolator_device(float* s
     x = min(x, width-1);
 
     const float elm1 = (y == 0) ? src[x] : src[(y-1)*width+x];
-    const float el0 = (y == height) ? src[(height-1)*width + x] : src[y*height+x];
-    const float el1 = (y == height-1) ? el0 : src[(y+1)*height+x];
-    const float el2 = (y == height-2) ? el1 : src[(y+2)*height+x];
+    const float el0 = (y == height) ? elm1 : src[y*height+x];
+    const float el1 = (y >= height-1) ? el0 : src[(y+1)*height+x];
+    const float el2 = (y >= height-2) ? el1 : src[(y+2)*height+x];
 
     return CubicHermitSplineInterpolator(el0, (el1 - elm1)/2, el1, (el2 - el0)/2);
 }
@@ -148,8 +148,8 @@ __host__ int inline upsample(float* temp, float* src[3], int64_t width, int64_t 
     height >>= subh; 
     const int thx = 16;
     const int thy = 16;
-    const int blx1 = (width + thx-1)/thx;
-    const int blx2 = (width+1 + thx-1)/thx;
+    int blx1 = (width + thx-1)/thx; //will change after upsampling of horizontal
+    int blx2 = (width+1 + thx-1)/thx; //will change after upsampling of horizontal
     const int bly1 = (height + thy-1)/thy;
     const int bly2 = (height+1 + thy-1)/thy;
 
@@ -187,6 +187,14 @@ __host__ int inline upsample(float* temp, float* src[3], int64_t width, int64_t 
         default:
             if (subw != 0) return 1; //not implemented
     }
+
+    if (subh == 0){
+        hipMemcpyDtoDAsync(src[1], temp, sizeof(float)*width*height, stream);
+        hipMemcpyDtoDAsync(src[2], temp+width*height, sizeof(float)*width*height, stream);
+    }
+
+    blx1 = (width + thx-1)/thx;
+    blx2 = (width+1 + thx-1)/thx;
 
     switch (location){
         case (Vship_ChromaLoc_Top):
