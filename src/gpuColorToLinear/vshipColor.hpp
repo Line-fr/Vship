@@ -87,7 +87,7 @@ public:
         const int64_t plane_heights[3] = {height, height >> source_colorspace.subsampling.subh, height >> source_colorspace.subsampling.subh};
         for (int i = 0; i < 3; i++){
             hipMemcpyHtoDAsync(src_d, inp[i], lineSize[i]*plane_heights[i], stream);
-            convertToFloatPlane(preCropOut[i], (uint8_t*)src_d, lineSize[i], plane_widths[i], plane_heights[i], source_colorspace.sample, source_colorspace.range, stream);
+            convertToFloatPlane(preCropOut[i], (uint8_t*)src_d, lineSize[i], plane_widths[i], plane_heights[i], source_colorspace.sample, source_colorspace.range, source_colorspace.colorFamily, (bool)(i != 0), stream);
         }
         if (maxstride*height > sizeof(float)*maxWidth*maxHeight*2){
             hipFreeAsync(src_d, stream);

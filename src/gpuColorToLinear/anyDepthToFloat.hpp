@@ -63,66 +63,73 @@ __device__ float inline PickValue<Vship_SampleUINT16>(const uint8_t* const sourc
     return (float)(((uint16_t*)(source_plane+line*stride))[column]) / 65535.f;
 }
 
-template<Vship_Range_t Range, Vship_Sample_t SampleType>
+template<Vship_Sample_t SampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam, bool chromaPlane>
 __global__ void convertToFloatPlane_Kernel(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height){
     const int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
     if (x >= width*height) return;
 
     float val = PickValue<SampleType>(source_plane, x, stride, width);
     //if (x == 0) printf("val : %f\n", val);
-    val = FullRange<Range, SampleType>(val);
+    val = FullRange<Range, ColorFam, chromaPlane>(val);
     output_plane[x] = val;
 }
 
-template<Vship_Range_t Range, Vship_Sample_t SampleType>
+template<Vship_Sample_t SampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam, bool chromaPlane>
 __host__ void inline convertToFloatPlaneTemplate(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height, hipStream_t stream){
     const int thx = 256;
     const int blx = (width*height + thx -1)/thx;
-    convertToFloatPlane_Kernel<Range, SampleType><<<dim3(blx), dim3(thx), 0, stream>>>(output_plane, source_plane, stride, width, height);
+    convertToFloatPlane_Kernel<SampleType, Range, ColorFam, chromaPlane><<<dim3(blx), dim3(thx), 0, stream>>>(output_plane, source_plane, stride, width, height);
 }
 
-template<Vship_Range_t Range>
-__host__ bool inline convertToFloatPlaneTemplateRange(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height, Vship_Sample_t T, hipStream_t stream){
-    switch (T){
-        case Vship_SampleFLOAT:
-            convertToFloatPlaneTemplate<Range, Vship_SampleFLOAT>(output_plane, source_plane, stride, width, height, stream);
-            break;
-        case Vship_SampleHALF:
-            convertToFloatPlaneTemplate<Range, Vship_SampleHALF>(output_plane, source_plane, stride, width, height, stream);
-            break;
-        case Vship_SampleUINT8:
-            convertToFloatPlaneTemplate<Range, Vship_SampleUINT8>(output_plane, source_plane, stride, width, height, stream);
-            break;
-        case Vship_SampleUINT9:
-            convertToFloatPlaneTemplate<Range, Vship_SampleUINT9>(output_plane, source_plane, stride, width, height, stream);
-            break;
-        case Vship_SampleUINT10:
-            convertToFloatPlaneTemplate<Range, Vship_SampleUINT10>(output_plane, source_plane, stride, width, height, stream);
-            break;
-        case Vship_SampleUINT12:
-            convertToFloatPlaneTemplate<Range, Vship_SampleUINT12>(output_plane, source_plane, stride, width, height, stream);
-            break;
-        case Vship_SampleUINT14:
-            convertToFloatPlaneTemplate<Range, Vship_SampleUINT14>(output_plane, source_plane, stride, width, height, stream);
-            break;
-        case Vship_SampleUINT16:
-            convertToFloatPlaneTemplate<Range, Vship_SampleUINT16>(output_plane, source_plane, stride, width, height, stream);
-            break;
-        default:
-            return 1;
+template<Vship_Sample_t SampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam>
+__host__ void inline convertToFloatPlaneTemplate1(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height, bool chromaPlane, hipStream_t stream){
+    switch (chromaPlane){
+        case true:
+            return convertToFloatPlaneTemplate<SampleType, Range, ColorFam, true>(output_plane, source_plane, stride, width, height, stream);
+        case false:
+            return convertToFloatPlaneTemplate<SampleType, Range, ColorFam, false>(output_plane, source_plane, stride, width, height, stream);
     }
-    return 0;
+}
+
+template<Vship_Sample_t SampleType, Vship_Range_t Range>
+__host__ void inline convertToFloatPlaneTemplate2(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height, Vship_ColorFamily_t colorFam, bool chromaPlane, hipStream_t stream){
+    switch (colorFam){
+        case Vship_ColorRGB:
+            return convertToFloatPlaneTemplate1<SampleType, Range, Vship_ColorRGB>(output_plane, source_plane, stride, width, height, chromaPlane, stream);
+        case Vship_ColorYUV:
+            return convertToFloatPlaneTemplate1<SampleType, Range, Vship_ColorYUV>(output_plane, source_plane, stride, width, height, chromaPlane, stream);
+    }
+}
+
+template<Vship_Sample_t SampleType>
+__host__ void inline convertToFloatPlaneTemplate3(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height, Vship_Range_t range, Vship_ColorFamily_t colorFam, bool chromaPlane, hipStream_t stream){
+    switch (range){
+        case Vship_RangeFull:
+            return convertToFloatPlaneTemplate2<SampleType, Vship_RangeFull>(output_plane, source_plane, stride, width, height, colorFam, chromaPlane, stream);
+        case Vship_RangeLimited:
+            return convertToFloatPlaneTemplate2<SampleType, Vship_RangeLimited>(output_plane, source_plane, stride, width, height, colorFam, chromaPlane, stream);
+    }
 }
 
 //it eliminates stride as well
-__host__ bool inline convertToFloatPlane(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height, Vship_Sample_t T, Vship_Range_t Range, hipStream_t stream){
-    switch (Range){
-        case Vship_RangeFull:
-            return convertToFloatPlaneTemplateRange<Vship_RangeFull>(output_plane, source_plane, stride, width, height, T, stream);
-        case Vship_RangeLimited:
-            return convertToFloatPlaneTemplateRange<Vship_RangeLimited>(output_plane, source_plane, stride, width, height, T, stream);
-        default:
-            return 1;
+__host__ void inline convertToFloatPlane(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height, Vship_Sample_t sampleType, Vship_Range_t range, Vship_ColorFamily_t colorFam, bool chromaPlane, hipStream_t stream){
+    switch (sampleType){
+        case Vship_SampleFLOAT:
+            return convertToFloatPlaneTemplate3<Vship_SampleFLOAT>(output_plane, source_plane, stride, width, height, range, colorFam, chromaPlane, stream);
+        case Vship_SampleHALF:
+            return convertToFloatPlaneTemplate3<Vship_SampleHALF>(output_plane, source_plane, stride, width, height, range, colorFam, chromaPlane, stream);
+        case Vship_SampleUINT8:
+            return convertToFloatPlaneTemplate3<Vship_SampleUINT8>(output_plane, source_plane, stride, width, height, range, colorFam, chromaPlane, stream);
+        case Vship_SampleUINT9:
+            return convertToFloatPlaneTemplate3<Vship_SampleUINT9>(output_plane, source_plane, stride, width, height, range, colorFam, chromaPlane, stream);
+        case Vship_SampleUINT10:
+            return convertToFloatPlaneTemplate3<Vship_SampleUINT10>(output_plane, source_plane, stride, width, height, range, colorFam, chromaPlane, stream);
+        case Vship_SampleUINT12:
+            return convertToFloatPlaneTemplate3<Vship_SampleUINT12>(output_plane, source_plane, stride, width, height, range, colorFam, chromaPlane, stream);
+        case Vship_SampleUINT14:
+            return convertToFloatPlaneTemplate3<Vship_SampleUINT14>(output_plane, source_plane, stride, width, height, range, colorFam, chromaPlane, stream);
+        case Vship_SampleUINT16:
+            return convertToFloatPlaneTemplate3<Vship_SampleUINT16>(output_plane, source_plane, stride, width, height, range, colorFam, chromaPlane, stream);
     }
 }
 

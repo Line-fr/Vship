@@ -29,6 +29,11 @@ enum Vship_ChromaLocation_t{
     Vship_ChromaLoc_Top = 3,
 };
 
+enum Vship_ColorFamily_t{
+    Vship_ColorYUV,
+    Vship_ColorRGB,
+};
+
 enum Vship_YUVMatrix_t{
     Vship_MATRIX_RGB = 0,
     Vship_MATRIX_BT709 = 1,
@@ -76,6 +81,7 @@ typedef struct {
     Vship_Range_t range = Vship_RangeLimited;
     Vship_ChromaSubsample_t subsampling = {1, 1};
     Vship_ChromaLocation_t chromaLocation = Vship_ChromaLoc_TopLeft;
+    Vship_ColorFamily_t colorFamily = Vship_ColorYUV;
     Vship_YUVMatrix_t YUVMatrix = Vship_MATRIX_BT709;
     Vship_TransferFunction_t transferFunction = Vship_TRC_BT709;
     Vship_Primaries_t primaries = Vship_PRIMARIES_BT709;

@@ -6,6 +6,7 @@ int ffmpegToVshipFormat(Vship_Colorspace_t& out, const FFMS_Frame* in){
 
     //default values
     out.sample = Vship_SampleUINT8;
+    out.colorFamily = Vship_ColorYUV;
     out.YUVMatrix = (out.height > 650) ? Vship_MATRIX_BT709 : Vship_MATRIX_BT470_BG;
     out.transferFunction = Vship_TRC_BT709;
     out.primaries = Vship_PRIMARIES_BT709;
@@ -179,6 +180,7 @@ int ffmpegToVshipFormat(Vship_Colorspace_t& out, const FFMS_Frame* in){
         case AV_PIX_FMT_ARGB:
         case AV_PIX_FMT_ABGR:
         case AV_PIX_FMT_BGRA:
+            out.colorFamily = Vship_ColorRGB;
             out.YUVMatrix = Vship_MATRIX_RGB;
             out.transferFunction = Vship_TRC_sRGB;
             out.primaries = Vship_PRIMARIES_BT709;
