@@ -150,13 +150,9 @@ __device__ void inline transferLinearize<Vship_TRC_ST428>(float& a){
 //Note: this is PQ
 template<>
 __device__ void inline transferLinearize<Vship_TRC_PQ>(float& a){
-    const float c1 = 107./128.;
-    const float c2 = 2413./128.;
-    const float c3 = 2392./128.;
-    a = powf(a, 32./2523.);
-    a = fmaxf(a - c1, 0.f)/(c2 - c3*a);
-    a = powf(a, 8192./1305.);
-    a *= 10000;
+
+    a = powf(a, 1.f/78.84375f);
+    a = 10000 * powf(max(0.f, (a-0.8359375f))/(18.8515625f - 18.6875f*a), 1.f/0.1593017578125f);
 }
 
 }
