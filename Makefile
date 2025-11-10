@@ -12,7 +12,7 @@ ifeq ($(OS),Windows_NT)
     fpicamd :=
     plugin_install_path := $(APPDATA)\VapourSynth\plugins64
     exe_install_path := $(ProgramFiles)\FFVship.exe
-    ffvshiplibheader := -I include -lz_imp -lz -lffms2
+    ffvshiplibheader := -I include -lffms2
 	ffvshipincludeheader :=
 else
     dllend := .so
@@ -23,8 +23,8 @@ else
 	lib_install_path := $(DESTDIR)$(PREFIX)/lib
     exe_install_path := $(DESTDIR)$(PREFIX)/bin
 	header_install_path := $(DESTDIR)$(PREFIX)/include
-    ffvshiplibheader := $(shell pkg-config --libs ffms2 zimg)
-	ffvshipincludeheader := $(shell pkg-config --cflags-only-I ffms2 zimg)
+    ffvshiplibheader := $(shell pkg-config --libs ffms2)
+	ffvshipincludeheader := $(shell pkg-config --cflags-only-I ffms2)
 endif
 
 .FORCE:
