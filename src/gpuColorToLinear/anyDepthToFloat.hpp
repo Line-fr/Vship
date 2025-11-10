@@ -5,71 +5,71 @@
 namespace VshipColorConvert{
 
 template<Vship_Sample_t T>
-__device__ float inline PickValue(const uint8_t* const source_plane, const int i, const int stride, const int width);
+__device__ float inline PickValue(const uint8_t* const source_plane, const int64_t i, const int64_t stride, const int64_t width);
 
 template<>
-__device__ float inline PickValue<Vship_SampleFLOAT>(const uint8_t* const source_plane, const int i, const int stride, const int width){
+__device__ float inline PickValue<Vship_SampleFLOAT>(const uint8_t* const source_plane, const int64_t i, const int64_t stride, const int64_t width){
     const int line = i/width;
     const int column = i%width;
     return ((float*)(source_plane+line*stride))[column];
 }
 
 template<>
-__device__ float inline PickValue<Vship_SampleHALF>(const uint8_t* const source_plane, const int i, const int stride, const int width){
+__device__ float inline PickValue<Vship_SampleHALF>(const uint8_t* const source_plane, const int64_t i, const int64_t stride, const int64_t width){
     const int line = i/width;
     const int column = i%width;
     return ((__half*)(source_plane+line*stride))[column];
 }
 
 template<>
-__device__ float inline PickValue<Vship_SampleUINT8>(const uint8_t* const source_plane, const int i, const int stride, const int width){
+__device__ float inline PickValue<Vship_SampleUINT8>(const uint8_t* const source_plane, const int64_t i, const int64_t stride, const int64_t width){
     const int line = i/width;
     const int column = i%width;
     return (float)(((uint8_t*)(source_plane+line*stride))[column]) / 255.f;
 }
 
 template<>
-__device__ float inline PickValue<Vship_SampleUINT9>(const uint8_t* const source_plane, const int i, const int stride, const int width){
+__device__ float inline PickValue<Vship_SampleUINT9>(const uint8_t* const source_plane, const int64_t i, const int64_t stride, const int64_t width){
     const int line = i/width;
     const int column = i%width;
     return (float)(((uint16_t*)(source_plane+line*stride))[column]) / 511.f;
 }
 
 template<>
-__device__ float inline PickValue<Vship_SampleUINT10>(const uint8_t* const source_plane, const int i, const int stride, const int width){
+__device__ float inline PickValue<Vship_SampleUINT10>(const uint8_t* const source_plane, const int64_t i, const int64_t stride, const int64_t width){
     const int line = i/width;
     const int column = i%width;
     return (float)(((uint16_t*)(source_plane+line*stride))[column]) / 1023.f;
 }
 
 template<>
-__device__ float inline PickValue<Vship_SampleUINT12>(const uint8_t* const source_plane, const int i, const int stride, const int width){
+__device__ float inline PickValue<Vship_SampleUINT12>(const uint8_t* const source_plane, const int64_t i, const int64_t stride, const int64_t width){
     const int line = i/width;
     const int column = i%width;
     return (float)(((uint16_t*)(source_plane+line*stride))[column]) / 4095.f;
 }
 
 template<>
-__device__ float inline PickValue<Vship_SampleUINT14>(const uint8_t* const source_plane, const int i, const int stride, const int width){
+__device__ float inline PickValue<Vship_SampleUINT14>(const uint8_t* const source_plane, const int64_t i, const int64_t stride, const int64_t width){
     const int line = i/width;
     const int column = i%width;
     return (float)(((uint16_t*)(source_plane+line*stride))[column]) / 16383.f;
 }
 
 template<>
-__device__ float inline PickValue<Vship_SampleUINT16>(const uint8_t* const source_plane, const int i, const int stride, const int width){
+__device__ float inline PickValue<Vship_SampleUINT16>(const uint8_t* const source_plane, const int64_t i, const int64_t stride, const int64_t width){
     const int line = i/width;
     const int column = i%width;
     return (float)(((uint16_t*)(source_plane+line*stride))[column]) / 65535.f;
 }
 
 template<Vship_Sample_t SampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam, bool chromaPlane>
-__global__ void convertToFloatPlane_Kernel(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height){
+__global__ void convertToFloatPlane_Kernel(float* output_plane, const uint8_t* const source_plane, const int64_t stride, const int64_t width, const int64_t height){
     const int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
     if (x >= width*height) return;
 
     float val = PickValue<SampleType>(source_plane, x, stride, width);
-    //if (x == 0) printf("val : %f\n", val);
+    //if (x == (chromaPlane ? 250400 : 1000000)) printf("raw input val : %f at x = %lld\n", val, x);
     val = FullRange<Range, ColorFam, chromaPlane>(val);
     output_plane[x] = val;
 }
@@ -77,7 +77,7 @@ __global__ void convertToFloatPlane_Kernel(float* output_plane, const uint8_t* c
 template<Vship_Sample_t SampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam, bool chromaPlane>
 __host__ void inline convertToFloatPlaneTemplate(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height, hipStream_t stream){
     const int thx = 256;
-    const int blx = (width*height + thx -1)/thx;
+    const int64_t blx = (width*height + thx -1)/thx;
     convertToFloatPlane_Kernel<SampleType, Range, ColorFam, chromaPlane><<<dim3(blx), dim3(thx), 0, stream>>>(output_plane, source_plane, stride, width, height);
 }
 

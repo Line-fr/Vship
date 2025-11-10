@@ -42,10 +42,10 @@ __device__ CubicHermitSplineInterpolator getVerticalInterpolator_device(float* s
     x = min(x, width-1);
 
     const float elm1 = (y == 0) ? src[x] : src[(y-1)*width+x];
-    const float el0 = (y == height) ? elm1 : src[y*height+x];
-    const float el1 = (y >= height-1) ? el0 : src[(y+1)*height+x];
-    const float el2 = (y >= height-2) ? el1 : src[(y+2)*height+x];
-
+    const float el0 = (y == height) ? elm1 : src[y*width+x];
+    const float el1 = (y >= height-1) ? el0 : src[(y+1)*width+x];
+    const float el2 = (y >= height-2) ? el1 : src[(y+2)*width+x];
+    
     return CubicHermitSplineInterpolator(el0, (el1 - elm1)/2, el1, (el2 - el0)/2);
 }
 
@@ -58,8 +58,8 @@ __global__ void bicubicHorizontalCenterUpscaleX2_Kernel(float* dst, float* src, 
     //this interpolator is valid on interval [0, 1] representing [x, x+1]
     //we are Center so we are interested in values: 0.25 and 0.75
     if (y < height && x < width){
-        if (x != -1) dst[y*2*width + 2*x+1] = interpolator.get(0.25);
-        if (x != width-1) dst[y*2*width + 2*x+2] = interpolator.get(0.75);
+        if (x != -1) dst[y*2*width + 2*x+1] = interpolator.get(0.25f);
+        if (x != width-1) dst[y*2*width + 2*x+2] = interpolator.get(0.75f);
     }
 }
 
@@ -73,7 +73,7 @@ __global__ void bicubicHorizontalLeftUpscaleX2_Kernel(float* dst, float* src, in
     //we are Left so we are interested in values: 0 and 0.5 (0 is directly our value)
     if (y < height && x < width){
         dst[y*2*width + 2*x] = src[y*width + x];
-        dst[y*2*width + 2*x+1] = interpolator.get(0.5);
+        dst[y*2*width + 2*x+1] = interpolator.get(0.5f);
     }
 }
 
@@ -86,10 +86,10 @@ __global__ void bicubicHorizontalCenterUpscaleX4_Kernel(float* dst, float* src, 
     //this interpolator is valid on interval [0, 1] representing [x, x+1]
     //we are Center so we are interested in values: 0.125, 0.375, 0.625 and 0.875
     if (y < height && x < width){
-        if (x != -1) dst[y*4*width + 4*x+2] = interpolator.get(0.125);
-        if (x != -1) dst[y*4*width + 4*x+3] = interpolator.get(0.375);
-        if (x != width-1) dst[y*4*width + 4*x+4] = interpolator.get(0.625);
-        if (x != width-1) dst[y*4*width + 4*x+5] = interpolator.get(0.875);
+        if (x != -1) dst[y*4*width + 4*x+2] = interpolator.get(0.125f);
+        if (x != -1) dst[y*4*width + 4*x+3] = interpolator.get(0.375f);
+        if (x != width-1) dst[y*4*width + 4*x+4] = interpolator.get(0.625f);
+        if (x != width-1) dst[y*4*width + 4*x+5] = interpolator.get(0.875f);
     }
 }
 
@@ -103,9 +103,9 @@ __global__ void bicubicHorizontalLeftUpscaleX4_Kernel(float* dst, float* src, in
     //we are Left so we are interested in values: 0, 0.25, 0.5 and 0.75 (0 is directly our value)
     if (y < height && x < width){
         dst[y*4*width + 4*x] = src[y*width + x];
-        dst[y*4*width + 4*x+1] = interpolator.get(0.25);
-        dst[y*4*width + 4*x+2] = interpolator.get(0.5);
-        dst[y*4*width + 4*x+3] = interpolator.get(0.75);
+        dst[y*4*width + 4*x+1] = interpolator.get(0.25f);
+        dst[y*4*width + 4*x+2] = interpolator.get(0.5f);
+        dst[y*4*width + 4*x+3] = interpolator.get(0.75f);
     }
 }
 
@@ -118,8 +118,8 @@ __global__ void bicubicVerticalCenterUpscaleX2_Kernel(float* dst, float* src, in
     //this interpolator is valid on interval [0, 1] representing [y, y+1]
     //we are Center so we are interested in values: 0.25 and 0.75
     if (y < height && x < width){
-        if (y != -1) dst[(2*y +1)*width + x] = interpolator.get(0.25);
-        if (y != height-1) dst[(2*y+2)*width + x] = interpolator.get(0.75);
+        if (y != -1) dst[(2*y +1)*width + x] = interpolator.get(0.25f);
+        if (y != height-1) dst[(2*y+2)*width + x] = interpolator.get(0.75f);
     }
 }
 
@@ -133,7 +133,7 @@ __global__ void bicubicVerticalTopUpscaleX2_Kernel(float* dst, float* src, int64
     //we are Top so we are interested in values: 0 and 0.5
     if (y < height && x < width){
         dst[(2*y)*width + x] = src[y*width + x];
-        dst[(2*y+1)*width + x] = interpolator.get(0.5);
+        dst[(2*y+1)*width + x] = interpolator.get(0.5f);
     }
 }
 

@@ -50,8 +50,10 @@ public:
         int64_t maxWidth = std::max(source_colorspace.target_width, source_colorspace.width);
         int64_t maxHeight= std::max(source_colorspace.target_height, source_colorspace.height);
         
+        int basePlaneAllocation = 3;
         int maxplaneBuffer = 2;
-        hipError_t erralloc = hipMalloc(&mem_d, sizeof(float)*width*height*3 + sizeof(float)*maxWidth*maxHeight*maxplaneBuffer);
+        if (!isResized) basePlaneAllocation = 0;
+        hipError_t erralloc = hipMalloc(&mem_d, sizeof(float)*width*height*basePlaneAllocation + sizeof(float)*maxWidth*maxHeight*maxplaneBuffer);
         if (erralloc != hipSuccess){
             throw VshipError(OutOfVRAM, __FILE__, __LINE__);
         }
@@ -73,7 +75,14 @@ public:
         int64_t maxHeight= std::max(source_colorspace.target_height, source_colorspace.height);
 
         float* preCropOut[3] = {mem_d, mem_d+width*height, mem_d+width*height*2};
-        uint8_t* src_d = (uint8_t*)(mem_d+3*width*height);
+        float* temp_d = (mem_d+3*width*height);
+        if (!isResized) {
+            //direct feed
+            for (int i = 0; i < 3; i++) preCropOut[i] = out[i];
+            temp_d = mem_d;
+        }
+
+        uint8_t* src_d = (uint8_t*)temp_d;
         int64_t maxstride = std::max(lineSize[0], std::max(lineSize[1], lineSize[2]));
         if (maxstride*height > sizeof(float)*maxWidth*maxHeight*2){
             //we need to allocate another plane to export the current data to gpu
@@ -94,7 +103,7 @@ public:
         }
         //now we have our float data with the right range in out
         //let's upsample chroma using mem_d as a temporary plane
-        upsample(mem_d+3*width*height, preCropOut, width, height, source_colorspace.chromaLocation, source_colorspace.subsampling, stream);
+        upsample(temp_d, preCropOut, width, height, source_colorspace.chromaLocation, source_colorspace.subsampling, stream);
 
         //now, we need to transform the YUV into linRGB
         YUVToLinRGBPipeline(preCropOut[0], preCropOut[1], preCropOut[2], width*height, source_colorspace.YUVMatrix, source_colorspace.transferFunction, stream);
@@ -119,8 +128,16 @@ public:
         //now we crop and put in out
         for (int i = 0; i < 3; i++){
             //resize and crop (we are still in linear space)
-            resizePlane(mem_d+3*width*height, mem_d+3*width*height+maxWidth*maxHeight, preCropOut[i], source_colorspace.width, source_colorspace.height, source_colorspace.target_width, source_colorspace.target_height, stream);
-            strideEliminator<FLOAT>(out[i], mem_d+3*width*height+source_colorspace.target_width*source_colorspace.crop.top+source_colorspace.crop.left, source_colorspace.target_width, getWidth(), getHeight(), stream);
+            float* base = preCropOut[i];
+            float* interm = temp_d;
+            float* interm2 = temp_d + maxWidth*maxHeight;
+            float* fin = out[i];
+            if (isCropped){
+                resizePlane(interm, interm2, base, source_colorspace.width, source_colorspace.height, source_colorspace.target_width, source_colorspace.target_height, stream);
+                strideEliminator<FLOAT>(fin, interm+source_colorspace.target_width*source_colorspace.crop.top+source_colorspace.crop.left, source_colorspace.target_width*sizeof(float), getWidth(), getHeight(), stream);
+            } else if (isResized){
+                resizePlane(fin, interm, base, source_colorspace.width, source_colorspace.height, source_colorspace.target_width, source_colorspace.target_height, stream);
+            }
         }
     }
 };
