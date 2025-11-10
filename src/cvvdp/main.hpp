@@ -259,20 +259,15 @@ public:
         const float Y_refl = model->getReflLevel();
         const float exposure = model->exposure;
 
-        displayEncode(src1_d[0], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
-        displayEncode(src1_d[1], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
-        displayEncode(src1_d[2], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
-        displayEncode(src2_d[0], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
-        displayEncode(src2_d[1], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
-        displayEncode(src2_d[2], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
-
         //std::cout << "Y_peak, Y_black, Y_refl, exposure : " << Y_peak << " " <<  Y_black << " " << Y_refl << " " << exposure << std::endl;
 
         //we put the frame's planes on GPU
         //do we write directly in final after stride eliminaation?
         if (is_resized){
             for (int i = 0; i < 3; i++){
+                displayEncode(src1_d[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
                 resizePlane(src1_d[i], tempResize, src1_d[i], source_width, source_height, resize_width, resize_height, stream1);
+                displayEncode(src2_d[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream2);
                 resizePlane(src2_d[i], tempResize2, src2_d[i], source_width, source_height, resize_width, resize_height, stream2);
             }
         }
