@@ -151,8 +151,15 @@ __device__ void inline transferLinearize<Vship_TRC_ST428>(float& a){
 template<>
 __device__ void inline transferLinearize<Vship_TRC_PQ>(float& a){
 
-    a = powf(a, 1.f/78.84375f);
-    a = 10000 * powf(max(0.f, (a-0.8359375f))/(18.8515625f - 18.6875f*a), 1.f/0.1593017578125f);
+    constexpr float Lmax = 10000.f;
+    constexpr float n    = 0.15930175781250000f;
+    constexpr float m    = 78.843750000000000f;
+    constexpr float c1   = 0.83593750000000000f;
+    constexpr float c2   = 18.851562500000000f;
+    constexpr float c3   = 18.687500000000000f;
+
+    a = powf(a, 1.f/m);
+    a = Lmax * powf(max(0.f, (a-c1))/(c2 - c3*a), 1.f/n);
 }
 
 }

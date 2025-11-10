@@ -49,14 +49,6 @@ public:
         if (source_colorspace.target_width == colorspace.width && source_colorspace.target_height == colorspace.height) isResized = false;
         int64_t maxWidth = std::max(source_colorspace.target_width, source_colorspace.width);
         int64_t maxHeight= std::max(source_colorspace.target_height, source_colorspace.height);
-        
-        int basePlaneAllocation = 3;
-        int maxplaneBuffer = 2;
-        if (!isResized) basePlaneAllocation = 0;
-        hipError_t erralloc = hipMalloc(&mem_d, sizeof(float)*width*height*basePlaneAllocation + sizeof(float)*maxWidth*maxHeight*maxplaneBuffer);
-        if (erralloc != hipSuccess){
-            throw VshipError(OutOfVRAM, __FILE__, __LINE__);
-        }
     }
     void destroy(){
         if (mem_d != NULL){
@@ -73,6 +65,15 @@ public:
     void convert(float* out[3], const uint8_t *inp[3], const int64_t lineSize[3]){
         int64_t maxWidth = std::max(source_colorspace.target_width, source_colorspace.width);
         int64_t maxHeight= std::max(source_colorspace.target_height, source_colorspace.height);
+
+        int basePlaneAllocation = 3;
+        int maxplaneBuffer = 2;
+        if (!isResized) basePlaneAllocation = 0;
+        hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*width*height*basePlaneAllocation + sizeof(float)*maxWidth*maxHeight*maxplaneBuffer, stream);
+        if (erralloc != hipSuccess){
+            throw VshipError(OutOfVRAM, __FILE__, __LINE__);
+        }
+
 
         float* preCropOut[3] = {mem_d, mem_d+width*height, mem_d+width*height*2};
         float* temp_d = (mem_d+3*width*height);
@@ -139,6 +140,7 @@ public:
                 resizePlane(fin, interm, base, source_colorspace.width, source_colorspace.height, source_colorspace.target_width, source_colorspace.target_height, stream);
             }
         }
+        hipFreeAsync(mem_d, stream);
     }
 };
 
