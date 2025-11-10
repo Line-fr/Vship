@@ -25,8 +25,6 @@ namespace butter{
             
             int height = vsapi->getFrameHeight(src1, 0);
             int width = vsapi->getFrameWidth(src1, 0);
-            int stride = vsapi->getStride(src1, 0);
-            int stride2 = vsapi->getStride(src2, 0);
     
             VSFrame *dst;
             if (d->diffmap){
@@ -48,6 +46,17 @@ namespace butter{
                 vsapi->getReadPtr(src2, 1),
                 vsapi->getReadPtr(src2, 2),
             };
+
+            const int64_t lineSize[3] = {
+                vsapi->getStride(src1, 0),
+                vsapi->getStride(src1, 1),
+                vsapi->getStride(src1, 2),
+            };
+            const int64_t lineSize2[3] = {
+                vsapi->getStride(src2, 0),
+                vsapi->getStride(src2, 1),
+                vsapi->getStride(src2, 2),
+            };
             
             std::tuple<float, float, float> val;
             
@@ -55,9 +64,9 @@ namespace butter{
             ButterComputingImplementation& butterstream = d->butterStreams[stream];
             try{
                 if (d->diffmap){
-                    val = butterstream.run<FLOAT>(vsapi->getWritePtr(dst, 0), vsapi->getStride(dst, 0), srcp1, srcp2, stride, stride2);
+                    val = butterstream.run(vsapi->getWritePtr(dst, 0), vsapi->getStride(dst, 0), srcp1, srcp2, lineSize, lineSize2);
                 } else {
-                    val = butterstream.run<FLOAT>(NULL, 0, srcp1, srcp2, stride, stride2);
+                    val = butterstream.run(NULL, 0, srcp1, srcp2, lineSize, lineSize2);
                 }
             } catch (const VshipError& e){
                 vsapi->setFilterError(e.getErrorMessage().c_str(), frameCtx);
@@ -177,11 +186,24 @@ namespace butter{
         data = (ButterData *)malloc(sizeof(d));
         *data = d;
 
+        Vship_Colorspace_t src_colorspace; //vapoursynth handles the conversion, this is what we get from vs
+        src_colorspace.width = viref->width;
+        src_colorspace.target_width = -1;
+        src_colorspace.height = viref->height;
+        src_colorspace.target_height = -1;
+        src_colorspace.sample = Vship_SampleFLOAT;
+        src_colorspace.range = Vship_RangeFull;
+        src_colorspace.subsampling = {0, 0};
+        src_colorspace.colorFamily = Vship_ColorRGB;
+        src_colorspace.YUVMatrix = Vship_MATRIX_RGB;
+        src_colorspace.transferFunction = Vship_TRC_BT709;
+        src_colorspace.primaries = Vship_PRIMARIES_BT709;
+
         try{
             data->butterStreams = (ButterComputingImplementation*)malloc(sizeof(ButterComputingImplementation)*d.streamnum);
             if (data->butterStreams == NULL) throw VshipError(OutOfRAM, __FILE__, __LINE__);
             for (int i = 0; i < d.streamnum; i++){
-                data->butterStreams[i].init(viref->width, viref->height, Qnorm, intensity_multiplier);
+                data->butterStreams[i].init(src_colorspace, src_colorspace, Qnorm, intensity_multiplier);
             }
         } catch (const VshipError& e){
             vsapi->mapSetError(out, e.getErrorMessage().c_str());

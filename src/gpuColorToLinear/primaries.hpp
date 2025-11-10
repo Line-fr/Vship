@@ -6,6 +6,11 @@ namespace VshipColorConvert{
 template<Vship_Primaries_t T1, Vship_Primaries_t T2>
 __device__ float3 inline primariesToPrimaries_device(float3 a);
 
+template<>
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, Vship_PRIMARIES_INTERNAL>(float3 a){
+    return a;
+}
+
 //http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
 //https://en.wikipedia.org/wiki/PAL
 template<>
@@ -96,8 +101,15 @@ __device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_BT2020, Vsh
 
 //by default, we go through XYZ
 template<Vship_Primaries_t T1, Vship_Primaries_t T2>
-__device__ float3 inline primariesToPrimaries_device<T1, T2>(float3 a){
-    return primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, T2>(primariesToPrimaries_device<T1, Vship_PRIMARIES_INTERNAL>(a));
+__device__ float3 inline primariesToPrimaries_device2(float3 a){
+    if constexpr (T1 == T2){
+        return a;
+    //special premultiplied matrix
+    } else if constexpr (T1 == Vship_PRIMARIES_BT2020 && T2 == Vship_PRIMARIES_BT709){
+        return primariesToPrimaries_device<T1, T2>(a);
+    } else {
+        return primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, T2>(primariesToPrimaries_device<T1, Vship_PRIMARIES_INTERNAL>(a));
+    }
 }
 
 template<Vship_Primaries_t T1, Vship_Primaries_t T2>
@@ -107,7 +119,7 @@ __global__ void primariesToPrimaries_kernel(float* p0, float* p1, float* p2, int
 
     float3 val = {p0[x], p1[x], p2[x]};
 
-    val = primariesToPrimaries_device<T1, T2>(val);
+    val = primariesToPrimaries_device2<T1, T2>(val);
 
     p0[x] = val.x;
     p1[x] = val.y;

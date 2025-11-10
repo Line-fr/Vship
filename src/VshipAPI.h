@@ -97,38 +97,26 @@ EXPORTPREPROCESS Vship_Exception Vship_PinnedMalloc(void** ptr, uint64_t size);
 EXPORTPREPROCESS Vship_Exception Vship_PinnedFree(void* ptr);
 
 //handler pointer will be replaced, it is a return value. Don't forget to free it after usage.
-EXPORTPREPROCESS Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, int width, int height);
+EXPORTPREPROCESS Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace);
 
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_SSIMU2Free(Vship_SSIMU2Handler handler);
 
 //the frame is not overwritten
-//when input is RGB with BT709 transfer function float frame
-EXPORTPREPROCESS Vship_Exception Vship_ComputeSSIMU2Float(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride);
-
-EXPORTPREPROCESS Vship_Exception Vship_ComputeSSIMU2Floatv2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
-
-//the frame is not overwritten
-//when input is RGB with BT709 transfer function uint16_t frame
-EXPORTPREPROCESS Vship_Exception Vship_ComputeSSIMU2Uint16(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride);
-
-EXPORTPREPROCESS Vship_Exception Vship_ComputeSSIMU2Uint16v2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
+EXPORTPREPROCESS Vship_Exception Vship_ComputeSSIMU2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
 
 typedef struct Vship_ButteraugliHandler{
     int id;
 } Vship_ButteraugliHandler;
 
 typedef struct Vship_ButteraugliScore{
-    double norm2;
+    double normQ;
     double norm3;
     double norminf;
 } Vship_ButteraugliScore;
 
 //handler pointer will be replaced, it is a return value. Don't forget to free it after usage.
-EXPORTPREPROCESS Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, int width, int height, float intensity_multiplier);
-
-//this version allows specifying a Qnorm instead of getting norm2
-EXPORTPREPROCESS Vship_Exception Vship_ButteraugliInitv2(Vship_ButteraugliHandler* handler, int width, int height, int Qnorm, float intensity_multiplier);
+EXPORTPREPROCESS Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier);
 
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler handler);
@@ -136,27 +124,15 @@ EXPORTPREPROCESS Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler 
 //the frame is not overwritten
 //dstp must either be NULL (in this case, the distortion map will never be retrieved from the gpu)
 //or be allocated of size dststride*height
-//when input is RGB with BT709 transfer function float frame
 //output in score
-EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugliFloat(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride);
-
-EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugliFloatv2(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
-
-//the frame is not overwritten
-//dstp must either be NULL (in this case, the distortion map will never be retrieved from the gpu)
-//or be allocated of size dststride*height
-//when input is RGB with BT709 transfer function uint16_t frame
-//output in score
-EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugliUint16(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride);
-
-EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugliUint16v2(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
+EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
 
 typedef struct Vship_CVVDPHandler{
     int id;
 } Vship_CVVDPHandler;
 
 //handler pointer will be replaced, it is a return value. Don't forget to free it after usage.
-EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, int width, int height, float fps, bool resizeToDisplay, const char* model_key_cstr);
+EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr);
 
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);
@@ -166,19 +142,10 @@ EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);
 EXPORTPREPROCESS Vship_Exception Vship_ResetCVVDP(Vship_CVVDPHandler handler);
 
 //dstp must either be NULL (in this case, the distortion map will never be retrieved from the gpu)
-//or be allocated of size dststride*height
-//when input is RGB with BT709 transfer function uint16_t frame
+//or be allocated of size dststride*height where height is original height or display height if resizeToDisplay is on
 //output the score of the whole sequence that it has already seen. You can reset the CVVDP handler to start over on a new sequence
 //ideally, for a video, you feed all the frames, and then only at the very last frame submitted you take the score
-EXPORTPREPROCESS Vship_Exception Vship_ComputeCVVDPUint16(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
-
-//dstp must either be NULL (in this case, the distortion map will never be retrieved from the gpu)
-//or be allocated of size dststride*height
-//when input is RGB with BT709 transfer function float frame
-//output the score of the whole sequence that it has already seen. You can reset the CVVDP handler to start over on a new sequence
-//ideally, for a video, you feed all the frames, and then only at the very last frame submitted you take the score
-EXPORTPREPROCESS Vship_Exception Vship_ComputeCVVDPFloat(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2);
-
+EXPORTPREPROCESS Vship_Exception Vship_ComputeCVVDP(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
 
 #ifdef __cplusplus
 } //extern "C"

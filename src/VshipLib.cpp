@@ -1,3 +1,4 @@
+#include "VshipColor.h"
 #include "VapourSynth4.h"
 #include "VSHelper4.h"
 #include "butter/vapoursynth.hpp"
@@ -56,7 +57,7 @@ static void VS_CC GpuInfo(const VSMap *in, VSMap *out, void *userData, VSCore *c
 }
 
 VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI *vspapi) {
-    vspapi->configPlugin("com.lumen.vship", "vship", "VapourSynth SSIMULACRA2 on GPU", VS_MAKE_VERSION(3, 2), VAPOURSYNTH_API_VERSION, 0, plugin);
+    vspapi->configPlugin("com.lumen.vship", "vship", "VapourSynth SSIMULACRA2 on GPU", VS_MAKE_VERSION(4, 0), VAPOURSYNTH_API_VERSION, 0, plugin);
     vspapi->registerFunction("SSIMULACRA2", "reference:vnode;distorted:vnode;numStream:int:opt;gpu_id:int:opt;", "clip:vnode;", ssimu2::ssimulacra2Create, NULL, plugin);
     vspapi->registerFunction("BUTTERAUGLI", "reference:vnode;distorted:vnode;qnorm:int:opt;intensity_multiplier:float:opt;distmap:int:opt;numStream:int:opt;gpu_id:int:opt;", "clip:vnode;", butter::butterCreate, NULL, plugin);
     vspapi->registerFunction("CVVDP", "reference:vnode;distorted:vnode;model_name:data:opt;resizeToDisplay:int:opt;distmap:int:opt;gpu_id:int:opt;", "clip:vnode;", cvvdp::CVVDPCreate, NULL, plugin);
@@ -70,7 +71,7 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI
 extern "C"{
 Vship_Version Vship_GetVersion(){
     Vship_Version res;
-    res.major = 3; res.minor = 1; res.minorMinor = 0;
+    res.major = 4; res.minor = 0; res.minorMinor = 0;
     #if defined __CUDACC__
     res.backend = Vship_Cuda;
     #else
@@ -160,7 +161,7 @@ RessourceManager<ssimu2::SSIMU2ComputingImplementation*> HandlerManagerSSIMU2;
 RessourceManager<butter::ButterComputingImplementation*> HandlerManagerButteraugli;
 RessourceManager<cvvdp::CVVDPComputingImplementation*> HandlerManagerCVVDP;
 
-Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, int width, int height){
+Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace){
     Vship_Exception err = Vship_NoError;
     handler->id = HandlerManagerSSIMU2.allocate();
     HandlerManagerSSIMU2.lock.lock();
@@ -168,7 +169,7 @@ Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, int width, int he
     auto& implem = *HandlerManagerSSIMU2.elements[handler->id];
     HandlerManagerSSIMU2.lock.unlock();
     try{
-        implem.init(width, height);
+        implem.init(src_colorspace, dis_colorspace);
     } catch (const VshipError& e){
         err = (Vship_Exception)e.type;
     }
@@ -194,7 +195,7 @@ Vship_Exception Vship_SSIMU2Free(Vship_SSIMU2Handler handler){
     return err;
 }
 
-Vship_Exception Vship_ComputeSSIMU2Float(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride){
+Vship_Exception Vship_ComputeSSIMU2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
     Vship_Exception err = Vship_NoError;
     HandlerManagerSSIMU2.lock.lock();
     //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
@@ -202,59 +203,14 @@ Vship_Exception Vship_ComputeSSIMU2Float(Vship_SSIMU2Handler handler, double* sc
     HandlerManagerSSIMU2.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
-        *score = ssimu2computingimplem.run<FLOAT>(srcp1, srcp2, stride, stride);
+        *score = ssimu2computingimplem.run(srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
         err = (Vship_Exception)e.type;
     }
     return err;
 }
 
-Vship_Exception Vship_ComputeSSIMU2Floatv2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
-    Vship_Exception err = Vship_NoError;
-    HandlerManagerSSIMU2.lock.lock();
-    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
-    ssimu2::SSIMU2ComputingImplementation& ssimu2computingimplem = *HandlerManagerSSIMU2.elements[handler.id];
-    HandlerManagerSSIMU2.lock.unlock();
-    //there is no safety feature to prevent using twice at the same time a single computingimplem
-    try{
-        *score = ssimu2computingimplem.run<FLOAT>(srcp1, srcp2, stride, stride2);
-    } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
-    }
-    return err;
-}
-
-Vship_Exception Vship_ComputeSSIMU2Uint16(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride){
-    Vship_Exception err = Vship_NoError;
-    HandlerManagerSSIMU2.lock.lock();
-    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
-    ssimu2::SSIMU2ComputingImplementation& ssimu2computingimplem = *HandlerManagerSSIMU2.elements[handler.id];
-    HandlerManagerSSIMU2.lock.unlock();
-    //there is no safety feature to prevent using twice at the same time a single computingimplem
-    try{
-        *score = ssimu2computingimplem.run<UINT16>(srcp1, srcp2, stride, stride);
-    } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
-    }
-    return err;
-}
-
-Vship_Exception Vship_ComputeSSIMU2Uint16v2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
-    Vship_Exception err = Vship_NoError;
-    HandlerManagerSSIMU2.lock.lock();
-    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
-    ssimu2::SSIMU2ComputingImplementation& ssimu2computingimplem = *HandlerManagerSSIMU2.elements[handler.id];
-    HandlerManagerSSIMU2.lock.unlock();
-    //there is no safety feature to prevent using twice at the same time a single computingimplem
-    try{
-        *score = ssimu2computingimplem.run<UINT16>(srcp1, srcp2, stride, stride2);
-    } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
-    }
-    return err;
-}
-
-Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, int width, int height, float intensity_multiplier){
+Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier){
     Vship_Exception err = Vship_NoError;
     handler->id = HandlerManagerButteraugli.allocate();
     HandlerManagerButteraugli.lock.lock();
@@ -263,23 +219,7 @@ Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, int wid
     HandlerManagerButteraugli.lock.unlock();
     try{
         //Qnorm = 2 by default to mimic old behavior
-        implem->init(width, height, 2, intensity_multiplier);
-    } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
-    }
-    return err;
-}
-
-//allows specifying Qnorm
-Vship_Exception Vship_ButteraugliInitv2(Vship_ButteraugliHandler* handler, int width, int height, int Qnorm, float intensity_multiplier){
-    Vship_Exception err = Vship_NoError;
-    handler->id = HandlerManagerButteraugli.allocate();
-    HandlerManagerButteraugli.lock.lock();
-    HandlerManagerButteraugli.elements[handler->id] = new butter::ButterComputingImplementation();
-    auto* implem = HandlerManagerButteraugli.elements[handler->id];
-    HandlerManagerButteraugli.lock.unlock();
-    try{
-        implem->init(width, height, Qnorm, intensity_multiplier);
+        implem->init(src_colorspace, dis_colorspace, Qnorm, intensity_multiplier);
     } catch (const VshipError& e){
         err = (Vship_Exception)e.type;
     }
@@ -305,7 +245,7 @@ Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler handler){
     return err;
 }
 
-Vship_Exception Vship_ComputeButteraugliFloat(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride){
+Vship_Exception Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
     Vship_Exception err = Vship_NoError;
     HandlerManagerButteraugli.lock.lock();
     //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
@@ -313,8 +253,8 @@ Vship_Exception Vship_ComputeButteraugliFloat(Vship_ButteraugliHandler handler, 
     HandlerManagerButteraugli.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
-        std::tuple<float, float, float> res = buttercomputingimplem->run<FLOAT>(dstp, dststride, srcp1, srcp2, stride, stride);
-        score->norm2 = std::get<0>(res);
+        std::tuple<float, float, float> res = buttercomputingimplem->run(dstp, dststride, srcp1, srcp2, lineSize, lineSize2);
+        score->normQ = std::get<0>(res);
         score->norm3 = std::get<1>(res);
         score->norminf = std::get<2>(res);
     } catch (const VshipError& e){
@@ -323,61 +263,7 @@ Vship_Exception Vship_ComputeButteraugliFloat(Vship_ButteraugliHandler handler, 
     return err;
 }
 
-Vship_Exception Vship_ComputeButteraugliFloatv2(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
-    Vship_Exception err = Vship_NoError;
-    HandlerManagerButteraugli.lock.lock();
-    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
-    butter::ButterComputingImplementation* buttercomputingimplem = HandlerManagerButteraugli.elements[handler.id];
-    HandlerManagerButteraugli.lock.unlock();
-    //there is no safety feature to prevent using twice at the same time a single computingimplem
-    try{
-        std::tuple<float, float, float> res = buttercomputingimplem->run<FLOAT>(dstp, dststride, srcp1, srcp2, stride, stride2);
-        score->norm2 = std::get<0>(res);
-        score->norm3 = std::get<1>(res);
-        score->norminf = std::get<2>(res);
-    } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
-    }
-    return err;
-}
-
-Vship_Exception Vship_ComputeButteraugliUint16(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride){
-    Vship_Exception err = Vship_NoError;
-    HandlerManagerButteraugli.lock.lock();
-    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
-    butter::ButterComputingImplementation* buttercomputingimplem = HandlerManagerButteraugli.elements[handler.id];
-    HandlerManagerButteraugli.lock.unlock();
-    //there is no safety feature to prevent using twice at the same time a single computingimplem
-    try{
-        std::tuple<float, float, float> res = buttercomputingimplem->run<UINT16>(dstp, dststride, srcp1, srcp2, stride, stride);
-        score->norm2 = std::get<0>(res);
-        score->norm3 = std::get<1>(res);
-        score->norminf = std::get<2>(res);
-    } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
-    }
-    return err;
-}
-
-Vship_Exception Vship_ComputeButteraugliUint16v2(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
-    Vship_Exception err = Vship_NoError;
-    HandlerManagerButteraugli.lock.lock();
-    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
-    butter::ButterComputingImplementation* buttercomputingimplem = HandlerManagerButteraugli.elements[handler.id];
-    HandlerManagerButteraugli.lock.unlock();
-    //there is no safety feature to prevent using twice at the same time a single computingimplem
-    try{
-        std::tuple<float, float, float> res = buttercomputingimplem->run<UINT16>(dstp, dststride, srcp1, srcp2, stride, stride2);
-        score->norm2 = std::get<0>(res);
-        score->norm3 = std::get<1>(res);
-        score->norminf = std::get<2>(res);
-    } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
-    }
-    return err;
-}
-
-Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, int width, int height, float fps, bool resizeToDisplay, const char* model_key_cstr){
+Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr){
     Vship_Exception err = Vship_NoError;
     handler->id = HandlerManagerCVVDP.allocate();
     HandlerManagerCVVDP.lock.lock();
@@ -387,7 +273,7 @@ Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, int width, int heig
 
     std::string model_key(model_key_cstr);
     try{
-        implem->init(width, height, fps, resizeToDisplay, model_key);
+        implem->init(src_colorspace, dis_colorspace, fps, resizeToDisplay, model_key);
     } catch (const VshipError& e){
         err = (Vship_Exception)e.type;
     }
@@ -464,7 +350,7 @@ Vship_Exception Vship_LoadCVVDPFloat(Vship_CVVDPHandler handler, const uint8_t* 
 }
 */
 
-Vship_Exception Vship_ComputeCVVDPUint16(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
+Vship_Exception Vship_ComputeCVVDP(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
     Vship_Exception err = Vship_NoError;
     HandlerManagerCVVDP.lock.lock();
     //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
@@ -472,22 +358,7 @@ Vship_Exception Vship_ComputeCVVDPUint16(Vship_CVVDPHandler handler, double* sco
     HandlerManagerCVVDP.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
-        *score = cvvdpcomputingimplem->run<UINT16>(dstp, dststride, srcp1, srcp2, stride, stride2);
-    } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
-    }
-    return err;
-}
-
-Vship_Exception Vship_ComputeCVVDPUFloat(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
-    Vship_Exception err = Vship_NoError;
-    HandlerManagerCVVDP.lock.lock();
-    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
-    cvvdp::CVVDPComputingImplementation* cvvdpcomputingimplem = HandlerManagerCVVDP.elements[handler.id];
-    HandlerManagerCVVDP.lock.unlock();
-    //there is no safety feature to prevent using twice at the same time a single computingimplem
-    try{
-        *score = cvvdpcomputingimplem->run<FLOAT>(dstp, dststride, srcp1, srcp2, stride, stride2);
+        *score = cvvdpcomputingimplem->run(dstp, dststride, srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
         err = (Vship_Exception)e.type;
     }

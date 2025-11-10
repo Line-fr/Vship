@@ -101,6 +101,11 @@ __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT709>(float3 val)
     return ncl_yuv_to_rgb_from_kr_kb(val, Kr, Kb);
 }
 
+template <>
+__device__ float3 inline linearLightYUVConversion<Vship_MATRIX_BT709>(float3 val){
+    return val;
+}
+
 //source https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.601-7-201103-I!!PDF-E.pdf
 template <>
 __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT470_BG>(float3 val){
@@ -111,8 +116,18 @@ __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT470_BG>(float3 v
 }
 
 template <>
+__device__ float3 inline linearLightYUVConversion<Vship_MATRIX_BT470_BG>(float3 val){
+    return val;
+}
+
+template <>
 __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_ST170_M>(float3 val){
     return gammaLightYUVConversion<Vship_MATRIX_BT470_BG>(val);
+}
+
+template <>
+__device__ float3 inline linearLightYUVConversion<Vship_MATRIX_ST170_M>(float3 val){
+    return val;
 }
 
 //source https://en.wikipedia.org/wiki/Rec._2020 (inverse by hand)
@@ -124,14 +139,18 @@ __device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_BT2020_NCL>(float3
     return ncl_yuv_to_rgb_from_kr_kb(val, Kr, Kb);
 }
 
-//default is identity
-template <Vship_YUVMatrix_t matrix>
-__device__ float3 inline gammaLightYUVConversion<matrix>(float3 val){
+template <>
+__device__ float3 inline linearLightYUVConversion<Vship_MATRIX_BT2020_NCL>(float3 val){
     return val;
 }
 
-template <Vship_YUVMatrix_t matrix>
-__device__ float3 inline linearLightYUVConversion<matrix>(float3 val){
+template <>
+__device__ float3 inline gammaLightYUVConversion<Vship_MATRIX_RGB>(float3 val){
+    return val;
+}
+
+template <>
+__device__ float3 inline linearLightYUVConversion<Vship_MATRIX_RGB>(float3 val){
     return val;
 }
 

@@ -50,6 +50,17 @@ namespace cvvdp{
                 vsapi->getReadPtr(src2, 1),
                 vsapi->getReadPtr(src2, 2),
             };
+
+            const int64_t lineSize[3] = {
+                vsapi->getStride(src1, 0),
+                vsapi->getStride(src1, 1),
+                vsapi->getStride(src1, 2),
+            };
+            const int64_t lineSize2[3] = {
+                vsapi->getStride(src2, 0),
+                vsapi->getStride(src2, 1),
+                vsapi->getStride(src2, 2),
+            };
             
             double val;
             
@@ -57,9 +68,9 @@ namespace cvvdp{
             CVVDPComputingImplementation& CVVDPstream = d->CVVDPStreams;
             try{
                 if (d->diffmap){
-                    val = CVVDPstream.run<FLOAT>(vsapi->getWritePtr(dst, 0), vsapi->getStride(dst, 0), srcp1, srcp2, stride, stride2);
+                    val = CVVDPstream.run(vsapi->getWritePtr(dst, 0), vsapi->getStride(dst, 0), srcp1, srcp2, lineSize, lineSize2);
                 } else {
-                    val = CVVDPstream.run<FLOAT>(NULL, 0, srcp1, srcp2, stride, stride2);
+                    val = CVVDPstream.run(NULL, 0, srcp1, srcp2, lineSize, lineSize2);
                 }
             } catch (const VshipError& e){
                 vsapi->setFilterError(e.getErrorMessage().c_str(), frameCtx);
@@ -170,8 +181,21 @@ namespace cvvdp{
 
         data->mutex = new std::mutex();
 
+        Vship_Colorspace_t src_colorspace; //vapoursynth handles the conversion, this is what we get from vs
+        src_colorspace.width = viref->width;
+        src_colorspace.target_width = -1;
+        src_colorspace.height = viref->height;
+        src_colorspace.target_height = -1;
+        src_colorspace.sample = Vship_SampleFLOAT;
+        src_colorspace.range = Vship_RangeFull;
+        src_colorspace.subsampling = {0, 0};
+        src_colorspace.colorFamily = Vship_ColorRGB;
+        src_colorspace.YUVMatrix = Vship_MATRIX_RGB;
+        src_colorspace.transferFunction = Vship_TRC_BT709;
+        src_colorspace.primaries = Vship_PRIMARIES_BT709;
+
         try{
-            data->CVVDPStreams.init(viref->width, viref->height, fps, resizeToDisplay, model_key);
+            data->CVVDPStreams.init(src_colorspace, src_colorspace, fps, resizeToDisplay, model_key);
             
             //save resize width for the distmap
             data->new_width = data->CVVDPStreams.resize_width;

@@ -25,8 +25,6 @@ static const VSFrame *VS_CC ssimulacra2GetFrame(int n, int activationReason, voi
         
         int64_t height = vsapi->getFrameHeight(src1, 0);
         int64_t width = vsapi->getFrameWidth(src1, 0);
-        int64_t stride = vsapi->getStride(src1, 0);
-        int64_t stride2 = vsapi->getStride(src2, 0);
 
         VSFrame *dst = vsapi->copyFrame(src2, core);
 
@@ -42,11 +40,22 @@ static const VSFrame *VS_CC ssimulacra2GetFrame(int n, int activationReason, voi
             vsapi->getReadPtr(src2, 2),
         };
 
+        const int64_t lineSize[3] = {
+            vsapi->getStride(src1, 0),
+            vsapi->getStride(src1, 1),
+            vsapi->getStride(src1, 2),
+        };
+        const int64_t lineSize2[3] = {
+            vsapi->getStride(src2, 0),
+            vsapi->getStride(src2, 1),
+            vsapi->getStride(src2, 2),
+        };
+
         double val;
         const int stream = d->streamSet->pop();
         SSIMU2ComputingImplementation& ssimu2Stream = d->ssimu2Streams[stream];
         try{
-            val = ssimu2Stream.run<FLOAT>(srcp1, srcp2, stride, stride2);
+            val = ssimu2Stream.run(srcp1, srcp2, lineSize, lineSize2);
         } catch (const VshipError& e){
             vsapi->setFilterError(e.getErrorMessage().c_str(), frameCtx);
             d->streamSet->insert(stream);
@@ -141,10 +150,23 @@ static void VS_CC ssimulacra2Create(const VSMap *in, VSMap *out, void *userData,
     d.streamnum = std::min(d.streamnum, infos.numThreads); // vs threads < numStream would make no sense
     d.streamnum = std::max(d.streamnum, 1); //at least one stream to not just wait indefinitely
 
+    Vship_Colorspace_t src_colorspace; //vapoursynth handles the conversion, this is what we get from vs
+    src_colorspace.width = viref->width;
+    src_colorspace.target_width = -1;
+    src_colorspace.height = viref->height;
+    src_colorspace.target_height = -1;
+    src_colorspace.sample = Vship_SampleFLOAT;
+    src_colorspace.range = Vship_RangeFull;
+    src_colorspace.subsampling = {0, 0};
+    src_colorspace.colorFamily = Vship_ColorRGB;
+    src_colorspace.YUVMatrix = Vship_MATRIX_RGB;
+    src_colorspace.transferFunction = Vship_TRC_BT709;
+    src_colorspace.primaries = Vship_PRIMARIES_BT709;
+
     try{
         d.ssimu2Streams = (SSIMU2ComputingImplementation*)malloc(sizeof(SSIMU2ComputingImplementation)*d.streamnum);
         for (int i = 0; i < d.streamnum; i++){
-            d.ssimu2Streams[i].init(viref->width, viref->height);
+            d.ssimu2Streams[i].init(src_colorspace, src_colorspace);
         }
     } catch (const VshipError& e){
         vsapi->mapSetError(out, e.getErrorMessage().c_str());

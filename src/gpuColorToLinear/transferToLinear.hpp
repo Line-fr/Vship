@@ -19,13 +19,9 @@ namespace VshipColorConvert{
 template <Vship_TransferFunction_t TRC>
 __device__ void inline transferLinearize(float& a);
 
-template <Vship_TransferFunction_t TRC>
-__device__ void inline transferLinearize(float3& a);
-
 //https://github.com/gfxdisp/ColorVideoVDP/blob/main/pycvvdp/display_model.py
 //Note: this is HLG
-template<>
-__device__ void inline transferLinearize<Vship_TRC_HLG>(float3& val){
+__device__ void inline transferLinearizeHLG(float3& val){
     constexpr float a = 0.17883277f;
     constexpr float b = 1.f - 4.f * a;
     //constexpr float c = 0.5f - a * logf(4*a); C++ doesnt accept constexpr logf
@@ -54,12 +50,15 @@ __device__ void inline transferLinearize<Vship_TRC_HLG>(float3& val){
     val = val * powf(Ys, gamma-1.f);
 }
 
-//apply linear on all 3 components if it was defined on 1
 template <Vship_TransferFunction_t TRC>
-__device__ void inline transferLinearize<TRC>(float3& a){
-    transferLinearize<TRC>(a.x);
-    transferLinearize<TRC>(a.y);
-    transferLinearize<TRC>(a.z);
+__device__ void inline transferLinearize(float3& a){
+    if constexpr (TRC == Vship_TRC_HLG){
+        transferLinearizeHLG(a);
+    } else {
+        transferLinearize<TRC>(a.x);
+        transferLinearize<TRC>(a.y);
+        transferLinearize<TRC>(a.z);
+    }
 }
 
 

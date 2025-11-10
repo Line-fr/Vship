@@ -83,11 +83,10 @@ __host__ void inline convertToFloatPlaneTemplate(float* output_plane, const uint
 
 template<Vship_Sample_t SampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam>
 __host__ void inline convertToFloatPlaneTemplate1(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height, bool chromaPlane, hipStream_t stream){
-    switch (chromaPlane){
-        case true:
-            return convertToFloatPlaneTemplate<SampleType, Range, ColorFam, true>(output_plane, source_plane, stride, width, height, stream);
-        case false:
-            return convertToFloatPlaneTemplate<SampleType, Range, ColorFam, false>(output_plane, source_plane, stride, width, height, stream);
+    if (chromaPlane){
+        return convertToFloatPlaneTemplate<SampleType, Range, ColorFam, true>(output_plane, source_plane, stride, width, height, stream);
+    } else {
+        return convertToFloatPlaneTemplate<SampleType, Range, ColorFam, false>(output_plane, source_plane, stride, width, height, stream);
     }
 }
 
