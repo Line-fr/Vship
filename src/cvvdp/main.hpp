@@ -183,6 +183,7 @@ public:
             resize_width = source_width;
             resize_height = source_height;
         }
+
         //std::cout << "base/resize : " << width << "x" << source_height << "/" << resize_width << "x" << resize_height << std::endl;
 
         this->fps = fps;
@@ -218,7 +219,7 @@ public:
         bool is_resized = (source_width != resize_width || source_height != resize_height);
         int64_t resizeBufferBytes;
         if (is_resized){
-            resizeBufferBytes = source_width*resize_height*sizeof(float) + source_width*source_height*sizeof(float);
+            resizeBufferBytes = source_width*resize_height*sizeof(float);
         } else {
             resizeBufferBytes = 0;
         }
@@ -237,11 +238,9 @@ public:
 
         //defined onnly if is_resized is true
         float* tempResize = mem_d; //of size resize temp
-        float* tempStrideEliminated = tempResize + resize_width*resize_height; //of size source plane (float)
 
         //for second stream
         float* tempResize2 = mem_d2; //of size resize temp
-        float* tempStrideEliminated2 = tempResize2 + resize_width*resize_height; //of size source plane (float)
 
         //free up a plane by increasing history to 1, we can now edit the frame 0 which is blank
         temporalRing1.rotate();
@@ -260,33 +259,23 @@ public:
         const float Y_refl = model->getReflLevel();
         const float exposure = model->exposure;
 
+        displayEncode(src1_d[0], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
+        displayEncode(src1_d[1], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
+        displayEncode(src1_d[2], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
+        displayEncode(src2_d[0], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
+        displayEncode(src2_d[1], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
+        displayEncode(src2_d[2], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
+
         //std::cout << "Y_peak, Y_black, Y_refl, exposure : " << Y_peak << " " <<  Y_black << " " << Y_refl << " " << exposure << std::endl;
 
         //we put the frame's planes on GPU
         //do we write directly in final after stride eliminaation?
-        tempStrideEliminated = is_resized ? tempStrideEliminated : src1_d[0];
-        displayEncode(tempStrideEliminated, source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
-        if (is_resized) resizePlane(src1_d[0], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream1);
-
-        tempStrideEliminated = is_resized ? tempStrideEliminated : src1_d[1];
-        displayEncode(tempStrideEliminated, source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
-        if (is_resized) resizePlane(src1_d[1], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream1);
-
-        tempStrideEliminated = is_resized ? tempStrideEliminated : src1_d[2];
-        displayEncode(tempStrideEliminated, source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
-        if (is_resized) resizePlane(src1_d[2], tempResize, tempStrideEliminated, source_width, source_height, resize_width, resize_height, stream1);
-
-        tempStrideEliminated2 = is_resized ? tempStrideEliminated2 : src2_d[0];
-        displayEncode(tempStrideEliminated2, source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream2);
-        if (is_resized) resizePlane(src2_d[0], tempResize2, tempStrideEliminated2, source_width, source_height, resize_width, resize_height, stream2);
-        
-        tempStrideEliminated2 = is_resized ? tempStrideEliminated2 : src2_d[1];
-        displayEncode(tempStrideEliminated2, source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream2);
-        if (is_resized) resizePlane(src2_d[1], tempResize2, tempStrideEliminated2, source_width, source_height, resize_width, resize_height, stream2);
-        
-        tempStrideEliminated2 = is_resized ? tempStrideEliminated2 : src2_d[2];
-        displayEncode(tempStrideEliminated2, source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream2);
-        if (is_resized) resizePlane(src2_d[2], tempResize2, tempStrideEliminated2, source_width, source_height, resize_width, resize_height, stream2);
+        if (is_resized){
+            for (int i = 0; i < 3; i++){
+                resizePlane(src1_d[i], tempResize, src1_d[i], source_width, source_height, resize_width, resize_height, stream1);
+                resizePlane(src2_d[i], tempResize2, src2_d[i], source_width, source_height, resize_width, resize_height, stream2);
+            }
+        }
 
         //colorspace conversion
         XYZ_to_dkl(src1_d, resize_width*resize_height, stream1);
