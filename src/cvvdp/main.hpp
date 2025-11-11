@@ -158,8 +158,8 @@ public:
         hipEventCreate(&event);
         hipEventCreate(&event2);
 
-        converter1.init(source_colorspace, VshipColorConvert::linRGBBT709, stream1);
-        converter2.init(source_colorspace2, VshipColorConvert::linRGBBT709, stream2);
+        converter1.init(source_colorspace, VshipColorConvert::XYZ, stream1);
+        converter2.init(source_colorspace2, VshipColorConvert::XYZ, stream2);
 
         source_width = converter1.getWidth();
         source_height = converter1.getHeight();
@@ -219,7 +219,11 @@ public:
         bool is_resized = (source_width != resize_width || source_height != resize_height);
         int64_t resizeBufferBytes;
         if (is_resized){
-            resizeBufferBytes = source_width*resize_height*sizeof(float);
+            resizeBufferBytes = source_height*resize_width*sizeof(float);
+            if (source_width > resize_width){
+                //resize to smaller variant, src1_d can't hold the initial data
+                resizeBufferBytes += source_width*source_height*3*sizeof(float);
+            }
         } else {
             resizeBufferBytes = 0;
         }
@@ -251,8 +255,25 @@ public:
         float* src1_d[3] = {source_ptr, source_ptr+resize_width*resize_height, source_ptr+2*resize_width*resize_height};
         float* src2_d[3] = {encoded_ptr, encoded_ptr+resize_width*resize_height, encoded_ptr+2*resize_width*resize_height};
 
-        converter1.convert(src1_d, srcp1, lineSize);
-        converter2.convert(src2_d, srcp2, lineSize2);
+        float* base_plane1[3];
+        float* base_plane2[3];
+        if (is_resized && source_width > resize_width){
+            base_plane1[0] = mem_d+source_height*resize_width;
+            base_plane1[1] = base_plane1[0] + source_width*source_height;
+            base_plane1[2] = base_plane1[0] + 2*source_width*source_height;
+
+            base_plane2[0] = mem_d2+source_height*resize_width;
+            base_plane2[1] = base_plane2[0] + source_width*source_height;
+            base_plane2[2] = base_plane2[0] + 2*source_width*source_height;
+        } else {
+            for (int i = 0; i < 3; i++){
+                base_plane1[i] = src1_d[i];
+                base_plane2[i] = src2_d[i];
+            }
+        }
+
+        converter1.convert(base_plane1, srcp1, lineSize);
+        converter2.convert(base_plane2, srcp2, lineSize2);
 
         const float Y_peak = model->max_luminance;
         const float Y_black = model->getBlackLevel();
@@ -263,12 +284,15 @@ public:
 
         //we put the frame's planes on GPU
         //do we write directly in final after stride eliminaation?
+        for (int i = 0; i < 3; i++){
+            displayEncode(base_plane1[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
+            displayEncode(base_plane2[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream2);
+        }
+
         if (is_resized){
             for (int i = 0; i < 3; i++){
-                displayEncode(src1_d[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
-                resizePlane(src1_d[i], tempResize, src1_d[i], source_width, source_height, resize_width, resize_height, stream1);
-                displayEncode(src2_d[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream2);
-                resizePlane(src2_d[i], tempResize2, src2_d[i], source_width, source_height, resize_width, resize_height, stream2);
+                resizePlane(src1_d[i], tempResize, base_plane1[i], source_width, source_height, resize_width, resize_height, stream1);
+                resizePlane(src2_d[i], tempResize2, base_plane2[i], source_width, source_height, resize_width, resize_height, stream2);
             }
         }
 
