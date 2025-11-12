@@ -2,50 +2,56 @@
 
 namespace VshipColorConvert {
 
-template<Vship_Range_t T, Vship_ColorFamily_t ColorFam, bool chromaPlane>
-__device__ float inline FullRange(float a);
-
-//Limited has the same formula for all bitdepth
-template <>
-__device__ float inline FullRange<Vship_RangeLimited, Vship_ColorYUV, false>(float a){
-    return (a*255.f-16.f)/(235.f-16.f);
+__device__ __host__ constexpr int bitdepthSample(Vship_Sample_t sampleType){
+    switch (sampleType){
+        case Vship_SampleUINT8:
+            return 8;
+        case Vship_SampleUINT9:
+            return 9;
+        case Vship_SampleUINT10:
+            return 10;
+        case Vship_SampleUINT12:
+            return 12;
+        case Vship_SampleUINT14:
+            return 14;
+        case Vship_SampleUINT16:
+            return 16;
+        default:
+            return 1;
+    }
 }
 
-//chroma goes from 16 to 240
-//Limited has the same formula for all bitdepth
-template <>
-__device__ float inline FullRange<Vship_RangeLimited, Vship_ColorYUV, true>(float a){
-    return (a*255.f-128.f)/(240.f-16.f); //integrated -0.5f
-}
-
-template<>
-__device__ float inline FullRange<Vship_RangeFull, Vship_ColorYUV, false>(float a){
-    return a;
-}
-
-template<>
-__device__ float inline FullRange<Vship_RangeFull, Vship_ColorYUV, true>(float a){
-    return a - 0.5f;
-}
-
-template<>
-__device__ float inline FullRange<Vship_RangeLimited, Vship_ColorRGB, true>(float a){
-    return (a*255.f-16.f)/(235.f-16.f);;
-}
-
-template<>
-__device__ float inline FullRange<Vship_RangeLimited, Vship_ColorRGB, false>(float a){
-    return (a*255.f-16.f)/(235.f-16.f);;
-}
-
-template<>
-__device__ float inline FullRange<Vship_RangeFull, Vship_ColorRGB, true>(float a){
-    return a;
-}
-
-template<>
-__device__ float inline FullRange<Vship_RangeFull, Vship_ColorRGB, false>(float a){
-    return a;
+template<Vship_Sample_t sampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam, bool chromaPlane>
+__device__ float inline FullRange(float a){
+    constexpr int bitdepth = bitdepthSample(sampleType);
+    if constexpr (Range == Vship_RangeFull){
+        constexpr float normalization = (1 << bitdepth) - 1; //float and half get 1
+        //put in range [0, 1]
+        a /= normalization;
+        //if UV -> -0.5
+        if constexpr (ColorFam == Vship_ColorYUV && chromaPlane) a -= 0.5f;
+        return a;
+    } else {
+        //limited
+        if constexpr (bitdepth >= 8){
+            //float or half have bitdepth 1. Here we have all uint types
+            //-> range [0, 256[
+            a /= (1 << (bitdepth - 8));
+        } else {
+            //float or half have bitdepth 1.
+            //-> range [0, 256]
+            //these types should ideally not use limited range since the formula is incorrect.
+            a *= 256;
+        }
+        //range [0, 256] BUT we are in limited
+        if constexpr (ColorFam == Vship_ColorYUV && chromaPlane){
+            //chroma YUV formula
+            return (a-128.f)/224.f;
+        } else {
+            //luma formula
+            return (a-16.f)/219.f;
+        }
+    }
 }
 
 }
