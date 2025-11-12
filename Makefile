@@ -14,6 +14,8 @@ ifeq ($(OS),Windows_NT)
     exe_install_path := $(ProgramFiles)\FFVship.exe
     ffvshiplibheader := -I include -lffms2
 	ffvshipincludeheader :=
+	fatbincompressamd := 
+	fatbincompresscuda := 
 else
     dllend := .so
 	exeend :=
@@ -25,6 +27,8 @@ else
 	header_install_path := $(DESTDIR)$(PREFIX)/include
     ffvshiplibheader := $(shell pkg-config --libs ffms2)
 	ffvshipincludeheader := $(shell pkg-config --cflags-only-I ffms2)
+	fatbincompressamd := --offload-compress
+	fatbincompresscuda := --compress-mode=balance
 endif
 
 .FORCE:
@@ -36,10 +40,10 @@ buildFFVSHIPcuda: src/FFVship.cpp .FORCE
 	nvcc -x cu src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -I "$(current_dir)include" -arch=native $(subst -pthread,-Xcompiler="-pthread",$(ffvshiplibheader)) -o FFVship$(exeend)
 
 buildFFVSHIPall: src/FFVship.cpp .FORCE
-	hipcc src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -I "$(current_dir)include" --offload-compress --offload-arch=$(HIPARCH) -Wno-unused-result -Wno-ignored-attributes $(ffvshiplibheader) -o FFVship$(exeend)
+	hipcc src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -I "$(current_dir)include" $(fatbincompressamd) --offload-arch=$(HIPARCH) -Wno-unused-result -Wno-ignored-attributes $(ffvshiplibheader) -o FFVship$(exeend)
 
 buildFFVSHIPcudaall: src/FFVship.cpp .FORCE
-	nvcc -x cu src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -I "$(current_dir)include" --compress-mode=balance -arch=all $(subst -pthread,-Xcompiler="-pthread",$(ffvshiplibheader)) -o FFVship$(exeend)
+	nvcc -x cu src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -I "$(current_dir)include" $(fatbincompresscuda) -arch=all $(subst -pthread,-Xcompiler="-pthread",$(ffvshiplibheader)) -o FFVship$(exeend)
 
 build: src/VshipLib.cpp .FORCE
 	hipcc src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" --offload-arch=native -I "$(current_dir)include" -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)libvship$(dllend)"
@@ -48,10 +52,10 @@ buildcuda: src/VshipLib.cpp .FORCE
 	nvcc -x cu src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" -arch=native -I "$(current_dir)include" -shared $(fpiccuda) -o "$(current_dir)libvship$(dllend)"
 
 buildcudaall: src/VshipLib.cpp .FORCE
-	nvcc -x cu src/VshipLib.cpp -g -std=c++17 --compress-mode=balance -arch=all -I "$(current_dir)include" -shared $(fpiccuda) -o "$(current_dir)libvship$(dllend)"
+	nvcc -x cu src/VshipLib.cpp -g -std=c++17 $(fatbincompresscuda) -arch=all -I "$(current_dir)include" -shared $(fpiccuda) -o "$(current_dir)libvship$(dllend)"
 
 buildall: src/VshipLib.cpp .FORCE
-	hipcc src/VshipLib.cpp -g -std=c++17 --offload-compress --offload-arch=$(HIPARCH) -I "$(current_dir)include" -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)libvship$(dllend)"
+	hipcc src/VshipLib.cpp -g -std=c++17 $(fatbincompressamd) --offload-arch=$(HIPARCH) -I "$(current_dir)include" -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)libvship$(dllend)"
 
 ifeq ($(OS),Windows_NT)
 install:
