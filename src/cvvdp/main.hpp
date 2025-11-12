@@ -316,7 +316,6 @@ public:
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
         loadImageToRing(srcp1, srcp2, lineSize, lineSize2);
         const float current_score = CVVDPprocess(dstp, dststride, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event, event2);
-        std::cout << current_score << std::endl;
         score_squareSum += std::pow(current_score, beta_t);
         float resQ;
         if (numFrame == 0){
