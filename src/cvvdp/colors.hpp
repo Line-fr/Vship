@@ -84,23 +84,55 @@ void inline XYZ_to_dkl(float* src_d[3], int64_t width, hipStream_t stream){
     XYZ_to_dklKernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d[0], src_d[1], src_d[2], width);
 }
 
+//we receive the linear input from the converter but we encode to display depending on what it was before
+template<Vship_TransferFunction_t transferFunction>
+__device__ void inline displayEncode_Device(float& a, float Y_peak, float Y_black, float Y_refl, float exposure);
+
+template<>
+__device__ void inline displayEncode_Device<Vship_TRC_BT709>(float& a, float Y_peak, float Y_black, float Y_refl, float exposure){
+    a = (Y_peak - Y_black) * (max(0.f, min(1.f, a*exposure))) + Y_black + Y_refl;
+}
+
+template<>
+__device__ void inline displayEncode_Device<Vship_TRC_PQ>(float& a, float Y_peak, float Y_black, float Y_refl, float exposure){
+    a *= 10000.f; //convert the Y normalized to 1 to actual PQ luminosity values
+    a = max(max(0.005f, Y_black), min(Y_peak, a*exposure)) + Y_black + Y_refl;
+}
+
+template<>
+__device__ void inline displayEncode_Device<Vship_TRC_Linear>(float& a, float Y_peak, float Y_black, float Y_refl, float exposure){
+    a = max(max(0.005f, Y_black), min(Y_peak, a*exposure)) + Y_refl;
+}
+
+template<Vship_TransferFunction_t transferFunction>
 __global__ void displayEncode_Kernel(float* p, int64_t width, float Y_peak, float Y_black, float Y_refl, float exposure){
     const int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
     if (x >= width) return;
 
-    float res = p[x];
-
-    res = (Y_peak - Y_black)*res + Y_black + Y_refl;
-
-    //if (x == 13*1024+64) printf("value at display %f from %f\n", res, p[x]);
-
-    p[x] = res;
+    displayEncode_Device<transferFunction>(p[x], Y_peak, Y_black, Y_refl, exposure);
+    //if (x == 0) printf("We got %f\n", p[x]);
 }
 
-void inline displayEncode(float* src_d, int64_t width, float Y_peak, float Y_black, float Y_refl, float exposure, hipStream_t stream){
+void inline displayEncode(float* src_d, int64_t width, float Y_peak, float Y_black, float Y_refl, float exposure, Vship_TransferFunction_t transferFunction, DisplayColorspace isHDR, hipStream_t stream){
     int th_x = 256;
     int64_t bl_x = (width+th_x-1)/th_x;
-    displayEncode_Kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d, width, Y_peak, Y_black, Y_refl, exposure);
+    if (!isHDR){
+        transferFunction = Vship_TRC_BT709; 
+        //we supppose that the input is sRGB no matter the actual input since the screen will display it as is
+    }
+    switch (transferFunction){
+        case Vship_TRC_PQ:
+            displayEncode_Kernel<Vship_TRC_PQ><<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d, width, Y_peak, Y_black, Y_refl, exposure);
+            break;
+        case Vship_TRC_Linear:
+            displayEncode_Kernel<Vship_TRC_Linear><<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d, width, Y_peak, Y_black, Y_refl, exposure);
+            break;
+        //treated same as BT709/sRGB
+        case Vship_TRC_HLG:
+        default:
+            displayEncode_Kernel<Vship_TRC_BT709><<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d, width, Y_peak, Y_black, Y_refl, exposure);
+            break;
+    }
 }
 
 

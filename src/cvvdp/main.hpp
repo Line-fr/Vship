@@ -141,6 +141,8 @@ class CVVDPComputingImplementation{
     GaussianHandle gaussianhandle;
     VshipColorConvert::Converter converter1;
     VshipColorConvert::Converter converter2;
+    Vship_Colorspace_t ref_colorspace;
+    Vship_Colorspace_t dis_colorspace;
     int64_t source_width = 0;
     int64_t source_height = 0;
     int maxshared = 0;
@@ -158,8 +160,8 @@ public:
         hipEventCreate(&event);
         hipEventCreate(&event2);
 
-        converter1.init(source_colorspace, VshipColorConvert::XYZ, stream1);
-        converter2.init(source_colorspace2, VshipColorConvert::XYZ, stream2);
+        converter1.init(source_colorspace, VshipColorConvert::linRGB, stream1);
+        converter2.init(source_colorspace2, VshipColorConvert::linRGB, stream2);
 
         source_width = converter1.getWidth();
         source_height = converter1.getHeight();
@@ -187,6 +189,8 @@ public:
         //std::cout << "base/resize : " << width << "x" << source_height << "/" << resize_width << "x" << resize_height << std::endl;
 
         this->fps = fps;
+        ref_colorspace = source_colorspace;
+        dis_colorspace = source_colorspace2;
 
         temporalRing1.init(fps, resize_width, resize_height);
         temporalRing2.init(fps, resize_width, resize_height);
@@ -279,15 +283,20 @@ public:
         const float Y_black = model->getBlackLevel();
         const float Y_refl = model->getReflLevel();
         const float exposure = model->exposure;
+        const DisplayColorspace isHDR = model->colorspace;
 
         //std::cout << "Y_peak, Y_black, Y_refl, exposure : " << Y_peak << " " <<  Y_black << " " << Y_refl << " " << exposure << std::endl;
 
         //we put the frame's planes on GPU
         //do we write directly in final after stride eliminaation?
         for (int i = 0; i < 3; i++){
-            displayEncode(base_plane1[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream1);
-            displayEncode(base_plane2[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, stream2);
+            displayEncode(base_plane1[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, ref_colorspace.transferFunction, isHDR, stream1);
+            displayEncode(base_plane2[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, dis_colorspace.transferFunction, isHDR, stream2);
         }
+
+        //go to XYZ
+        VshipColorConvert::primariesToPrimaries(base_plane1[0], base_plane1[1], base_plane1[2], source_width*source_height, ref_colorspace.primaries, Vship_PRIMARIES_INTERNAL, stream1);
+        VshipColorConvert::primariesToPrimaries(base_plane2[0], base_plane2[1], base_plane2[2], source_width*source_height, dis_colorspace.primaries, Vship_PRIMARIES_INTERNAL, stream2);
 
         if (is_resized){
             for (int i = 0; i < 3; i++){
@@ -296,7 +305,7 @@ public:
             }
         }
 
-        //colorspace conversion
+        //colorspace conversion at this point
         XYZ_to_dkl(src1_d, resize_width*resize_height, stream1);
         XYZ_to_dkl(src2_d, resize_width*resize_height, stream2);
 
@@ -307,6 +316,7 @@ public:
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
         loadImageToRing(srcp1, srcp2, lineSize, lineSize2);
         const float current_score = CVVDPprocess(dstp, dststride, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event, event2);
+        std::cout << current_score << std::endl;
         score_squareSum += std::pow(current_score, beta_t);
         float resQ;
         if (numFrame == 0){

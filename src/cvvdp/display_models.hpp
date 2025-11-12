@@ -2,17 +2,15 @@
 
 namespace cvvdp{
 
-enum Colorspace{
+enum DisplayColorspace{
     sRGB,
-    BT709LINEAR,
-    BT2020HLG,
-    BT2020PQ,
+    HDR,
 };
 
 struct DisplayModel{
     std::string name = "";
     int64_t resolution[2] = {1920, 1080};
-    Colorspace colorspace = sRGB;
+    DisplayColorspace colorspace = sRGB;
     float viewing_distance_meters;
     float diagonal_size_inches;
     float max_luminance;
@@ -36,7 +34,7 @@ struct DisplayModel{
             source = "none";
         } else if (model_key == "standard_hdr_pq"){
             name = "30-inch 4K HDR monitor, peak luminance 1500 cd/m^2, viewed under low light levels (10 lux), seen from 2 x display height";
-            colorspace = BT2020PQ;
+            colorspace = HDR;
             resolution[0] = 3840; resolution[1] = 2160;
             viewing_distance_meters = 0.7472;
             diagonal_size_inches = 30;
@@ -44,9 +42,10 @@ struct DisplayModel{
             contrast = 1000000;
             E_ambient = 10;
             source = "none";
+        //same as PQ, what matters is that it is HDR
         } else if (model_key == "standard_hdr_hlg"){
             name = "30-inch 4K HDR monitor, peak luminance 1500 cd/m^2, viewed under low light levels (10 lux), seen from 2 x display height";
-            colorspace = BT2020HLG;
+            colorspace = HDR;
             resolution[0] = 3840; resolution[1] = 2160;
             viewing_distance_meters = 0.7472;
             diagonal_size_inches = 30;
@@ -56,7 +55,7 @@ struct DisplayModel{
             source = "none";
         } else if (model_key == "standard_hdr_linear"){
             name = "30-inch 4K HDR monitor, peak luminance 1500 cd/m^2, viewed under low light levels (10 lux), seen from 2 x display height";
-            colorspace = BT709LINEAR;
+            colorspace = HDR;
             resolution[0] = 3840; resolution[1] = 2160;
             viewing_distance_meters = 0.7472;
             diagonal_size_inches = 30;
@@ -66,7 +65,7 @@ struct DisplayModel{
             source = "none";
         } else if (model_key == "standard_hdr_dark"){
             name = "30-inch 4K HDR monitor, peak luminance 1500 cd/m^2, viewed in a dark room (0 lux), seen from 2 x display height";
-            colorspace = BT709LINEAR;
+            colorspace = HDR;
             resolution[0] = 3840; resolution[1] = 2160;
             viewing_distance_meters = 0.7472;
             diagonal_size_inches = 30;
@@ -76,7 +75,7 @@ struct DisplayModel{
             source = "none";
         } else if (model_key == "standard_hdr_linear_zoom"){
             name = "30-inch 4K HDR monitor, peak luminance 4000 cd/m^2, viewed under low light levels (10 lux), seen from very close to spot super-resolution artifacts";
-            colorspace = BT709LINEAR;
+            colorspace = HDR;
             resolution[0] = 3840; resolution[1] = 2160;
             viewing_distance_meters = 0.25;
             diagonal_size_inches = 30;
@@ -108,10 +107,10 @@ struct DisplayModel{
         cached_ppd = 1/pix_deg;
         return cached_ppd;
     }
-    float getBlackLevel(){
+    float getReflLevel(){
         return E_ambient*k_refl/PI;
     }
-    float getReflLevel(){
+    float getBlackLevel(){
         return max_luminance/contrast;
     }
 };
