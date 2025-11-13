@@ -214,8 +214,8 @@ public:
         dis_colorspace = source_colorspace2;
 
         //temporalRing are big VRAM consumers, we ll make themm store the smallest version of the video
-        temporalRing1.init(fps, min(resize_width, source_width), min(resize_height, source_height));
-        temporalRing2.init(fps, min(resize_width, source_width), min(resize_height, source_height));
+        temporalRing1.init(fps, std::min(resize_width, source_width), std::min(resize_height, source_height));
+        temporalRing2.init(fps, std::min(resize_width, source_width), std::min(resize_height, source_height));
         csf_handler.init(resize_width, resize_height, model->get_screen_ppd());
         gaussianhandle.init();
         score_squareSum = 0;
@@ -282,8 +282,8 @@ public:
         float* encoded_ptr = temporalRing2.getFramePointer(0);
 
         //final destination
-        int64_t minwidth = min(source_width, resize_width);
-        int64_t minheight = min(source_height, resize_height);
+        int64_t minwidth = std::min(source_width, resize_width);
+        int64_t minheight = std::min(source_height, resize_height);
 
         float* src1_d[3] = {source_ptr, source_ptr+minwidth*minheight, source_ptr+2*minwidth*minheight};
         float* src2_d[3] = {encoded_ptr, encoded_ptr+minwidth*minheight, encoded_ptr+2*minwidth*minheight};
