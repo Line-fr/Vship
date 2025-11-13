@@ -21,23 +21,29 @@
 
 namespace cvvdp{
 
-double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& temporalRing1, TemporalRing& temporalRing2, CSF_Handler& csfhandle, GaussianHandle& gaussianhandle, DisplayModel* model, int64_t maxshared, hipStream_t stream1, hipStream_t stream2, hipEvent_t event, hipEvent_t event2){
-    int64_t width = temporalRing1.width;
-    int64_t height = temporalRing1.height;
+double CVVDPprocess(const uint8_t *dstp, int64_t dststride, int64_t source_width, int64_t source_height, int64_t resize_width, int64_t resize_height, TemporalRing& temporalRing1, TemporalRing& temporalRing2, CSF_Handler& csfhandle, GaussianHandle& gaussianhandle, DisplayModel* model, int64_t maxshared, hipStream_t stream1, hipStream_t stream2, hipEvent_t event, hipEvent_t event2){
+    const int64_t minwidth = temporalRing1.width;
+    const int64_t minheight = temporalRing1.height;
+    const int64_t width = resize_width;
+    const int64_t height = resize_height;
+
+    //if minwidth < resize_width it means we need to resize still, this requires more memory
 
     int allocatedPlanes = 5;
     int stream1_supPlane = 0;
+    int64_t resizeBufferSize = 0;
+    if (minwidth < resize_width) resizeBufferSize = resize_width*minheight*sizeof(float);
 
     const int64_t bandOffset = LpyrMemoryNeedPerPlane(width, height, model->get_screen_ppd());
     //std::cout << "allocation bytes : " << sizeof(float)*(allocatedPlanes+stream1_supPlane)*bandOffset << std::endl;
     float* mem_d;
-    hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*(allocatedPlanes+stream1_supPlane)*bandOffset, stream1);
+    hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*(allocatedPlanes+stream1_supPlane)*bandOffset+resizeBufferSize, stream1);
     if (erralloc != hipSuccess){
         throw VshipError(OutOfVRAM, __FILE__, __LINE__);
     }
     //second stream
     float* mem_d2;
-    erralloc = hipMallocAsync(&mem_d2, sizeof(float)*allocatedPlanes*bandOffset, stream2);
+    erralloc = hipMallocAsync(&mem_d2, sizeof(float)*allocatedPlanes*bandOffset+resizeBufferSize, stream2);
     if (erralloc != hipSuccess){
         throw VshipError(OutOfVRAM, __FILE__, __LINE__);
     }
@@ -46,15 +52,30 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, TemporalRing& tempor
     float* RG_sustained1 = mem_d + bandOffset;
     float* YV_sustained1 = mem_d + 2*bandOffset;
     float* Y_transient1 = mem_d + 3*bandOffset;
+    float* tempResize1 = mem_d + 4*bandOffset; //is only allocated if needed
 
     float* Y_sustained2 = mem_d2;
     float* RG_sustained2 = mem_d2 + bandOffset;
     float* YV_sustained2 = mem_d2 + 2*bandOffset;
     float* Y_transient2 = mem_d2 + 3*bandOffset;
+    float* tempResize2 = mem_d2 + 4*bandOffset;
 
     //let's get the temporal channel out of the temporal ring!
     computeTemporalChannels(temporalRing1, Y_sustained1, RG_sustained1, YV_sustained1, Y_transient1, stream1);
     computeTemporalChannels(temporalRing2, Y_sustained2, RG_sustained2, YV_sustained2, Y_transient2, stream2);
+
+    if (minwidth < resize_width){
+        //this means that the planes contained in Y_sustained... are not the right size!
+        //we need to resize now
+        resizePlane(Y_sustained1, tempResize1, Y_sustained1, minwidth, minheight, width, height, stream1);
+        resizePlane(RG_sustained1, tempResize1, RG_sustained1, minwidth, minheight, width, height, stream1);
+        resizePlane(YV_sustained1, tempResize1, YV_sustained1, minwidth, minheight, width, height, stream1);
+        resizePlane(Y_transient1, tempResize1, Y_transient1, minwidth, minheight, width, height, stream1);
+        resizePlane(Y_sustained2, tempResize2, Y_sustained2, minwidth, minheight, width, height, stream2);
+        resizePlane(RG_sustained2, tempResize2, RG_sustained2, minwidth, minheight, width, height, stream2);
+        resizePlane(YV_sustained2, tempResize2, YV_sustained2, minwidth, minheight, width, height, stream2);
+        resizePlane(Y_transient2, tempResize2, Y_transient2, minwidth, minheight, width, height, stream2);
+    }
 
     const float ppd = model->get_screen_ppd();
     LpyrManager LPyr1(mem_d, width, height, ppd, bandOffset, stream1);
@@ -192,8 +213,9 @@ public:
         ref_colorspace = source_colorspace;
         dis_colorspace = source_colorspace2;
 
-        temporalRing1.init(fps, resize_width, resize_height);
-        temporalRing2.init(fps, resize_width, resize_height);
+        //temporalRing are big VRAM consumers, we ll make themm store the smallest version of the video
+        temporalRing1.init(fps, min(resize_width, source_width), min(resize_height, source_height));
+        temporalRing2.init(fps, min(resize_width, source_width), min(resize_height, source_height));
         csf_handler.init(resize_width, resize_height, model->get_screen_ppd());
         gaussianhandle.init();
         score_squareSum = 0;
@@ -221,34 +243,36 @@ public:
     }
     void loadImageToRing(const uint8_t *srcp1[3], const uint8_t *srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
         bool is_resized = (source_width != resize_width || source_height != resize_height);
-        int64_t resizeBufferBytes;
+        int64_t bufferSize;
         if (is_resized){
-            resizeBufferBytes = source_height*resize_width*sizeof(float);
-            if (source_width > resize_width){
-                //resize to smaller variant, src1_d can't hold the initial data
-                resizeBufferBytes += source_width*source_height*3*sizeof(float);
+            if (source_width < resize_width){
+                bufferSize = 0;
+                //we will put source size into the temporal ring -> no resize here
+            } else {
+                //we need to resize before putting in temporal ring.
+                bufferSize += source_width*source_height*3*sizeof(float)+source_height*resize_width*sizeof(float);
             }
         } else {
-            resizeBufferBytes = 0;
+            //we put everything in the temporalRing directly
+            bufferSize = 0;
         }
         //allocate memory to send the raw to gpu
         float* mem_d;
-        hipError_t erralloc = hipMallocAsync(&mem_d, (resizeBufferBytes), stream1);
+        hipError_t erralloc = hipMallocAsync(&mem_d, (bufferSize), stream1);
         if (erralloc != hipSuccess){
             throw VshipError(OutOfVRAM, __FILE__, __LINE__);
         }
         //for second stream
         float* mem_d2;
-        erralloc = hipMallocAsync(&mem_d2, (resizeBufferBytes), stream2);
+        erralloc = hipMallocAsync(&mem_d2, (bufferSize), stream2);
         if (erralloc != hipSuccess){
             throw VshipError(OutOfVRAM, __FILE__, __LINE__);
         }
 
-        //defined onnly if is_resized is true
-        float* tempResize = mem_d; //of size resize temp
-
+        //defined onnly if we resize in this function
+        float* tempResize = mem_d + source_width*source_height*3; //of size resize temp
         //for second stream
-        float* tempResize2 = mem_d2; //of size resize temp
+        float* tempResize2 = mem_d2 + source_width*source_height*3; //of size resize temp
 
         //free up a plane by increasing history to 1, we can now edit the frame 0 which is blank
         temporalRing1.rotate();
@@ -256,17 +280,23 @@ public:
         //take color planes from the ring
         float* source_ptr = temporalRing1.getFramePointer(0);
         float* encoded_ptr = temporalRing2.getFramePointer(0);
-        float* src1_d[3] = {source_ptr, source_ptr+resize_width*resize_height, source_ptr+2*resize_width*resize_height};
-        float* src2_d[3] = {encoded_ptr, encoded_ptr+resize_width*resize_height, encoded_ptr+2*resize_width*resize_height};
+
+        //final destination
+        int64_t minwidth = min(source_width, resize_width);
+        int64_t minheight = min(source_height, resize_height);
+
+        float* src1_d[3] = {source_ptr, source_ptr+minwidth*minheight, source_ptr+2*minwidth*minheight};
+        float* src2_d[3] = {encoded_ptr, encoded_ptr+minwidth*minheight, encoded_ptr+2*minwidth*minheight};
 
         float* base_plane1[3];
         float* base_plane2[3];
+        //we work on the temporalRing buffer if source fits (=> smaller than resize)
         if (is_resized && source_width > resize_width){
-            base_plane1[0] = mem_d+source_height*resize_width;
+            base_plane1[0] = mem_d;
             base_plane1[1] = base_plane1[0] + source_width*source_height;
             base_plane1[2] = base_plane1[0] + 2*source_width*source_height;
 
-            base_plane2[0] = mem_d2+source_height*resize_width;
+            base_plane2[0] = mem_d2;
             base_plane2[1] = base_plane2[0] + source_width*source_height;
             base_plane2[2] = base_plane2[0] + 2*source_width*source_height;
         } else {
@@ -279,6 +309,19 @@ public:
         converter1.convert(base_plane1, srcp1, lineSize);
         converter2.convert(base_plane2, srcp2, lineSize2);
 
+        //resize as early as possible if source bigger than resize
+        if (is_resized && source_width > resize_width){
+            for (int i = 0; i < 3; i++){
+                resizePlane(src1_d[i], tempResize, base_plane1[i], source_width, source_height, resize_width, resize_height, stream1);
+                resizePlane(src2_d[i], tempResize2, base_plane2[i], source_width, source_height, resize_width, resize_height, stream2);
+            }
+        }
+        //everything is in temporalRing buffer so we can free memory already
+        hipFreeAsync(mem_d, stream1);
+        hipFreeAsync(mem_d2, stream2);
+
+        //now we work on src_d which has size minimum of source and resize
+
         const float Y_peak = model->max_luminance;
         const float Y_black = model->getBlackLevel();
         const float Y_refl = model->getReflLevel();
@@ -290,32 +333,22 @@ public:
         //we put the frame's planes on GPU
         //do we write directly in final after stride eliminaation?
         for (int i = 0; i < 3; i++){
-            displayEncode(base_plane1[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, ref_colorspace.transferFunction, isHDR, stream1);
-            displayEncode(base_plane2[i], source_width*source_height, Y_peak, Y_black, Y_refl, exposure, dis_colorspace.transferFunction, isHDR, stream2);
+            displayEncode(src1_d[i], minwidth*minheight, Y_peak, Y_black, Y_refl, exposure, ref_colorspace.transferFunction, isHDR, stream1);
+            displayEncode(src2_d[i], minwidth*minheight, Y_peak, Y_black, Y_refl, exposure, dis_colorspace.transferFunction, isHDR, stream2);
         }
 
         //go to XYZ
-        VshipColorConvert::primariesToPrimaries(base_plane1[0], base_plane1[1], base_plane1[2], source_width*source_height, ref_colorspace.primaries, Vship_PRIMARIES_INTERNAL, stream1);
-        VshipColorConvert::primariesToPrimaries(base_plane2[0], base_plane2[1], base_plane2[2], source_width*source_height, dis_colorspace.primaries, Vship_PRIMARIES_INTERNAL, stream2);
-
-        if (is_resized){
-            for (int i = 0; i < 3; i++){
-                resizePlane(src1_d[i], tempResize, base_plane1[i], source_width, source_height, resize_width, resize_height, stream1);
-                resizePlane(src2_d[i], tempResize2, base_plane2[i], source_width, source_height, resize_width, resize_height, stream2);
-            }
-        }
+        VshipColorConvert::primariesToPrimaries(src1_d[0], src1_d[1], src1_d[2], minwidth*minheight, ref_colorspace.primaries, Vship_PRIMARIES_INTERNAL, stream1);
+        VshipColorConvert::primariesToPrimaries(src2_d[0], src2_d[1], src2_d[2], minwidth*minheight, dis_colorspace.primaries, Vship_PRIMARIES_INTERNAL, stream2);
 
         //colorspace conversion at this point
-        XYZ_to_dkl(src1_d, resize_width*resize_height, stream1);
-        XYZ_to_dkl(src2_d, resize_width*resize_height, stream2);
-
-        hipFreeAsync(mem_d, stream1);
-        hipFreeAsync(mem_d2, stream2);
+        XYZ_to_dkl(src1_d, minwidth*minheight, stream1);
+        XYZ_to_dkl(src2_d, minwidth*minheight, stream2);
         //and we are done, the frame is loaded in the ring with the right colorspace, next step is temporal filtering
     }
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
         loadImageToRing(srcp1, srcp2, lineSize, lineSize2);
-        const float current_score = CVVDPprocess(dstp, dststride, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event, event2);
+        const float current_score = CVVDPprocess(dstp, dststride, source_width, source_height, resize_width, resize_height, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event, event2);
         score_squareSum += std::pow(current_score, beta_t);
         float resQ;
         if (numFrame == 0){
