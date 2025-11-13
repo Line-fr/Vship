@@ -95,7 +95,7 @@ __device__ void inline displayEncode_Device<Vship_TRC_BT709>(float& a, float Y_p
 
 template<>
 __device__ void inline displayEncode_Device<Vship_TRC_PQ>(float& a, float Y_peak, float Y_black, float Y_refl, float exposure){
-    a *= 10000.f; //convert the Y normalized to 1 to actual PQ luminosity values
+    a *= 100.f; //convert the Y normalized to 100 to actual PQ luminosity values
     a = max(max(0.005f, Y_black), min(Y_peak, a*exposure)) + Y_black + Y_refl;
 }
 
