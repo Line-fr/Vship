@@ -243,7 +243,7 @@ public:
     }
     void loadImageToRing(const uint8_t *srcp1[3], const uint8_t *srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
         bool is_resized = (source_width != resize_width || source_height != resize_height);
-        int64_t bufferSize;
+        int64_t bufferSize = 0;
         if (is_resized){
             if (source_width < resize_width){
                 bufferSize = 0;
