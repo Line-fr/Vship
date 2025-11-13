@@ -28,6 +28,7 @@ public:
 __device__ CubicHermitSplineInterpolator getHorizontalInterpolator_device(float* src, int64_t x, int64_t y, int64_t width, int64_t height){ //width and height must be the one of source!!!!
     y = min(y, height-1);
     x = min(x, width); //extra space beware
+    x = max((int64_t)0, x);
 
     const float elm1 = (x == 0) ? src[y*width] : src[y*width+x-1];
     const float el0 = (x == width) ? elm1 : src[y*width+x];
@@ -39,6 +40,7 @@ __device__ CubicHermitSplineInterpolator getHorizontalInterpolator_device(float*
 
 __device__ CubicHermitSplineInterpolator getVerticalInterpolator_device(float* src, int64_t x, int64_t y, int64_t width, int64_t height){ //width and height must be the one of source!!!!
     y = min(y, height);
+    y = max((int64_t)0, y);
     x = min(x, width-1);
 
     const float elm1 = (y == 0) ? src[x] : src[(y-1)*width+x];
@@ -52,7 +54,8 @@ __device__ CubicHermitSplineInterpolator getVerticalInterpolator_device(float* s
 //block x should range from 0 to width INCLUDED
 //dst of size (2*width)*height while src is of size width*height
 __global__ void bicubicHorizontalCenterUpscaleX2_Kernel(float* dst, float* src, int64_t width, int64_t height){
-    int64_t x = threadIdx.x + blockIdx.x * blockDim.x -1;
+    int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
+    x--;
     int64_t y = threadIdx.y + blockIdx.y * blockDim.y;
     CubicHermitSplineInterpolator interpolator = getHorizontalInterpolator_device(src, x, y, width, height);
     //this interpolator is valid on interval [0, 1] representing [x, x+1]
@@ -74,13 +77,15 @@ __global__ void bicubicHorizontalLeftUpscaleX2_Kernel(float* dst, float* src, in
     if (y < height && x < width){
         dst[y*2*width + 2*x] = src[y*width + x];
         dst[y*2*width + 2*x+1] = interpolator.get(0.5f);
+        //if (x == 0 && y == 0) printf("in left chroma upscale we get for middle : %f\n", interpolator.get(0.5f));
     }
 }
 
 //block x should range from 0 to width INCLUDED
 //dst of size (4*width)*height while src is of size width*height
 __global__ void bicubicHorizontalCenterUpscaleX4_Kernel(float* dst, float* src, int64_t width, int64_t height){
-    int64_t x = threadIdx.x + blockIdx.x * blockDim.x -1;
+    int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
+    x--;
     int64_t y = threadIdx.y + blockIdx.y * blockDim.y;
     CubicHermitSplineInterpolator interpolator = getHorizontalInterpolator_device(src, x, y, width, height);
     //this interpolator is valid on interval [0, 1] representing [x, x+1]
@@ -113,11 +118,13 @@ __global__ void bicubicHorizontalLeftUpscaleX4_Kernel(float* dst, float* src, in
 //dst of size width*(2*height) while src is of size width*height
 __global__ void bicubicVerticalCenterUpscaleX2_Kernel(float* dst, float* src, int64_t width, int64_t height){
     int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
-    int64_t y = threadIdx.y + blockIdx.y * blockDim.y -1;
+    int64_t y = threadIdx.y + blockIdx.y * blockDim.y;
+    y--;
     CubicHermitSplineInterpolator interpolator = getVerticalInterpolator_device(src, x, y, width, height);
     //this interpolator is valid on interval [0, 1] representing [y, y+1]
     //we are Center so we are interested in values: 0.25 and 0.75
     if (y < height && x < width){
+        //if (x == 1 && y <= 0) printf("at place y = %lld, x = %lld we put : %f\n", 2*y+2, x, interpolator.get(0.75f));
         if (y != -1) dst[(2*y +1)*width + x] = interpolator.get(0.25f);
         if (y != height-1) dst[(2*y+2)*width + x] = interpolator.get(0.75f);
     }
