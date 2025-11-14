@@ -25,17 +25,17 @@ public:
     }
 };
 
-__device__ void GaussianSmartSharedLoadMin(float* tampon, const float* src1, const float* src2, int64_t x, int64_t y, int64_t width, int64_t height){
+__device__ void GaussianSmartSharedLoadMinAbs(float* tampon, const float* src1, const float* src2, int64_t x, int64_t y, int64_t width, int64_t height){
     const int thx = threadIdx.x;
     const int thy = threadIdx.y;
     const int tampon_base_x = x - thx - 8;
     const int tampon_base_y = y - thy - 8;
 
     //fill tampon
-    tampon[thy*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? min(src1[(tampon_base_y+thy)*width + tampon_base_x+thx], src2[(tampon_base_y+thy)*width + tampon_base_x+thx]) : 0.f;
-    tampon[(thy+16)*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? min(src1[(tampon_base_y+thy+16)*width + tampon_base_x+thx], src2[(tampon_base_y+thy+16)*width + tampon_base_x+thx]) : 0.f;
-    tampon[thy*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? min(src1[(tampon_base_y+thy)*width + tampon_base_x+thx+16], src2[(tampon_base_y+thy)*width + tampon_base_x+thx+16]) : 0.f;
-    tampon[(thy+16)*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? min(src1[(tampon_base_y+thy+16)*width + tampon_base_x+thx+16], src2[(tampon_base_y+thy+16)*width + tampon_base_x+thx+16]) : 0.f;
+    tampon[thy*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? min(abs(src1[(tampon_base_y+thy)*width + tampon_base_x+thx]), abs(src2[(tampon_base_y+thy)*width + tampon_base_x+thx])) : 0.f;
+    tampon[(thy+16)*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? min(abs(src1[(tampon_base_y+thy+16)*width + tampon_base_x+thx]), abs(src2[(tampon_base_y+thy+16)*width + tampon_base_x+thx])) : 0.f;
+    tampon[thy*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? min(abs(src1[(tampon_base_y+thy)*width + tampon_base_x+thx+16]), abs(src2[(tampon_base_y+thy)*width + tampon_base_x+thx+16])) : 0.f;
+    tampon[(thy+16)*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? min(abs(src1[(tampon_base_y+thy+16)*width + tampon_base_x+thx+16]), abs(src2[(tampon_base_y+thy+16)*width + tampon_base_x+thx+16])) : 0.f;
     __syncthreads();
 }
 

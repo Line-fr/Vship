@@ -6,10 +6,12 @@ __global__ void preGaussianPreCompute_kernel(float* Lbkg, float* p1, float* p2, 
     const int64_t thid = threadIdx.x + blockIdx.x * blockDim.x;
     if (thid >= width*height) return;
 
+    const float ch_gain = (channel == 1) ? 1.45f : 1.f;
+
     const float S = csfhandle.computeSensitivityGPU(Lbkg[thid], band, channel);
-    p1[thid] *= S;
-    p2[thid] *= S;
-    //if (thid == 13*1024 + 64 && width == 827) printf("preGaussian ends with %f %f using sensi %f\n", p1[thid], p2[thid], S);
+    p1[thid] *= S * ch_gain;
+    p2[thid] *= S * ch_gain;
+    //if (thid == 0) printf("preGaussian ends with %f %f using sensi %f\n", p1[thid], p2[thid], S);
 }
 
 void preGaussianPreCompute(float* Lbkg, float* p1, float* p2, int width, int height, int channel, int band, CSF_Handler& csfhandle, hipStream_t stream){
@@ -31,30 +33,31 @@ __global__ void computeD_Kernel(float* R0, float* R1, float* R2, float* R3, floa
 
     const float powmaskc = powf(10, mask_c);
 
-    GaussianSmartSharedLoadMin(sharedmem, R0, T0, x, y, width, height);
+    GaussianSmartSharedLoadMinAbs(sharedmem, R0, T0, x, y, width, height);
     GaussianSmart_Device(sharedmem, x, y, width, height, gaussiankernel, gaussiankernel_integral);
     const float blurred_Cm0 = powf(powmaskc*abs(sharedmem[(threadIdx.y+8)*32+threadIdx.x+8]), mask_q[0]);
     __syncthreads();
 
-    GaussianSmartSharedLoadMin(sharedmem, R1, T1, x, y, width, height);
+    GaussianSmartSharedLoadMinAbs(sharedmem, R1, T1, x, y, width, height);
     GaussianSmart_Device(sharedmem, x, y, width, height, gaussiankernel, gaussiankernel_integral);
     const float blurred_Cm1 = powf(powmaskc*abs(sharedmem[(threadIdx.y+8)*32+threadIdx.x+8]), mask_q[1]);
     __syncthreads();
 
-    GaussianSmartSharedLoadMin(sharedmem, R2, T2, x, y, width, height);
+    GaussianSmartSharedLoadMinAbs(sharedmem, R2, T2, x, y, width, height);
     GaussianSmart_Device(sharedmem, x, y, width, height, gaussiankernel, gaussiankernel_integral);
     const float blurred_Cm2 = powf(powmaskc*abs(sharedmem[(threadIdx.y+8)*32+threadIdx.x+8]), mask_q[2]);
     __syncthreads();
 
-    GaussianSmartSharedLoadMin(sharedmem, R3, T3, x, y, width, height);
+    GaussianSmartSharedLoadMinAbs(sharedmem, R3, T3, x, y, width, height);
     GaussianSmart_Device(sharedmem, x, y, width, height, gaussiankernel, gaussiankernel_integral);
     const float blurred_Cm3 = powf(powmaskc*abs(sharedmem[(threadIdx.y+8)*32+threadIdx.x+8]), mask_q[3]);
     __syncthreads();
 
-    const float Cmask0 = fmaf(blurred_Cm0, powf(xcm_weights[0], 2), fmaf(blurred_Cm1, powf(xcm_weights[1], 2), fmaf(blurred_Cm2, powf(xcm_weights[2], 2), blurred_Cm3*powf(xcm_weights[3], 2))));
-    const float Cmask1 = fmaf(blurred_Cm0, powf(xcm_weights[4], 2), fmaf(blurred_Cm1, powf(xcm_weights[5], 2), fmaf(blurred_Cm2, powf(xcm_weights[6], 2), blurred_Cm3*powf(xcm_weights[7], 2))));
-    const float Cmask2 = fmaf(blurred_Cm0, powf(xcm_weights[8], 2), fmaf(blurred_Cm1, powf(xcm_weights[9], 2), fmaf(blurred_Cm2, powf(xcm_weights[10], 2), blurred_Cm3*powf(xcm_weights[11], 2))));
-    const float Cmask3 = fmaf(blurred_Cm0, powf(xcm_weights[12], 2), fmaf(blurred_Cm1, powf(xcm_weights[13], 2), fmaf(blurred_Cm2, powf(xcm_weights[14], 2), blurred_Cm3*powf(xcm_weights[15], 2))));
+    const float Cmask0 = fmaf(blurred_Cm0, powf(2.f, xcm_weights[0]), fmaf(blurred_Cm1, powf(2.f, xcm_weights[4]), fmaf(blurred_Cm2, powf(2.f, xcm_weights[8]), blurred_Cm3*powf(2.f, xcm_weights[12]))));
+    const float Cmask1 = fmaf(blurred_Cm0, powf(2.f, xcm_weights[1]), fmaf(blurred_Cm1, powf(2.f, xcm_weights[5]), fmaf(blurred_Cm2, powf(2.f, xcm_weights[9]), blurred_Cm3*powf(2.f, xcm_weights[13]))));
+    const float Cmask2 = fmaf(blurred_Cm0, powf(2.f, xcm_weights[2]), fmaf(blurred_Cm1, powf(2.f, xcm_weights[6]), fmaf(blurred_Cm2, powf(2.f, xcm_weights[10]), blurred_Cm3*powf(2.f, xcm_weights[14]))));
+    const float Cmask3 = fmaf(blurred_Cm0, powf(2.f, xcm_weights[3]), fmaf(blurred_Cm1, powf(2.f, xcm_weights[7]), fmaf(blurred_Cm2, powf(2.f, xcm_weights[11]), blurred_Cm3*powf(2.f, xcm_weights[15]))));
+    //if (id == 0) printf("Cmask: %f %f %f %f from %f %f %f %f\n", Cmask0, Cmask1, Cmask2, Cmask3, blurred_Cm0, blurred_Cm1, blurred_Cm2, blurred_Cm3);
 
     if (x >= width || y >= height) return;
     const float Du0 = powf(abs(R0[id] - T0[id]), mask_p)/(1+Cmask0);
@@ -62,7 +65,7 @@ __global__ void computeD_Kernel(float* R0, float* R1, float* R2, float* R3, floa
     const float Du2 = powf(abs(R2[id] - T2[id]), mask_p)/(1+Cmask2);
     const float Du3 = powf(abs(R3[id] - T3[id]), mask_p)/(1+Cmask3);
 
-    //if (id == 13*1024 + 64 && width == 827) printf("D width %d: %f %f %f %f vs %f %f %f %f with mask %f %f %f %f\n", width, R0[id], R1[id], R2[id], R3[id], T0[id], T1[id], T2[id], T3[id], Cmask0, Cmask1, Cmask2, Cmask3);
+    //if (id == 0) printf("D width %d: %f %f %f %f vs %f %f %f %f with mask %f %f %f %f\n", width, R0[id], R1[id], R2[id], R3[id], T0[id], T1[id], T2[id], T3[id], Cmask0, Cmask1, Cmask2, Cmask3);
     //if (id == 13*1024 + 64 && width == 827) printf("D width %d: %f %f %f %f\n", width, Du0, Du1, Du2, Du3);
 
     const float max_v = powf(10, d_max);
@@ -93,8 +96,8 @@ __global__ void computeD_baseband_kernel(float* Lbkg, float* p1, float* p2, int 
     if (thid >= width*height) return;
 
     const float S = csfhandle.computeSensitivityGPU(Lbkg[0], band, channel);
+    //if (thid == 0) printf("ComputeDbasedband D: %f, T_f %f R_f %f S %f Lbkg %f\n", abs(p1[thid] - p2[thid])*S, p2[thid], p1[thid], S, Lbkg[0]);
     p1[thid] = abs(p1[thid] - p2[thid])*S * baseband_weight[channel]; //the weight is put here to avoid another kernel later doing that
-    //if (thid == 128) printf("ComputeDbasedband: %f\n", p1[thid]);
 }
 
 void computeD_baseband(float* Lbkg, float* p1, float* p2, int width, int height, int channel, int band, CSF_Handler& csfhandle, hipStream_t stream){

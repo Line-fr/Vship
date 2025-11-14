@@ -45,11 +45,15 @@ public:
             const float slope = (logrho - LUT_logrho[x0])/(LUT_logrho[x0+1] - LUT_logrho[x0]);
             for (int channel = 0; channel < 4; channel++){
                 float res[32];
+                //std::cout << "chan " << channel << " bandrho " << band_frequencies[band] << " result ";
                 for (int i = 0; i < 32; i++){
                     const float y0i = CSF_LUT::D2LUT[channel][i][x0];
                     const float y1i = CSF_LUT::D2LUT[channel][i][x0+1];
                     res[i] = y0i + (y1i - y0i)*slope;
+                    //std::cout << res[i] << " ";
                 }
+                //std::cout << std::endl;
+
                 hipMemcpyHtoD(mem_d+32*(1+band*4+channel), res, sizeof(float)*32);
             }
         }
@@ -79,7 +83,7 @@ public:
         }
         */
         const float logS = LUTy[imin] * frac + LUTy[imax] * (1.f-frac) + sensitivity_correction/20.f;
-        //if (threadIdx.x + blockIdx.x == 0) printf("SensitivityCompute: inp log: %f, imin %d imax %d frac %f -> logS %f\n", x, imin, imax, frac, logS);
+        //if (threadIdx.x + blockIdx.x == 0) printf("SensitivityCompute: inp log: %f, imin %d imax %d frac %f -> logS %f, -> S %f\n", x, imin, imax, frac, logS, powf(10, logS));
         return powf(10, logS);
     }
 };
