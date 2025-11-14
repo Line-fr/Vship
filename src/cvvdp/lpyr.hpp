@@ -22,21 +22,22 @@ __global__ void gaussPyrReduce_Kernel(float* dst, float* src, int64_t source_wid
         const float kernel_x = gaussPyrKernel[dx+2];
         int ref_ind_x = 2*x + dx;
         //symmetric padding
-        if (ref_ind_x < 0) ref_ind_x = -ref_ind_x;
+        if (ref_ind_x < 0) ref_ind_x = -ref_ind_x-1;
         if (ref_ind_x >= source_width) ref_ind_x = 2*source_width - ref_ind_x - 2;
         for (int dy = -2; dy <= 2; dy++){
             const float kernel_y = gaussPyrKernel[dy+2];
             int ref_ind_y = 2*y + dy;
             //symmetric padding
-            if (ref_ind_y < 0) ref_ind_y = -ref_ind_y;
+            if (ref_ind_y < 0) ref_ind_y = -ref_ind_y-1;
             if (ref_ind_y >= source_height) ref_ind_y = 2*source_height - ref_ind_y - 2;
 
             nval += kernel_x*kernel_y*src[ref_ind_y*source_width+ref_ind_x];
+            //if (y*nw+x == 0) printf("Gpyr from %f at %dx%d\n", src[ref_ind_y*source_width+ref_ind_x], ref_ind_x, ref_ind_y);
         }
     }
 
     dst[y*nw+x] = nval;
-    //if (y*nw+x == 0) printf("We got %f at width %lld\n", nval, source_width);
+    //if (y*nw+x == 0) printf("Gpyr got %f at width %lld\n", nval, source_width);
 }
 
 void gaussPyrReduce(float* dst, float* src, int64_t source_width, int64_t source_height, hipStream_t stream){
@@ -68,12 +69,12 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
     for (int dx = -2+parity_x; dx <= 2; dx+=2){
         const float kernel_x = 2*gaussPyrKernel[dx+2];
         int ref_ind_x = (x + dx)/2; //funny: x+dx is always even
-        if (ref_ind_x < 0) ref_ind_x = -ref_ind_x;
+        if (ref_ind_x < 0) ref_ind_x = -ref_ind_x-1;
         if (ref_ind_x >= ow) ref_ind_x = 2*ow - ref_ind_x -2;
         for (int dy = -2+parity_y; dy <= 2; dy+=2){
             const float kernel_y = 2*gaussPyrKernel[dy+2];
             int ref_ind_y = (y+dy)/2; //(y+dy) is always even
-            if (ref_ind_y < 0) ref_ind_y = -ref_ind_y;
+            if (ref_ind_y < 0) ref_ind_y = -ref_ind_y-1;
             if (ref_ind_y >= oh) ref_ind_y = 2*oh - ref_ind_y -2;
 
             nval += kernel_x*kernel_y*src[ref_ind_y*ow+ref_ind_x];
@@ -84,15 +85,17 @@ __global__ void gaussPyrExpand_Kernel(float* dst, float* src, int64_t new_width,
         nval = max(nval, 0.01f);
     }
 
+    //if (thid == 0) printf("GlayerEx: %f at %lld\n", nval, new_width);
+
     if constexpr (subdst) {
         dst[thid] -= nval;
-        //if (thid == 0) printf("We got %f at width %lld from %f\n", dst[0], new_width, src[0]);
+        //if (thid == 0) printf("Layer got %f at width %lld from %f - %f\n", dst[0], new_width, dst[0]+nval, nval);
     } else if constexpr(adddst) {
         dst[thid] += nval;
     } else {
         dst[thid] = nval;
         //if (thid == 13*1024 + 64 && new_width*new_height == 1184264) printf("We got %f at width %lld from %f\n", dst[thid] , new_width, src[y/2*ow+x/2]);
-        //if (thid == 0) printf("We got %f at width %lld from %f\n", dst[0] , new_width, src[0]);
+        //if (thid == 0) printf("Layer got %f at width %lld from %f\n", dst[0] , new_width, src[0]);
     }
 }
 
@@ -108,6 +111,8 @@ __global__ void baseBandPyrRefine_Kernel(float* p, float* Lbkg, int64_t width){
     const int64_t thid = threadIdx.x + blockIdx.x * blockDim.x;
     if (thid >= width) return;
 
+    //if (thid == 0) printf("Layer is %f at width %lld\n", p[thid], width);
+
     float val;
     if constexpr (!isMean){
         val = min(p[thid]/max(0.01f, Lbkg[thid]), 1000.f);
@@ -118,7 +123,7 @@ __global__ void baseBandPyrRefine_Kernel(float* p, float* Lbkg, int64_t width){
         val = min(p[thid]/max(0.01f, Lbkg[0]), 1000.f);
     }
     p[thid] = val*multiplier;
-    //if (thid == 13*1024 + 64 && width == 1920*1080) printf("baseBandPyrRefine %f at width %lld\n", p[thid], width);
+    //if (thid == 0) printf("baseBandPyrRefine %f at width %lld\n", p[thid], width);
 }
 
 //gets the contrast from the layers
