@@ -27,11 +27,10 @@ public:
 
 __device__ CubicHermitSplineInterpolator getHorizontalInterpolator_device(float* src, int64_t x, int64_t y, int64_t width, int64_t height){ //width and height must be the one of source!!!!
     y = min(y, height-1);
-    x = min(x, width); //extra space beware
-    x = max((int64_t)0, x);
+    x = min(x, width-1); //can be -1
 
-    const float elm1 = (x == 0) ? src[y*width] : src[y*width+x-1];
-    const float el0 = (x == width) ? elm1 : src[y*width+x];
+    const float elm1 = (x <= 0) ? src[y*width] : src[y*width+x-1];
+    const float el0 = (x < 0) ? elm1 : src[y*width+x];
     const float el1 = (x >= width-1) ? el0 : src[y*width+x+1];
     const float el2 = (x >= width-2) ? el1 : src[y*width+x+2];
 
@@ -39,12 +38,11 @@ __device__ CubicHermitSplineInterpolator getHorizontalInterpolator_device(float*
 }
 
 __device__ CubicHermitSplineInterpolator getVerticalInterpolator_device(float* src, int64_t x, int64_t y, int64_t width, int64_t height){ //width and height must be the one of source!!!!
-    y = min(y, height);
-    y = max((int64_t)0, y);
+    y = min(y, height-1); //can be equal to -1
     x = min(x, width-1);
 
-    const float elm1 = (y == 0) ? src[x] : src[(y-1)*width+x];
-    const float el0 = (y == height) ? elm1 : src[y*width+x];
+    const float elm1 = (y <= 0) ? src[x] : src[(y-1)*width+x];
+    const float el0 = (y < 0) ? elm1 : src[y*width+x];
     const float el1 = (y >= height-1) ? el0 : src[(y+1)*width+x];
     const float el2 = (y >= height-2) ? el1 : src[(y+2)*width+x];
     
@@ -124,7 +122,7 @@ __global__ void bicubicVerticalCenterUpscaleX2_Kernel(float* dst, float* src, in
     //this interpolator is valid on interval [0, 1] representing [y, y+1]
     //we are Center so we are interested in values: 0.25 and 0.75
     if (y < height && x < width){
-        //if (x == 1 && y <= 0) printf("at place y = %lld, x = %lld we put : %f\n", 2*y+2, x, interpolator.get(0.75f));
+        //if (x == 1638 && y == -1) printf("at place y = %lld, x = %lld we put : %f from %f %f %f, interpol 0: %f\n", 2*y+2, x, interpolator.get(0.75f), src[(y+1)*width+x], src[(y+2)*width+x], src[(y+3)*width+x], interpolator.get(0.f));
         if (y != -1) dst[(2*y +1)*width + x] = interpolator.get(0.25f);
         if (y != height-1) dst[(2*y+2)*width + x] = interpolator.get(0.75f);
     }
