@@ -85,7 +85,7 @@ This contains only some of the numerous options offered by Vship
 I recommend checking the doc or using -h to get the full list.
 ```
 usage: ./FFVship [-h] [--source SOURCE] [--encoded ENCODED]
-                    [-m {SSIMULACRA2, Butteraugli}]
+                    [-m {SSIMULACRA2, Butteraugli, CVVDP}]
                     [--start start] [--end end] [-e --every every]
                     [-t THREADS] [-g gpuThreads] [--gpu-id gpu_id]
                     [--json OUTPUT]

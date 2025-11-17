@@ -675,7 +675,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
 
     parser.add_flag({"--source", "-s"}, &opts.source_file, "Reference video to compare to", true);
     parser.add_flag({"--encoded", "-e"}, &opts.encoded_file, "Distorted encode of the source", true);
-    parser.add_flag({"--metric", "-m"}, &metric_name, "Which metric to use [SSIMULACRA2, Butteraugli]");
+    parser.add_flag({"--metric", "-m"}, &metric_name, "Which metric to use [SSIMULACRA2, Butteraugli, CVVDP]");
     parser.add_flag({"--json"}, &opts.json_output_file, "Outputs metric results to a json file");
     parser.add_flag({"--live-score-output"}, &opts.live_index_score_output, "replace stdout output with index-score lines");
     parser.add_flag({"--source-index"}, &opts.source_index, "FFMS2 index file for source video");
