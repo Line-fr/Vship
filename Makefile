@@ -75,6 +75,8 @@ install:
 	fi
 uninstall:
 	rm -f "$(plugin_install_path)/libvship$(dllend)" "$(lib_install_path)/libvship$(dllend)" "$(header_install_path)/VshipAPI.h" "$(exe_install_path)/FFVship"
+uninstallOld:
+	rm -f "$(plugin_install_path)/vship$(dllend)" "$(lib_install_path)/vship$(dllend)" "$(header_install_path)/VshipAPI.h" "$(exe_install_path)/FFVship"
 endif
 
 test: .FORCE build
