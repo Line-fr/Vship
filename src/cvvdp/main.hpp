@@ -144,7 +144,7 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, int64_t source_width
             finalValue += std::pow(val, 4);
         }
     }
-    finalValue = std::pow(finalValue/(float)(levels*4), 1./4.);
+    finalValue = std::pow(finalValue, 1./4.);
 
     return finalValue;
 }

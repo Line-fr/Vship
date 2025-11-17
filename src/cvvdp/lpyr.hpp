@@ -137,7 +137,7 @@ void baseBandPyrRefine(float* p, float* Lbkg, int64_t width, hipStream_t stream)
 std::vector<float> get_frequencies(const int64_t width, const int64_t height, const float ppd){
     const float min_freq = 0.2;
     const int maxLevel_forRes = std::log2(std::min(width, height))-1;
-    const int maxLevel_forPPD = std::ceil(-std::log2(2*min_freq/0.3228/ppd))+3;
+    const int maxLevel_forPPD = std::ceil(-std::log2(2*min_freq/0.3228/ppd))+1;
     const int maxLevel_hard = 14;
     const int levels = std::min(maxLevel_forPPD, std::min(maxLevel_forRes, maxLevel_hard));
 
