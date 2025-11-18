@@ -38,7 +38,7 @@ public:
         this->height = colorspace.height;
         this->source_colorspace = colorspace;
         this->destination = destination;
-        this->stream = stream;
+        this->stream = stream;       
 
         isCropped = true;
         if (colorspace.crop.top == 0 && colorspace.crop.bottom == 0 && colorspace.crop.left == 0 && colorspace.crop.right == 0) isCropped = false;
@@ -49,6 +49,7 @@ public:
         if (source_colorspace.target_width == colorspace.width && source_colorspace.target_height == colorspace.height) isResized = false;
         int64_t maxWidth = std::max(source_colorspace.target_width, source_colorspace.width);
         int64_t maxHeight= std::max(source_colorspace.target_height, source_colorspace.height);
+        
     }
     void destroy(){
         if (mem_d != NULL){
@@ -68,16 +69,15 @@ public:
 
         int basePlaneAllocation = 3;
         int maxplaneBuffer = 2;
-        if (!isResized) basePlaneAllocation = 0;
+        if (!isResized && !isCropped) basePlaneAllocation = 0;
         hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*width*height*basePlaneAllocation + sizeof(float)*maxWidth*maxHeight*maxplaneBuffer, stream);
         if (erralloc != hipSuccess){
             throw VshipError(OutOfVRAM, __FILE__, __LINE__);
         }
 
-
         float* preCropOut[3] = {mem_d, mem_d+width*height, mem_d+width*height*2};
         float* temp_d = (mem_d+3*width*height);
-        if (!isResized) {
+        if (!isResized && !isCropped) {
             //direct feed
             for (int i = 0; i < 3; i++) preCropOut[i] = out[i];
             temp_d = mem_d;
@@ -134,8 +134,13 @@ public:
             float* interm2 = temp_d + maxWidth*maxHeight;
             float* fin = out[i];
             if (isCropped){
+                //std::cout << source_colorspace.width << "x" << source_colorspace.height << " / " << source_colorspace.target_width << "x" << source_colorspace.target_height << std::endl;
+                //std::cout << source_colorspace.crop.top << " " << source_colorspace.crop.bottom << " " << source_colorspace.crop.left << " " << source_colorspace.crop.right << std::endl;
                 resizePlane(interm, interm2, base, source_colorspace.width, source_colorspace.height, source_colorspace.target_width, source_colorspace.target_height, stream);
                 strideEliminator<FLOAT>(fin, interm+source_colorspace.target_width*source_colorspace.crop.top+source_colorspace.crop.left, source_colorspace.target_width*sizeof(float), getWidth(), getHeight(), stream);
+            } else if (isCropped){
+                //std::cout << "Pointer offset: " << source_colorspace.target_width*source_colorspace.crop.top+source_colorspace.crop.left << ", stride: " << source_colorspace.target_width*sizeof(float) << ", new width: " << getWidth() << ", new height: " << getHeight() << std::endl;
+                strideEliminator<FLOAT>(fin, base+source_colorspace.target_width*source_colorspace.crop.top+source_colorspace.crop.left, source_colorspace.target_width*sizeof(float), getWidth(), getHeight(), stream);
             } else if (isResized){
                 resizePlane(fin, interm, base, source_colorspace.width, source_colorspace.height, source_colorspace.target_width, source_colorspace.target_height, stream);
             }
