@@ -34,47 +34,40 @@ featuring Vship:
 - [Media-Metrologist](https://github.com/Av1ation-Association/Media-Metrologist): Media-Metrologist is a library for measuring video quality using a suite of metrics on a per-scene and per-frame basis.
 - [`lvsfunc`](https://github.com/Jaded-Encoding-Thaumaturgy/lvsfunc): JET project containing various functions to help with video processing.
 
-## Installation
+## Compiling
 
-The steps to build `vship` from source are provided below.
+For all build options `make` and either `hipcc` (AMD HIP SDK) or `nvcc` (NVIDIA Cuda SDK) are required.
+Additionally when building the FFvship cli tool `ffms2` and `pkg-config` are required.
 
-### Dependencies
-For all build options the following are requried:
-
-- `make`
-- `hipcc` (AMD HIP SDK) or `nvcc` (NVIDIA Cuda SDK)
-
-Additionaly, to build the FFvship cli tool:
-
-- ffms2
-- pkg-config
-
-### Build Instructions
-
-1. Use the appropriate target for your gpu or use case.
+The supplied make file supports several targets depending on the gpu vendor and series.
 
 ```bash
-#libvship Build
-make buildcuda     # Build for the current systems Nvidia gpu
-make buildcudaall  # Build for all supported Nvidia gpus
-make build         # Build for the current systems AMD gpu
-make buildall      # Build for all supported AMD gpus
+# Build libvship and vapoursynth plugin
+make buildcuda             # Build for the current systems Nvidia gpu
+make buildcudaall          # Build for all supported Nvidia gpus
+make build                 # Build for the current systems AMD gpu
+make buildall              # Build for all supported AMD gpus
 
-#FFVship CLI linux tool build
+# Build FFvship
 make buildFFVSHIPcuda      # Build for the current systems Nvidia gpu
 make buildFFVSHIPcudaall   # Build for all supported Nvidia gpus
 make buildFFVSHIP          # Build for the current systems AMD gpu
 make buildFFVSHIPall       # Build for all supported AMD gpus
 ```
 
-2. Install libvship and/or the FFVship executable.
+The make file also includes a `install` target after compliation.
 
-The `install` target automatically detects and installs only the components that were built.
-```bash
-make install
-#for arch, you need to use another prefix:
-make install PREFIX=/usr
 ```
+make install
+```
+
+On non ubuntu based linux distributions it might be required to use the `PREFIX` enviroment variable.
+For installing to a fake root `DESTDIR` can also be used.
+
+### Arch Linux
+
+For Arch Linux user there already exists AUR entries for libvship (`vapoursynth-plugin-vship-cuda-git` 
+and `vapoursynth-plugin-vship-amd-git`) and FFvship (`ffvship-cuda-git ` and `ffvship-amd-git`)
 
 ## Library Usage
 
