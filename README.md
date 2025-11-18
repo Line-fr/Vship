@@ -47,7 +47,6 @@ For all build options the following are requried:
 Additionaly, to build the FFvship cli tool:
 
 - ffms2
-- zimg
 - pkg-config
 
 ### Build Instructions
