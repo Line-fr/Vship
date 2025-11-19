@@ -279,6 +279,12 @@ int main(int argc, char **argv) {
     encoded_colorspace.target_width = cropResizeWidth;
     encoded_colorspace.target_height = cropResizeHeight;
     //colorspaces should be complete
+    if (cli_args.verbose){
+        std::cout << "-------Source-Colorspace--------" << std::endl;
+        printColorspace(source_colorspace);
+        std::cout << "------Encoded-Colorspace--------" << std::endl;
+        printColorspace(encoded_colorspace);
+    }
 
     //sanitize start_frame, end_frame, every_nth_frame and encoded_offset
     int start = cli_args.start_frame;

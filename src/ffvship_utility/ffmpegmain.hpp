@@ -591,6 +591,165 @@ class VideoManager {
     }
 };
 
+void printColorspace(Vship_Colorspace_t colorspace){
+    std::cout << "Source Size: " << colorspace.width << "x" << colorspace.height << std::endl;
+    std::cout << "Resize To: " << colorspace.target_width << "x" << colorspace.target_height << std::endl;
+    std::cout << "Cropped by (Top/Bottom/Left/Right): " << colorspace.crop.top << "/" << colorspace.crop.bottom << "/" << colorspace.crop.left << "/" << colorspace.crop.right << std::endl;
+    std::cout << "Converted Size: " << colorspace.target_width-colorspace.crop.right-colorspace.crop.left << "x" << colorspace.target_height-colorspace.crop.top-colorspace.crop.bottom << std::endl;
+    std::cout << "Sample Type: ";
+    switch(colorspace.sample){
+        case Vship_SampleUINT8:
+            std::cout << "Uint8_t";
+            break;
+        case Vship_SampleUINT9:
+            std::cout << "Uint9_t";
+            break;
+        case Vship_SampleUINT10:
+            std::cout << "Uint10_t";
+            break;
+        case Vship_SampleUINT12:
+            std::cout << "Uint12_t";
+            break;
+        case Vship_SampleUINT14:
+            std::cout << "Uint14_t";
+            break;
+        case Vship_SampleUINT16:
+            std::cout << "Uint16_t";
+            break;
+        case Vship_SampleHALF:
+            std::cout << "Half";
+            break;
+        case Vship_SampleFLOAT:
+            std::cout << "Float";
+            break;
+        default:
+            std::cout << "Unknown";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Color Family: ";
+    if (colorspace.colorFamily == Vship_ColorRGB){
+        std::cout << "RGB";
+    } else if (colorspace.colorFamily == Vship_ColorYUV){
+        std::cout << "YUV";
+    } else {
+        std::cout << "Unknown";
+    }
+    std::cout << std::endl;
+    std::cout << "Range: ";
+    if (colorspace.range == Vship_RangeLimited){
+        std::cout << "Limited";
+    } else if (colorspace.range == Vship_RangeFull){
+        std::cout << "Full";
+    } else {
+        std::cout << "Unknown";
+    }
+    std::cout << std::endl;
+    std::cout << "Subsampling (log): " << colorspace.subsampling.subw << "x" << colorspace.subsampling.subh << std::endl;
+    std::cout << "Chroma Location: ";
+    switch(colorspace.chromaLocation){
+        case Vship_ChromaLoc_Center:
+            std::cout << "Center";
+            break;
+        case Vship_ChromaLoc_TopLeft:
+            std::cout << "Top-Left";
+            break;
+        case Vship_ChromaLoc_Left:
+            std::cout << "Left";
+            break;
+        case Vship_ChromaLoc_Top:
+            std::cout << "Top";
+            break;
+        default:
+            std::cout << "Unknown";
+    }
+    std::cout << std::endl;
+
+    std::cout << "YUV Matrix: ";
+    switch(colorspace.YUVMatrix){
+        case Vship_MATRIX_RGB:
+            std::cout << "RGB";
+            break;
+        case Vship_MATRIX_BT709:
+            std::cout << "BT709";
+            break;
+        case Vship_MATRIX_BT470_BG:
+            std::cout << "BT470_BG";
+            break;
+        case Vship_MATRIX_ST170_M:
+            std::cout << "ST170_M";
+            break;
+        case Vship_MATRIX_BT2020_NCL:
+            std::cout << "BT2020_NCL";
+            break;
+        case Vship_MATRIX_BT2020_CL:
+            std::cout << "BT2020_CL";
+            break;
+        case Vship_MATRIX_BT2100_ICTCP:
+            std::cout << "BT2100_ICTCP";
+            break;
+        default:
+            std::cout << "Unknown";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Transfer Function: ";
+    switch(colorspace.transferFunction){
+        case Vship_TRC_BT709:
+            std::cout << "BT709";
+            break;
+        case Vship_TRC_BT470_M:
+            std::cout << "BT470_M";
+            break;
+        case Vship_TRC_BT470_BG:
+            std::cout << "BT470_BG";
+            break;
+        case Vship_TRC_BT601:
+            std::cout << "BT601";
+            break;
+        case Vship_TRC_Linear:
+            std::cout << "Linear";
+            break;
+        case Vship_TRC_sRGB:
+            std::cout << "sRGB";
+            break;
+        case Vship_TRC_PQ:
+            std::cout << "PQ";
+            break;
+        case Vship_TRC_ST428:
+            std::cout << "ST428";
+            break;
+        case Vship_TRC_HLG:
+            std::cout << "HLG";
+            break;
+        default:
+            std::cout << "Unknown";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Primaries: ";
+    switch(colorspace.primaries){
+        case Vship_PRIMARIES_INTERNAL:
+            std::cout << "XYZ";
+            break;
+        case Vship_PRIMARIES_BT709:
+            std::cout << "BT709";
+            break;
+        case Vship_PRIMARIES_BT470_M:
+            std::cout << "BT470_M";
+            break;
+        case Vship_PRIMARIES_BT470_BG:
+            std::cout << "BT470_BG";
+            break;
+        case Vship_PRIMARIES_BT2020:
+            std::cout << "BT2020";
+            break;
+        default:
+            std::cout << "Unknown";
+    }
+    std::cout << std::endl;
+}
+
 struct CommandLineOptions {
     std::string source_file;
     std::string encoded_file;
@@ -617,6 +776,7 @@ struct CommandLineOptions {
 
     bool list_gpus = false;
     bool version = false;
+    bool verbose = false;
     MetricType metric = MetricType::SSIMULACRA2; //SSIMULACRA2 by default
 
     bool NoAssertExit = false; //please exit without creating an assertion failed scary error
@@ -707,6 +867,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     parser.add_flag({"--gpu-id"}, &opts.gpu_id, "GPU index");
     parser.add_flag({"--list-gpu"}, &opts.list_gpus, "List available GPUs");
     parser.add_flag({"--version"}, &opts.version, "Print FFVship version");
+    parser.add_flag({"--verbose"}, &opts.verbose, "Print Colorspace found in Source and encoded");
 
     if (parser.parse_cli_args(args) != 0) { //the parser will have already printed an error
         opts.NoAssertExit = true;
