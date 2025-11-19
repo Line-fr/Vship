@@ -251,7 +251,7 @@ To avoid leaks, every handler that was allocated should be freed later using thi
 
 ### Vship_ComputeSSIMU2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize1[3], const int64_t lineSize2[3]);
 
-Using an allocated handler, you can retrieve the score between two `const uint8_t*[3]` frames who each have their own strides per plane. The color conversion is done by vship with respect to the colorspace given at init to the handler.
+Using an allocated handler, you can retrieve the score between two `const uint8_t*[3]` frames who each have their own strides (bytes per line) per plane. The color conversion is done by vship with respect to the colorspace given at init to the handler.
 
 ### Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier)
 
@@ -266,7 +266,7 @@ To avoid leaks, every handler that was allocated should be freed later using thi
 
 ### Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride)
 
-Using an allocated handler, you can retrieve the score between two `const uint8_t*[3]` frames who each have their own strides per plane. The color conversion is done by vship with respect to the colorspace given at init to the handler.
+Using an allocated handler, you can retrieve the score between two `const uint8_t*[3]` frames who each have their own strides (bytes per line) per plane. The color conversion is done by vship with respect to the colorspace given at init to the handler.
 
 It is possible to retrieve the distortion map of butteraugli. If you supply NULL to dstp, the distortion map will be discarded without even going back to the CPU. As such, only the score will be obtained. However, if you supply a valid pointer allocated of the right size `sizeof(float)*image_height*dststride`, the distortion will be retrieved and stored here. image_height here represent the new height of the image. If the colorspace specifies a resize and a crop, you will need to take that into account.
 
@@ -290,6 +290,6 @@ If you wish to reuse a handler but for a different video or even a different par
 
 ### Vship_ComputeCVVDP(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3])
 
-Using an allocated handler, you can retrieve the score between two `const uint8_t*[3]` frames who each have their own strides per plane. The color conversion is done by vship with respect to the colorspace given at init to the handler.
+Using an allocated handler, you can retrieve the score between two `const uint8_t*[3]` frames who each have their own strides (bytes per line) per plane. The color conversion is done by vship with respect to the colorspace given at init to the handler.
 
 It is possible to retrieve the distortion map of CVVDP. If you supply NULL to dstp, the distortion map will be discarded without even going back to the CPU. As such, only the score will be obtained. However, if you supply a valid pointer allocated of the right size `sizeof(float)*image_height*dststride`, the distortion will be retrieved and stored here. image_height here represent the new height of the image. If the colorspace specifies a resize and a crop, you will need to take that into account.
