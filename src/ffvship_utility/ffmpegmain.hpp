@@ -595,7 +595,7 @@ void printColorspace(Vship_Colorspace_t colorspace){
     std::cout << "Source Size: " << colorspace.width << "x" << colorspace.height << std::endl;
     std::cout << "Resize To: " << colorspace.target_width << "x" << colorspace.target_height << std::endl;
     std::cout << "Cropped by (Top/Bottom/Left/Right): " << colorspace.crop.top << "/" << colorspace.crop.bottom << "/" << colorspace.crop.left << "/" << colorspace.crop.right << std::endl;
-    std::cout << "Converted Size: ";
+    std::cout << "=> Converted Size: ";
     if (colorspace.target_width != -1){ 
         std::cout << colorspace.target_width-colorspace.crop.right-colorspace.crop.left;
     } else {
