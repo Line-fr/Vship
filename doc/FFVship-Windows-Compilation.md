@@ -2,7 +2,7 @@
 
 Compiling FFVship on windows has been relatively complex due to lib placement not being known to compiler, zimg being non trivial to build and include files missing. As such, I upload below a dev kit containing pre compiled dependencies.
 
-[Windows_devkit.zip](https://codeberg.org/Line-fr/Vship/releases/download/v3.1.0/Windows_devkit.zip)
+[Windows_devkit.zip](https://codeberg.org/Line-fr/Vship/releases/download/v4.0.0/Windows_devkit.zip)
 
 ## Steps
 
