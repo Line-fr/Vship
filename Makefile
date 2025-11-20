@@ -68,13 +68,14 @@ install:
 		install -m755 "$(current_dir)libvship$(dllend)" "$(lib_install_path)/libvship$(dllend)"; \
 		ln -sf "../libvship$(dllend)" "$(plugin_install_path)/libvship$(dllend)"; \
 		install -m755 "$(current_dir)src/VshipAPI.h" "$(header_install_path)/VshipAPI.h"; \
+		install -m755 "$(current_dir)src/VshipColor.h" "$(header_install_path)/VshipColor.h"; \
 	fi
 	@if [ -f "FFVship" ]; then \
 		install -d "$(exe_install_path)"; \
 		install -m755 FFVship "$(exe_install_path)/FFVship"; \
 	fi
 uninstall:
-	rm -f "$(plugin_install_path)/libvship$(dllend)" "$(lib_install_path)/libvship$(dllend)" "$(header_install_path)/VshipAPI.h" "$(exe_install_path)/FFVship"
+	rm -f "$(plugin_install_path)/libvship$(dllend)" "$(lib_install_path)/libvship$(dllend)" "$(header_install_path)/VshipAPI.h" "$(header_install_path)/VshipColor.h" "$(exe_install_path)/FFVship"
 uninstallOld:
 	rm -f "$(plugin_install_path)/vship$(dllend)" "$(lib_install_path)/vship$(dllend)" "$(header_install_path)/VshipAPI.h" "$(exe_install_path)/FFVship"
 endif
