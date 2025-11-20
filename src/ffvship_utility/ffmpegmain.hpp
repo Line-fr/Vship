@@ -575,11 +575,15 @@ class VideoManager {
 
         processor = std::make_unique<BasicConverterProcessor>(reader->current_frame);
 
-        ffmpegToVshipFormat(colorspace, reader->current_frame);
+        int ret = ffmpegToVshipFormat(colorspace, reader->current_frame);
 
         ASSERT_WITH_MESSAGE(
             processor != nullptr,
             "VideoManager: Failed to initialize ZimgProcessor.");
+
+        ASSERT_WITH_MESSAGE(
+            ret == 0,
+            "Video Format Not Supported.");
     }
     int64_t getBufferSize(){
         return processor->planeSizeUnpack[0]+processor->planeSizeUnpack[1]+processor->planeSizeUnpack[2];
