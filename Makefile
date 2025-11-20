@@ -12,7 +12,7 @@ ifeq ($(OS),Windows_NT)
     fpicamd :=
     plugin_install_path := $(APPDATA)\VapourSynth\plugins64
     exe_install_path := $(ProgramFiles)\FFVship.exe
-    ffvshiplibheader :=  -lffms2
+    ffvshiplibheader :=  -lffms2 -lvship
 	ffvshipincludeheader := -I include
 	fatbincompressamd := 
 	fatbincompresscuda := 
@@ -25,7 +25,7 @@ else
 	lib_install_path := $(DESTDIR)$(PREFIX)/lib
     exe_install_path := $(DESTDIR)$(PREFIX)/bin
 	header_install_path := $(DESTDIR)$(PREFIX)/include
-    ffvshiplibheader := $(shell pkg-config --libs ffms2)
+    ffvshiplibheader := $(shell pkg-config --libs ffms2) -lvship
 	ffvshipincludeheader := $(shell pkg-config --cflags-only-I ffms2 libavutil)
 	fatbincompressamd := --offload-compress
 	fatbincompresscuda := --compress-mode=balance
@@ -34,16 +34,7 @@ endif
 .FORCE:
 
 buildFFVSHIP: src/FFVship.cpp .FORCE
-	hipcc src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) --offload-arch=native -Wno-unused-result -Wno-ignored-attributes $(ffvshiplibheader) -o FFVship$(exeend)
-
-buildFFVSHIPcuda: src/FFVship.cpp .FORCE
-	nvcc -x cu src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -arch=native $(subst -pthread,-Xcompiler="-pthread",$(ffvshiplibheader)) -o FFVship$(exeend)
-
-buildFFVSHIPall: src/FFVship.cpp .FORCE
-	hipcc src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) $(fatbincompressamd) --offload-arch=$(HIPARCH) -Wno-unused-result -Wno-ignored-attributes $(ffvshiplibheader) -o FFVship$(exeend)
-
-buildFFVSHIPcudaall: src/FFVship.cpp .FORCE
-	nvcc -x cu src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) $(fatbincompresscuda) -arch=all $(subst -pthread,-Xcompiler="-pthread",$(ffvshiplibheader)) -o FFVship$(exeend)
+	g++ src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -Wno-unused-result -Wno-ignored-attributes $(ffvshiplibheader) -o FFVship$(exeend)
 
 build: src/VshipLib.cpp .FORCE
 	hipcc src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" --offload-arch=native -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)libvship$(dllend)"

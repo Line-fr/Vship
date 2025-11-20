@@ -5,14 +5,13 @@ extern "C" {
 #include <libavutil/pixfmt.h>
 }
 
-// #include "util/CLI_Parser.hpp"
+#include "CLI_Parser.hpp"
 #include "ffmpegToVshipColorFormat.hpp"
-#include "unpack.hpp"
-#include "../util/preprocessor.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 #include <optional>
+#include <cstring>
 
 #ifndef ASSERT_WITH_MESSAGE
 #define ASSERT_WITH_MESSAGE(condition, message)\
@@ -44,9 +43,9 @@ class GpuWorker {
 
     MetricType selected_metric;
 
-    ssimu2::SSIMU2ComputingImplementation ssimu2worker;
-    butter::ButterComputingImplementation butterworker;
-    cvvdp::CVVDPComputingImplementation cvvdpworker;
+    Vship_SSIMU2Handler ssimu2worker;
+    Vship_ButteraugliHandler butterworker;
+    Vship_CVVDPHandler cvvdpworker;
 
   public:
     GpuWorker(MetricType metric, Vship_Colorspace_t source_colorspace, Vship_Colorspace_t encoded_colorspace, const int64_t lineSize[3], const int64_t lineSize2[3], float fps, MetricParameters metricParam){
@@ -63,36 +62,40 @@ class GpuWorker {
         deallocate_gpu_memory();
     }
 
-    std::tuple<float, float, float>
+    std::pair<std::tuple<float, float, float>, Vship_Exception>
     compute_metric_score(const uint8_t* srcp1[3], const uint8_t* srcp2[3]) {
 
         if (selected_metric == MetricType::SSIMULACRA2) {
-            const float s = ssimu2worker.run(srcp1, srcp2, lineSize, lineSize2); 
-            return {s, s, s};
+            double s;
+            Vship_Exception err = Vship_ComputeSSIMU2(ssimu2worker, &s, srcp1, srcp2, lineSize, lineSize2);
+            return {{s, s, s}, err};
         }
 
         if (selected_metric == MetricType::Butteraugli) {
-            return butterworker.run(nullptr, 0, srcp1, srcp2, lineSize, lineSize2);
+            Vship_ButteraugliScore butterscore;
+            Vship_Exception err = Vship_ComputeButteraugli(butterworker, &butterscore, nullptr, 0, srcp1, srcp2, lineSize, lineSize2);
+            return {{butterscore.normQ, butterscore.norm3, butterscore.norminf}, err};
         }
 
         if (selected_metric == MetricType::CVVDP){
-            const float s = cvvdpworker.run(nullptr, 0, srcp1, srcp2, lineSize, lineSize2);
-            return {s, s, s};
+            double s;
+            Vship_Exception err = Vship_ComputeCVVDP(cvvdpworker, &s, nullptr, 0, srcp1, srcp2, lineSize, lineSize2);
+            return {{s, s, s}, err};
         }
 
         ASSERT_WITH_MESSAGE(false, "Unknown metric specified for GpuWorker.");
-        return {0.0f, 0.0f, 0.0f};
+        return {{0.0f, 0.0f, 0.0f}, Vship_BadErrorType};
     }
 
-    static uint8_t *allocate_external_rgb_buffer(int bytes) {
+    static uint8_t *allocate_external_rgb_buffer(uint64_t bytes) {
         const size_t buffer_size_bytes = bytes * 3;
         uint8_t *buffer_ptr = nullptr;
 
-        const hipError_t result = hipHostMalloc(
+        const Vship_Exception result = Vship_PinnedMalloc(
             reinterpret_cast<void **>(&buffer_ptr), buffer_size_bytes);
 
         ASSERT_WITH_MESSAGE(
-            result == hipSuccess && buffer_ptr != nullptr,
+            result == Vship_NoError && buffer_ptr != nullptr,
             "Pinned buffer allocation failed in allocate_external_rgb_buffer");
 
         return buffer_ptr;
@@ -100,49 +103,39 @@ class GpuWorker {
 
     static void deallocate_external_buffer(uint8_t *buffer_ptr) {
         if (buffer_ptr != nullptr) {
-            hipHostFree(buffer_ptr);
+            Vship_PinnedFree(buffer_ptr);
         }
     }
 
   private:
     void allocate_gpu_memory(float fps, MetricParameters metricParam) {
+        Vship_Exception err;
         if (selected_metric == MetricType::SSIMULACRA2) {
-            try {
-                ssimu2worker.init(image_colorspace, encoded_colorspace);
-            } catch (const VshipError& e){
-                std::cerr << e.getErrorMessage() << std::endl;
-                ASSERT_WITH_MESSAGE(false, "Failed to initialize SSIMULACRA2 Worker");
-                return;
-            }
+            err = Vship_SSIMU2Init(&ssimu2worker, image_colorspace, encoded_colorspace);
         } else if (selected_metric == MetricType::Butteraugli) {
-            try {
-                butterworker.init(image_colorspace, encoded_colorspace, metricParam.Qnorm, metricParam.intensity_target_nits);
-            } catch (const VshipError& e){
-                std::cerr << e.getErrorMessage() << std::endl;
-                ASSERT_WITH_MESSAGE(false, "Failed to initialize Butteraugli Worker");
-                return;
-            }
+            err = Vship_ButteraugliInit(&butterworker, image_colorspace, encoded_colorspace, metricParam.Qnorm, metricParam.intensity_target_nits);
         } else if (selected_metric == MetricType::CVVDP){
-            try {
-                cvvdpworker.init(image_colorspace, encoded_colorspace, fps, metricParam.resizeToDisplay, metricParam.model_key);
-            } catch (const VshipError& e){
-                std::cerr << e.getErrorMessage() << std::endl;
-                ASSERT_WITH_MESSAGE(false, "Failed to initialize CVVDP Worker");
-                return;
-            }
+            err = Vship_CVVDPInit(&cvvdpworker, image_colorspace, encoded_colorspace, fps, metricParam.resizeToDisplay, metricParam.model_key.c_str());
         } else {
             ASSERT_WITH_MESSAGE(false,
                                 "Unknown metric during memory allocation.");
+        }
+        if (err != Vship_NoError){
+            char errmsg[1024];
+            Vship_GetErrorMessage(err, errmsg, 1024);
+            std::cerr << errmsg << std::endl;
+            ASSERT_WITH_MESSAGE(false, "Failed to initialize GPU Worker");
+            return;
         }
     }
 
     void deallocate_gpu_memory() {
         if (selected_metric == MetricType::SSIMULACRA2) {
-            ssimu2worker.destroy();
+            Vship_SSIMU2Free(ssimu2worker);
         } else if (selected_metric == MetricType::Butteraugli) {
-            butterworker.destroy();
+            Vship_ButteraugliFree(butterworker);
         } else if (selected_metric == MetricType::CVVDP){
-            cvvdpworker.destroy();
+            Vship_CVVDPFree(cvvdpworker);
         }
     }
 };

@@ -2,24 +2,29 @@
 #include <cstdlib>
 #include <fstream>
 #include <future>
-#include <iostream>
 #include <numeric>
 #include <string>
-
-#include "ffvship_utility/CLI_Parser.hpp"
-#include "util/VshipExceptions.hpp"
-#include "util/gpuhelper.hpp"
-#include "util/preprocessor.hpp"
-#include "util/concurrency.hpp"
+#include <sstream>
+#include <iostream>
+#include <stdlib.h>
+#include <stdio.h>
+#include<math.h>
+#include<vector>
+#include <chrono>
+#include <thread>
+#include<exception>
+#include<set>
+#include <mutex>
+#include <condition_variable>
+#include <cassert>
 
 #include "VshipColor.h"
-#include "gpuColorToLinear/vshipColor.hpp"
-#include "butter/main.hpp"
-#include "ssimu2/main.hpp"
-#include "cvvdp/main.hpp"
+#include "VshipAPI.h"
 
 #include "ffvship_utility/ProgressBar.hpp"
 #include "ffvship_utility/ffmpegmain.hpp"
+#include "ffvship_utility/CLI_Parser.hpp"
+#include "util/concurrency.hpp"
 
 extern "C" {
 #include <ffms.h>
@@ -91,13 +96,14 @@ void frame_worker_thread(frame_queue_t &input_queue,
         }
         auto [frame_index, src_buffer, enc_buffer] = *maybe_task;
 
-        std::tuple<float, float, float> scores;
-        try {
-            const uint8_t* src_buffer_planes[3] = {src_buffer, src_buffer+planeSize[0], src_buffer+planeSize[0]+planeSize[1]};
-            const uint8_t* enc_buffer_planes[3] = {enc_buffer, enc_buffer+planeSize2[0], enc_buffer+planeSize2[0]+planeSize2[1]};
-            scores = gpu_worker.compute_metric_score(src_buffer_planes, enc_buffer_planes);
-        } catch (const VshipError &e) {
-            std::cerr << " error: " << e.getErrorMessage() << std::endl;
+        const uint8_t* src_buffer_planes[3] = {src_buffer, src_buffer+planeSize[0], src_buffer+planeSize[0]+planeSize[1]};
+        const uint8_t* enc_buffer_planes[3] = {enc_buffer, enc_buffer+planeSize2[0], enc_buffer+planeSize2[0]+planeSize2[1]};
+        const auto& [scores, vshipError] = gpu_worker.compute_metric_score(src_buffer_planes, enc_buffer_planes);
+        
+        if (vshipError != Vship_NoError){
+            char errmsg[1024];
+            Vship_GetErrorMessage(vshipError, errmsg, 1024);
+            std::cerr << " error: " << errmsg << std::endl;
             frame_buffer_pool.insert(src_buffer);
             frame_buffer_pool.insert(enc_buffer);
             *error = 1;
@@ -218,11 +224,24 @@ int main(int argc, char **argv) {
     }
 
     if (cli_args.list_gpus) {
-        try {
-            std::cout << helper::listGPU();
-        } catch (const VshipError &e) {
-            std::cerr << e.getErrorMessage() << std::endl;
+        char errmsg[1024];
+        int numgpu;
+        Vship_Exception err = Vship_GetDeviceCount(&numgpu);
+        if (err != Vship_NoError){
+            Vship_GetErrorMessage(err, errmsg, 1024);
+            std::cerr << errmsg << std::endl;
             return 1;
+        }
+        Vship_DeviceInfo devinfo;
+        for (int i = 0; i < numgpu; i++){
+            std::cout << "GPU " << i << ": ";
+            err = Vship_GetDeviceInfo(&devinfo, i);
+            if (err != Vship_NoError){
+                Vship_GetErrorMessage(err, errmsg, 1024);
+                std::cerr << errmsg << std::endl;
+                return 1;
+            }
+            std::cout << devinfo.name << std::endl;
         }
         return 0;
     }
@@ -239,11 +258,12 @@ int main(int argc, char **argv) {
     }
 
     // gpu sanity check
-    try {
-        // if succeed, this function also does hipSetDevice
-        helper::gpuFullCheck(cli_args.gpu_id);
-    } catch (const VshipError &e) {
-        std::cerr << e.getErrorMessage() << std::endl;
+    // if succeed, this function also does hipSetDevice
+    Vship_Exception err = Vship_GPUFullCheck(cli_args.gpu_id);
+    if (err != Vship_NoError){
+        char errmsg[1024];
+        Vship_GetErrorMessage(err, errmsg, 1024);
+        std::cerr << errmsg << std::endl;
         return 1;
     }
 
