@@ -359,6 +359,10 @@ public:
         numFrame++;
         return toJOD(resQ);
     }
+    void flushOnlyScore(){
+        numFrame = 0;
+        score_squareSum = 0.;
+    }
     //empties the history.
     void flushTemporalRing(){
         numFrame = 0;
