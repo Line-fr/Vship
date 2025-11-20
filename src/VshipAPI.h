@@ -141,6 +141,9 @@ EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);
 //Unlike recreating the handler, this function is basically free perf wise, it is setting a variable to 0, that's it!
 EXPORTPREPROCESS Vship_Exception Vship_ResetCVVDP(Vship_CVVDPHandler handler);
 
+//This function allows loading frames to the temporal filter to represent past frames without impacting the score
+EXPORTPREPROCESS Vship_Exception Vship_LoadTemporalCVVDP(Vship_CVVDPHandler handler, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
+
 //dstp must either be NULL (in this case, the distortion map will never be retrieved from the gpu)
 //or be allocated of size dststride*height where height is original height or display height if resizeToDisplay is on
 //output the score of the whole sequence that it has already seen. You can reset the CVVDP handler to start over on a new sequence
