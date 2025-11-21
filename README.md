@@ -46,7 +46,7 @@ For all build options the following are requried:
 
 Additionaly, to build the FFvship cli tool:
 
-- ffms2
+- ffms2 (and libavutil header to compile)
 - pkg-config
 
 ### Build Instructions
@@ -110,7 +110,7 @@ VRAM requirements per active Stream:
 
 - **SSIMULACRA2**: `12 * 4 * width * height` bytes
 - **Butteraugli**: `31 * 4 * width * height` bytes
-- **CVVDP**: ~`4 * width * height * (10*4/3 + fps*3*0.25)` bytes
+- **CVVDP**: ~`4 * width * height * (10*4/3 + fps*3*0.5)` bytes
 
 where width is the width of the input image/video
 height is the height of the input image/video

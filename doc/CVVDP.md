@@ -74,6 +74,6 @@ As such, ONLY THE LAST SCORE SHOULD BE USED but every score should be computed! 
 
 ### VRAM Consumption
 
-VRAM consumption can be calculated using the following: `4 * width * height * (10*4/3 + fps*3*0.25)` where width and height refer to the dimensions of the video and fps to its frames per second. This formula is an approximation.
+VRAM consumption can be calculated using the following: `4 * width * height * (10*4/3 + fps*3*0.5)` where width and height refer to the dimensions of the video and fps to its frames per second. This formula is an approximation.
 
 [wiki-error-management]: Vship-Error-Managment.md
