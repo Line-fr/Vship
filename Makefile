@@ -52,10 +52,10 @@ buildcuda: src/VshipLib.cpp .FORCE
 	nvcc -x cu src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" -arch=native -shared $(fpiccuda) -o "$(current_dir)libvship$(dllend)"
 
 buildcudaall: src/VshipLib.cpp .FORCE
-	nvcc -x cu src/VshipLib.cpp -g -std=c++17 $(fatbincompresscuda) -arch=all -shared $(fpiccuda) -o "$(current_dir)libvship$(dllend)"
+	nvcc -x cu src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" $(fatbincompresscuda) -arch=all -shared $(fpiccuda) -o "$(current_dir)libvship$(dllend)"
 
 buildall: src/VshipLib.cpp .FORCE
-	hipcc src/VshipLib.cpp -g -std=c++17 $(fatbincompressamd) --offload-arch=$(HIPARCH) -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)libvship$(dllend)"
+	hipcc src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" $(fatbincompressamd) --offload-arch=$(HIPARCH) -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)libvship$(dllend)"
 
 ifeq ($(OS),Windows_NT)
 install:
