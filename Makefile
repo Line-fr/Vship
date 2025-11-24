@@ -34,7 +34,7 @@ endif
 .FORCE:
 
 buildFFVSHIP: src/FFVship.cpp .FORCE
-	g++ src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -Wno-unused-result -Wno-ignored-attributes $(ffvshiplibheader) -o FFVship$(exeend)
+	g++ src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -L ./ -Wno-unused-result -Wno-ignored-attributes $(ffvshiplibheader) -o FFVship$(exeend)
 
 build: src/VshipLib.cpp .FORCE
 	hipcc src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" --offload-arch=native -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)libvship$(dllend)"

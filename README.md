@@ -62,14 +62,11 @@ make buildcudaall  # Build for all supported Nvidia gpus
 make build         # Build for the current systems AMD gpu
 make buildall      # Build for all supported AMD gpus
 
-#FFVship CLI linux tool build
-make buildFFVSHIPcuda      # Build for the current systems Nvidia gpu
-make buildFFVSHIPcudaall   # Build for all supported Nvidia gpus
-make buildFFVSHIP          # Build for the current systems AMD gpu
-make buildFFVSHIPall       # Build for all supported AMD gpus
+#FFVship CLI linux tool build (requires libvship built before FFVSHIP)
+make buildFFVSHIP
 ```
 
-2. Install libvship and/or the FFVship executable.
+2. Install libvship and eventually the FFVship executable.
 
 The `install` target automatically detects and installs only the components that were built.
 ```bash
