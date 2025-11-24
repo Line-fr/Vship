@@ -15,6 +15,8 @@ metrics with SSIMULACRA2, Butteraugli & CVVDP.
 The plugin uses HIP/CUDA for GPU acceleration, providing significant performance
 improvements over CPU implementations. It can be used with a simple binary (FFVship), as a vapoursynth plugin and has a C API.
 
+There are precompiled binaries ready to be used in the release section.
+
 ## Projects Featuring Vship
 
 If you want to use Vship with a pre-defined workflow, here are some projects
