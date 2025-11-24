@@ -314,41 +314,38 @@ Vship_Exception Vship_ResetCVVDP(Vship_CVVDPHandler handler){
     return err;
 }
 
-/*
-//this video allows loading images to the temporal filter of CVVDP without computing the whole metric.
-//this is useful to start computing at the middle of a video, you can put previous frames with this.
-Vship_Exception Vship_LoadCVVDPUint16(Vship_CVVDPHandler handler, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
+//The temporalFilter stays loaded but the score goes back to neutral
+Vship_Exception Vship_ResetScoreCVVDP(Vship_CVVDPHandler handler){
     Vship_Exception err = Vship_NoError;
     HandlerManagerCVVDP.lock.lock();
     //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
-    cvvdp::CVVDPComputingImplementation cvvdpcomputingimplem = HandlerManagerCVVDP.elements[handler.id];
+    cvvdp::CVVDPComputingImplementation* cvvdpcomputingimplem = HandlerManagerCVVDP.elements[handler.id];
     HandlerManagerCVVDP.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
-        cvvdpcomputingimplem.loadImageToRing<UINT16>(srcp1, srcp2, stride, stride2);
+        cvvdpcomputingimplem->flushOnlyScore();
     } catch (const VshipError& e){
         err = (Vship_Exception)e.type;
     }
     return err;
 }
 
-//this video allows loading images to the temporal filter of CVVDP without computing the whole metric.
+//this function allows loading images to the temporal filter of CVVDP without computing metric.
 //this is useful to start computing at the middle of a video, you can put previous frames with this.
-Vship_Exception Vship_LoadCVVDPFloat(Vship_CVVDPHandler handler, const uint8_t* srcp1[3], const uint8_t* srcp2[3], int64_t stride, int64_t stride2){
+Vship_Exception Vship_LoadTemporalCVVDP(Vship_CVVDPHandler handler, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
     Vship_Exception err = Vship_NoError;
     HandlerManagerCVVDP.lock.lock();
     //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
-    cvvdp::CVVDPComputingImplementation cvvdpcomputingimplem = HandlerManagerCVVDP.elements[handler.id];
+    cvvdp::CVVDPComputingImplementation* cvvdpcomputingimplem = HandlerManagerCVVDP.elements[handler.id];
     HandlerManagerCVVDP.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
-        cvvdpcomputingimplem.loadImageToRing<FLOAT>(srcp1, srcp2, stride, stride2);
+        cvvdpcomputingimplem->loadImageToRing(srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
         err = (Vship_Exception)e.type;
     }
     return err;
 }
-*/
 
 Vship_Exception Vship_ComputeCVVDP(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
     Vship_Exception err = Vship_NoError;

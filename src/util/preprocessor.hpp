@@ -15,6 +15,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <cassert>
+#include<cstring>
 
 
 #if defined __CUDACC__
