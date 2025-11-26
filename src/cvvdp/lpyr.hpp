@@ -146,7 +146,7 @@ std::vector<float> get_frequencies(const int64_t width, const int64_t height, co
     for (int i = 0; i < levels-1; i++){
         band_frequencies[i+1] = 0.3228*0.5*ppd/((float)(1 << i));
     }
-    return std::move(band_frequencies);
+    return band_frequencies;
 }
 
 //in float

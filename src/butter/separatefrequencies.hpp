@@ -144,7 +144,7 @@ namespace butter{
 
         if (x >= width) return;
 
-        float3 old = makeFloat3(xplane[x], yplane[x], bplane[x]);
+        //float3 old = makeFloat3(xplane[x], yplane[x], bplane[x]);
         XybLowFreqToVals(xplane[x], yplane[x], bplane[x]);
         //if ((x == 376098 && width == 1080*1920) || ((x == 59456 && width == 540*960))) printf("lfreqval : %f %f %f from %f %f %f\n", xplane[x], yplane[x], bplane[x], old.x, old.y, old.z); 
         //printf("res : %f and %f\n", first[x], second[x]);
