@@ -167,7 +167,7 @@ std::tuple<float, float, float> butterprocess(const uint8_t *dstp, int64_t dstst
         GPU_CHECK(hipMemcpyDtoHAsync((void*)(dstp), mem_d+6*width*height, dststride * height, stream));
     }
 
-    std::tuple<float, float, float> finalres;
+    std::tuple<double, double, double> finalres;
     try{
         finalres = diffmapscore(diffmap, mem_d+9*width*height, mem_d+10*width*height, pinned, width*height, Qnorm, stream);
     } catch (const VshipError& e){
@@ -233,7 +233,7 @@ public:
         hipHostFree(pinned);
     }
     //if dstp is NULL, distmap won't be retrieved
-    std::tuple<float, float, float> run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
+    std::tuple<double, double, double> run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
         return butterprocess(dstp, dststride, srcp1, srcp2, pinned, gaussianhandle, converter1, converter2, lineSize, lineSize2, width, height, Qnorm, intensity_multiplier, maxshared, stream);
     }
 };

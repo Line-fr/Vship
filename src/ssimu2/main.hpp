@@ -94,7 +94,7 @@ double ssimu2GPUProcess(float3* src1_d, float3* src2_d, float3* temp_d, float3* 
     }
 
     //step 7 : enjoy !
-    const float ssim = final_score(measure_vec);
+    const double ssim = final_score(measure_vec);
 
     //hipEventRecord(event_d, stream); //place an event in the stream at the end of all our operations
     //hipEventSynchronize(event_d); //when the event is complete, we know our gpu result is ready!

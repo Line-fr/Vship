@@ -382,7 +382,7 @@ const float weights[108] = {
 
 float final_score(std::vector<float> scores){
     //score has to be of size 108
-    float ssim = 0.0f;
+    double ssim = 0.0f;
     for (int i = 0; i < 108; i++){
         ssim = fmaf(weights[i], scores[i], ssim);
     }

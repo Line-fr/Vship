@@ -137,7 +137,7 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, int64_t source_width
     hipFreeAsync(mem_d, stream1);
 
     //we have our levels*4 scores
-    float finalValue = 0;
+    double finalValue = 0;
     for (int band = 0; band < levels; band++){
         for (int channel = 0; channel < 4; channel++){
             const float val = scores[band*4+channel];
@@ -348,9 +348,9 @@ public:
     }
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
         loadImageToRing(srcp1, srcp2, lineSize, lineSize2);
-        const float current_score = CVVDPprocess(dstp, dststride, source_width, source_height, resize_width, resize_height, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event, event2);
+        const double current_score = CVVDPprocess(dstp, dststride, source_width, source_height, resize_width, resize_height, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event, event2);
         score_squareSum += std::pow(current_score, beta_t);
-        float resQ;
+        double resQ;
         if (numFrame == 0){
             resQ = current_score * image_int;
         } else {

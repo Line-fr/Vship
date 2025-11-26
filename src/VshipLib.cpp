@@ -253,7 +253,7 @@ Vship_Exception Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship
     HandlerManagerButteraugli.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
-        std::tuple<float, float, float> res = buttercomputingimplem->run(dstp, dststride, srcp1, srcp2, lineSize, lineSize2);
+        std::tuple<double, double, double> res = buttercomputingimplem->run(dstp, dststride, srcp1, srcp2, lineSize, lineSize2);
         score->normQ = std::get<0>(res);
         score->norm3 = std::get<1>(res);
         score->norminf = std::get<2>(res);

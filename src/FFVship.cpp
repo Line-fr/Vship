@@ -31,7 +31,7 @@ extern "C" {
 #include <libavutil/pixfmt.h>
 }
 
-using score_tuple_t = std::tuple<float, float, float>;
+using score_tuple_t = std::tuple<double, double, double>;
 using score_queue_t = ClosableThreadSet<std::tuple<int, score_tuple_t>>;
 using frame_tuple_t = std::tuple<int, uint8_t *, uint8_t *>;
 using frame_queue_t = ThreadSafeQueue<frame_tuple_t>;
@@ -118,11 +118,11 @@ void frame_worker_thread(frame_queue_t &input_queue,
 }
 
 void aggregate_scores_function(score_queue_t& input_score_queue,
-                               std::vector<float>& aggregated_scores,
+                               std::vector<double>& aggregated_scores,
                                ProgressBarT* progressBar,
                                MetricType metric, bool livePrint) {
     while (true) {
-        std::optional<std::tuple<int, std::tuple<float, float, float>>>
+        std::optional<std::tuple<int, std::tuple<double, double, double>>>
             maybe_score = input_score_queue.pop();
 
         if (!maybe_score.has_value()) {
@@ -146,12 +146,12 @@ void aggregate_scores_function(score_queue_t& input_score_queue,
     }
 }
 
-void print_aggergate_metric_statistics(const std::vector<float> &data,
+void print_aggergate_metric_statistics(const std::vector<double> &data,
                                        const std::string &label) {
     if (data.empty())
         return;
 
-    std::vector<float> sorted = data;
+    std::vector<double> sorted = data;
     std::sort(sorted.begin(), sorted.end());
 
     const size_t count = sorted.size();
@@ -438,7 +438,7 @@ int main(int argc, char **argv) {
     const int score_vector_size = (cli_args.metric == MetricType::CVVDP || cli_args.metric == MetricType::SSIMULACRA2)
                                       ? num_frames
                                       : num_frames * 3;
-    std::vector<float> scores(score_vector_size);
+    std::vector<double> scores(score_vector_size);
     ProgressBarT* progressBar;
     if (!cli_args.live_index_score_output) {
         std::cout << "Metric Processing Progress (Frames)" << std::endl;
@@ -484,6 +484,8 @@ int main(int argc, char **argv) {
             std::cerr << "Failed to open output file" << std::endl;
             return 1;
         }
+        //set precision
+        jsonfile << std::setprecision(15);
         jsonfile << "[";
         for (int i = 0; i < num_frames; i++) {
             jsonfile << "[";
@@ -520,7 +522,7 @@ int main(int argc, char **argv) {
               << std::endl;
 
     if (cli_args.metric == MetricType::Butteraugli) {
-        std::vector<float> normQ(num_frames), norm3(num_frames),
+        std::vector<double> normQ(num_frames), norm3(num_frames),
             norminf(num_frames);
 
         for (int i = 0; i < num_frames; ++i) {

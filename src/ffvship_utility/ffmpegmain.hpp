@@ -62,7 +62,7 @@ class GpuWorker {
         deallocate_gpu_memory();
     }
 
-    std::pair<std::tuple<float, float, float>, Vship_Exception>
+    std::pair<std::tuple<double, double, double>, Vship_Exception>
     compute_metric_score(const uint8_t* srcp1[3], const uint8_t* srcp2[3]) {
 
         if (selected_metric == MetricType::SSIMULACRA2) {
