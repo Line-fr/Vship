@@ -71,7 +71,7 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI
 extern "C"{
 Vship_Version Vship_GetVersion(){
     Vship_Version res;
-    res.major = 4; res.minor = 0; res.minorMinor = 0;
+    res.major = 4; res.minor = 0; res.minorMinor = 1;
     #if defined __CUDACC__
     res.backend = Vship_Cuda;
     #else
