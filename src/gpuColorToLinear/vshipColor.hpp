@@ -95,8 +95,9 @@ public:
         //before chroma upsampling
         const int64_t plane_widths[3] = {width, width >> source_colorspace.subsampling.subw, width >> source_colorspace.subsampling.subw};
         const int64_t plane_heights[3] = {height, height >> source_colorspace.subsampling.subh, height >> source_colorspace.subsampling.subh};
+        const int byteSize = bytesizeSample(source_colorspace.sample);
         for (int i = 0; i < 3; i++){
-            hipMemcpyHtoDAsync(src_d, (void*)(inp[i]), lineSize[i]*plane_heights[i] - (lineSize[i] - plane_widths[i]), stream);
+            hipMemcpyHtoDAsync(src_d, (void*)(inp[i]), lineSize[i]*plane_heights[i] - (lineSize[i] - byteSize*plane_widths[i]), stream);
             convertToFloatPlane(preCropOut[i], (uint8_t*)src_d, lineSize[i], plane_widths[i], plane_heights[i], source_colorspace.sample, source_colorspace.range, source_colorspace.colorFamily, (bool)(i != 0), stream);
         }
         if (maxstride*height > sizeof(float)*maxWidth*maxHeight*2){

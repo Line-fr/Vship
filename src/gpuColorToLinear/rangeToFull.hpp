@@ -2,7 +2,7 @@
 
 namespace VshipColorConvert {
 
-__device__ __host__ constexpr int bitdepthSample(Vship_Sample_t sampleType){
+__device__ __host__ constexpr int bitprecisionSample(Vship_Sample_t sampleType){
     switch (sampleType){
         case Vship_SampleUINT8:
             return 8;
@@ -23,7 +23,7 @@ __device__ __host__ constexpr int bitdepthSample(Vship_Sample_t sampleType){
 
 template<Vship_Sample_t sampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam, bool chromaPlane>
 __device__ float inline FullRange(float a){
-    constexpr int bitdepth = bitdepthSample(sampleType);
+    constexpr int bitdepth = bitprecisionSample(sampleType);
     if constexpr (Range == Vship_RangeFull){
         constexpr float normalization = (1 << bitdepth) - 1; //float and half get 1
         //put in range [0, 1]

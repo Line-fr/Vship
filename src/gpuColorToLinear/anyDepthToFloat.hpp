@@ -4,6 +4,23 @@
 
 namespace VshipColorConvert{
 
+__device__ __host__ constexpr int bytesizeSample(Vship_Sample_t sampleType){
+    switch (sampleType){
+        case Vship_SampleUINT8:
+            return 1;
+        case Vship_SampleUINT9:
+        case Vship_SampleUINT10:
+        case Vship_SampleUINT12:
+        case Vship_SampleUINT14:
+        case Vship_SampleUINT16:
+        case Vship_SampleHALF:
+            return 2;
+        case Vship_SampleFLOAT:
+            return 4;
+    }
+    return 0;
+}
+
 template<Vship_Sample_t T>
 __device__ float inline PickValue(const uint8_t* const source_plane, const int64_t i, const int64_t stride, const int64_t width);
 
