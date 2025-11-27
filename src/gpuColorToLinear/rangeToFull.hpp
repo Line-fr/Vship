@@ -21,7 +21,7 @@ __device__ __host__ constexpr int bitprecisionSample(Vship_Sample_t sampleType){
     }
 }
 
-template<Vship_Sample_t sampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam, bool chromaPlane>
+template<Vship_Sample_t sampleType, Vship_Range_t Range, bool ColorFamchromaPlane>
 __device__ float inline FullRange(float a){
     constexpr int bitdepth = bitprecisionSample(sampleType);
     if constexpr (Range == Vship_RangeFull){
@@ -29,7 +29,7 @@ __device__ float inline FullRange(float a){
         //put in range [0, 1]
         a /= normalization;
         //if UV -> -0.5
-        if constexpr (ColorFam == Vship_ColorYUV && chromaPlane) a -= 0.5f;
+        if constexpr (ColorFamchromaPlane) a -= 0.5f;
         return a;
     } else {
         //limited
@@ -44,7 +44,7 @@ __device__ float inline FullRange(float a){
             a *= 256;
         }
         //range [0, 256] BUT we are in limited
-        if constexpr (ColorFam == Vship_ColorYUV && chromaPlane){
+        if constexpr (ColorFamchromaPlane){
             //chroma YUV formula
             return (a-128.f)/224.f;
         } else {

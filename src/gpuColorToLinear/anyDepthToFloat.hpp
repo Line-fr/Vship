@@ -62,36 +62,36 @@ __device__ float inline PickValue(const uint8_t* const source_plane, const int64
     }
 }
 
-template<Vship_Sample_t SampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam, bool chromaPlane, bool misalignementHandling>
+template<Vship_Sample_t SampleType, Vship_Range_t Range, bool ColorFamchromaPlane, bool misalignementHandling>
 __global__ void convertToFloatPlane_Kernel(float* output_plane, const uint8_t* const source_plane, const int64_t stride, const int64_t width, const int64_t height){
     const int64_t x = threadIdx.x + blockIdx.x * blockDim.x;
     if (x >= width*height) return;
 
     float val = PickValue<SampleType, misalignementHandling>(source_plane, x, stride, width);
     //if (x == 0) printf("raw input val : %f at x = %lld\n", val, x);
-    val = FullRange<SampleType, Range, ColorFam, chromaPlane>(val);
+    val = FullRange<SampleType, Range, ColorFamchromaPlane>(val);
     //if (x == 0) printf("range adapted input val : %f at x = %lld\n", val, x);
     output_plane[x] = val;
 }
 
-template<Vship_Sample_t SampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam, bool chromaPlane>
+template<Vship_Sample_t SampleType, Vship_Range_t Range, bool ColorFamchromaPlane>
 __host__ void inline convertToFloatPlaneTemplate(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height, hipStream_t stream){
     const int thx = 256;
     const int64_t blx = (width*height + thx -1)/thx;
     constexpr int byteSample = bytesizeSample(SampleType);
     if (stride%byteSample == 0){
-        convertToFloatPlane_Kernel<SampleType, Range, ColorFam, chromaPlane, false><<<dim3(blx), dim3(thx), 0, stream>>>(output_plane, source_plane, stride, width, height);
+        convertToFloatPlane_Kernel<SampleType, Range, ColorFamchromaPlane, false><<<dim3(blx), dim3(thx), 0, stream>>>(output_plane, source_plane, stride, width, height);
     } else {
-        convertToFloatPlane_Kernel<SampleType, Range, ColorFam, chromaPlane, true><<<dim3(blx), dim3(thx), 0, stream>>>(output_plane, source_plane, stride, width, height);
+        convertToFloatPlane_Kernel<SampleType, Range, ColorFamchromaPlane, true><<<dim3(blx), dim3(thx), 0, stream>>>(output_plane, source_plane, stride, width, height);
     }
 }
 
 template<Vship_Sample_t SampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam>
 __host__ void inline convertToFloatPlaneTemplate1(float* output_plane, const uint8_t* const source_plane, const int stride, const int width, const int height, bool chromaPlane, hipStream_t stream){
-    if (chromaPlane){
-        return convertToFloatPlaneTemplate<SampleType, Range, ColorFam, true>(output_plane, source_plane, stride, width, height, stream);
+    if (chromaPlane && ColorFam == Vship_ColorYUV){
+        return convertToFloatPlaneTemplate<SampleType, Range, true>(output_plane, source_plane, stride, width, height, stream);
     } else {
-        return convertToFloatPlaneTemplate<SampleType, Range, ColorFam, false>(output_plane, source_plane, stride, width, height, stream);
+        return convertToFloatPlaneTemplate<SampleType, Range, false>(output_plane, source_plane, stride, width, height, stream);
     }
 }
 
