@@ -197,6 +197,11 @@ __host__ int inline upsample(float* temp, float* src[3], int64_t width, int64_t 
         hipMemcpyDtoDAsync(src[1], temp, sizeof(float)*width*height, stream);
         hipMemcpyDtoDAsync(src[2], temp+width*height, sizeof(float)*width*height, stream);
     }
+    //we need to copy the data to temp
+    if (subw == 0){
+        hipMemcpyDtoDAsync(temp, src[1], sizeof(float)*width*height, stream);
+        hipMemcpyDtoDAsync(temp+width*height, src[2], sizeof(float)*width*height, stream);
+    }
 
     blx1 = (width + thx-1)/thx;
     blx2 = (width+1 + thx-1)/thx;
