@@ -52,10 +52,6 @@ public:
         
     }
     void destroy(){
-        if (mem_d != NULL){
-            hipFree(mem_d);
-            mem_d = NULL;
-        }
     }
     int64_t getWidth(){
         return source_colorspace.target_width - source_colorspace.crop.left - source_colorspace.crop.right;
