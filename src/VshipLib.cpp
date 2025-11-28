@@ -33,15 +33,15 @@ static void VS_CC GpuInfo(const VSMap *in, VSMap *out, void *userData, VSCore *c
     if (error != peSuccess){
         //no gpu_id was selected
         for (int i = 0; i < count; i++){
-            hipSetDevice(i);
-            hipGetDevice(&device);
-            hipGetDeviceProperties(&devattr, device);
+            GPU_CHECK(hipSetDevice(i));
+            GPU_CHECK(hipGetDevice(&device));
+            GPU_CHECK(hipGetDeviceProperties(&devattr, device));
             ss << "GPU " << i << ": " << devattr.name << std::endl;
         }
     } else {
-        hipSetDevice(gpuid);
-        hipGetDevice(&device);
-        hipGetDeviceProperties(&devattr, device);
+        GPU_CHECK(hipSetDevice(gpuid));
+        GPU_CHECK(hipGetDevice(&device));
+        GPU_CHECK(hipGetDeviceProperties(&devattr, device));
         ss << "Name: " << devattr.name << std::endl;
         ss << "MultiProcessorCount: " << devattr.multiProcessorCount << std::endl;
         //ss << "ClockRate: " << ((float)devattr.clockRate)/1000000 << " Ghz" << std::endl; deprecated, removed in cuda 13
@@ -102,7 +102,7 @@ Vship_Exception Vship_GetDeviceInfo(Vship_DeviceInfo* device_info, int gpu_id){
         return Vship_BadDeviceArgument;
     }
     hipDeviceProp_t devattr;
-    hipGetDeviceProperties(&devattr, gpu_id);
+    GPU_CHECK(hipGetDeviceProperties(&devattr, gpu_id));
     memcpy(device_info->name, devattr.name, 256); //256 char to copy
     device_info->VRAMSize = devattr.totalGlobalMem;
     device_info->integrated = devattr.integrated;
@@ -137,7 +137,7 @@ Vship_Exception Vship_SetDevice(int gpu_id){
     if (gpu_id >= numgpu){
         return Vship_BadDeviceArgument;
     }
-    hipSetDevice(gpu_id);
+    GPU_CHECK(hipSetDevice(gpu_id));
     return Vship_NoError;
 }
 
