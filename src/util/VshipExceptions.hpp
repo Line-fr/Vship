@@ -13,27 +13,27 @@ enum VSHIPEXCEPTTYPE{
     NoError = 0,
 
     //vship internal issues
-    OutOfVRAM,
-    OutOfRAM,
-    HIPError,
+    OutOfVRAM = 1,
+    OutOfRAM = 2,
+    HIPError = 12,
     
     //input issues
-    BadDisplayModel,
-    DifferingInputType,
-    NonRGBSInput, //should never happen since .resize should give RGBS always
+    BadDisplayModel = 3,
+    DifferingInputType = 4,
+    NonRGBSInput = 5, //should never happen since .resize should give RGBS always
     
     //Device related
-    DeviceCountError,
-    NoDeviceDetected,
-    BadDeviceArgument,
-    BadDeviceCode,
+    DeviceCountError = 6,
+    NoDeviceDetected = 7,
+    BadDeviceArgument = 8,
+    BadDeviceCode = 9,
 
     //API related
-    BadHandler,
-    BadPointer,
+    BadHandler = 10,
+    BadPointer = 11,
 
     //should not be used
-    BadErrorType,
+    BadErrorType = 13,
 };
 
 std::string errorMessage(VSHIPEXCEPTTYPE type){
