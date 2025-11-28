@@ -64,6 +64,7 @@ void computeMean(float* src, float* temp, int64_t size, bool divide, hipStream_t
         } else {
             reduceSum<power, false, false><<<dim3(bl_x), dim3(th_x), 0, stream>>>(tempbuffer[destination], tempbuffer[oscillator], size, false);
         }
+        GPU_CHECK(hipGetLastError());
         oscillator = destination;
         size = (size+1023)/1024;
     }
@@ -73,6 +74,7 @@ void computeMean(float* src, float* temp, int64_t size, bool divide, hipStream_t
     } else {
         reduceSum<power, false, true><<<dim3(bl_x), dim3(th_x), 0, stream>>>(final_dst, tempbuffer[oscillator], size, false);
     }
+    GPU_CHECK(hipGetLastError());
 }
 
 }

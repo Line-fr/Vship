@@ -76,16 +76,6 @@
     #define aligned_alloc(a, b) _aligned_malloc(b, a)
 #endif
 
-
-hipError_t err_hip;
-
-#define GPU_CHECK(x)\
-err_hip = (x);\
-if (err_hip != hipSuccess)\
-{\
-   	printf("%s in %s at %d\n", hipGetErrorString(err_hip),  __FILE__, __LINE__);\
-}
-
 #define GAUSSIANSIZE 8
 #define SIGMA 1.5f
 #define PI  3.14159265359

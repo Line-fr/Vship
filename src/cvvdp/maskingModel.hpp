@@ -18,6 +18,7 @@ void preGaussianPreCompute(float* Lbkg, float* p1, float* p2, int width, int hei
     int th_x = 256;
     int bl_x = (width*height +th_x-1)/th_x;
     preGaussianPreCompute_kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(Lbkg, p1, p2, width, height, channel, band, csfhandle);
+    GPU_CHECK(hipGetLastError());
 }
 
 //works for a band  but does all channels. It writes result on source ref
@@ -89,6 +90,7 @@ void computeD(float* R0, float* R1, float* R2, float* R3, float* T0, float* T1, 
     int bl_x = (width +th_x-1)/th_x;
     int bl_y = (height +th_y-1)/th_y;
     computeD_Kernel<<<dim3(bl_x, bl_y), dim3(th_x, th_y), 0, stream>>>(R0, R1, R2, R3, T0, T1, T2, T3, width, height, gaussianhandle);
+    GPU_CHECK(hipGetLastError());
 }
 
 __global__ void computeD_baseband_kernel(float* Lbkg, float* p1, float* p2, int width, int height, int channel, int band, CSF_Handler csfhandle){
@@ -104,6 +106,7 @@ void computeD_baseband(float* Lbkg, float* p1, float* p2, int width, int height,
     int th_x = 256;
     int bl_x = (width*height +th_x-1)/th_x;
     computeD_baseband_kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(Lbkg, p1, p2, width, height, channel, band, csfhandle);
+    GPU_CHECK(hipGetLastError());
 }
 
 }

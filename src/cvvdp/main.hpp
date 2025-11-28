@@ -82,8 +82,8 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, int64_t source_width
     LpyrManager LPyr2(mem_d2, width, height, ppd, bandOffset, stream2);
 
     //stream1 waits for stream2 to be done
-    hipEventRecord(event, stream2);
-    hipStreamWaitEvent(stream1, event);
+    GPU_CHECK(hipEventRecord(event, stream2));
+    GPU_CHECK(hipStreamWaitEvent(stream1, event));
     //now we only use stream1, this is the time for merging both sources
     
     int w = width;
@@ -106,9 +106,9 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, int64_t source_width
         h = (h+1)/2;
     }
     //stream2 waits for stream1 to be done before freeing memory (memory of Lpyr2)
-    hipEventRecord(event2, stream1);
-    hipStreamWaitEvent(stream2, event2);
-    hipFreeAsync(mem_d2, stream2);
+    GPU_CHECK(hipEventRecord(event2, stream1));
+    GPU_CHECK(hipStreamWaitEvent(stream2, event2));
+    GPU_CHECK(hipFreeAsync(mem_d2, stream2));
     //the complete full distortion map is stored in Lpyr1
     //and we can use Lpyr1 Lbkg place as temporary storage for pooling
     std::vector<float> scores(levels*4); //per_band and per channel
@@ -122,7 +122,7 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, int64_t source_width
             tempOffset++; //we stored the norm at temp[tempOffset]
         }
     }
-    hipMemcpyDtoHAsync(scores.data(), temp, sizeof(float)*levels*4, stream1);
+    GPU_CHECK(hipMemcpyDtoHAsync(scores.data(), temp, sizeof(float)*levels*4, stream1));
 
     if (dstp != NULL){
         //we want a distmap
@@ -133,8 +133,8 @@ double CVVDPprocess(const uint8_t *dstp, int64_t dststride, int64_t source_width
         GPU_CHECK(hipMemcpyDtoHAsync((void*)(dstp), LPyr1.getContrast(0, 0), dststride * height, stream1));
     }
 
-    hipStreamSynchronize(stream1);
-    hipFreeAsync(mem_d, stream1);
+    GPU_CHECK(hipStreamSynchronize(stream1));
+    GPU_CHECK(hipFreeAsync(mem_d, stream1));
 
     //we have our levels*4 scores
     double finalValue = 0;
@@ -176,10 +176,10 @@ public:
     int64_t resize_height = 0;
     void init(Vship_Colorspace_t source_colorspace, Vship_Colorspace_t source_colorspace2, float fps, bool resizeToDisplay, std::string model_key){
         model = new DisplayModel(model_key);
-        hipStreamCreate(&stream1);
-        hipStreamCreate(&stream2);
-        hipEventCreate(&event);
-        hipEventCreate(&event2);
+        GPU_CHECK(hipStreamCreate(&stream1));
+        GPU_CHECK(hipStreamCreate(&stream2));
+        GPU_CHECK(hipEventCreate(&event));
+        GPU_CHECK(hipEventCreate(&event2));
 
         converter1.init(source_colorspace, VshipColorConvert::linRGB, stream1);
         converter2.init(source_colorspace2, VshipColorConvert::linRGB, stream2);
@@ -223,8 +223,8 @@ public:
 
         int device;
         hipDeviceProp_t devattr;
-        hipGetDevice(&device);
-        hipGetDeviceProperties(&devattr, device);
+        GPU_CHECK(hipGetDevice(&device));
+        GPU_CHECK(hipGetDeviceProperties(&devattr, device));
 
         maxshared = devattr.sharedMemPerBlock;
     }
@@ -236,10 +236,10 @@ public:
         converter1.destroy();
         converter2.destroy();
         delete model;
-        hipStreamDestroy(stream1);
-        hipStreamDestroy(stream2);
-        hipEventDestroy(event);
-        hipEventDestroy(event2);
+        GPU_CHECK(hipStreamDestroy(stream1));
+        GPU_CHECK(hipStreamDestroy(stream2));
+        GPU_CHECK(hipEventDestroy(event));
+        GPU_CHECK(hipEventDestroy(event2));
     }
     void loadImageToRing(const uint8_t *srcp1[3], const uint8_t *srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
         bool is_resized = (source_width != resize_width || source_height != resize_height);
@@ -317,8 +317,8 @@ public:
             }
         }
         //everything is in temporalRing buffer so we can free memory already
-        hipFreeAsync(mem_d, stream1);
-        hipFreeAsync(mem_d2, stream2);
+        GPU_CHECK(hipFreeAsync(mem_d, stream1));
+        GPU_CHECK(hipFreeAsync(mem_d2, stream2));
 
         //now we work on src_d which has size minimum of source and resize
 

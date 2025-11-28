@@ -84,6 +84,7 @@ __host__ void inline convertToFloatPlaneTemplate(float* output_plane, const uint
     } else {
         convertToFloatPlane_Kernel<SampleType, Range, ColorFamchromaPlane, true><<<dim3(blx), dim3(thx), 0, stream>>>(output_plane, source_plane, stride, width, height);
     }
+    GPU_CHECK(hipGetLastError());
 }
 
 template<Vship_Sample_t SampleType, Vship_Range_t Range, Vship_ColorFamily_t ColorFam>

@@ -82,6 +82,7 @@ void inline XYZ_to_dkl(float* src_d[3], int64_t width, hipStream_t stream){
     int th_x = 256;
     int64_t bl_x = (width+th_x-1)/th_x;
     XYZ_to_dklKernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d[0], src_d[1], src_d[2], width);
+    GPU_CHECK(hipGetLastError());
 }
 
 //we receive the linear input from the converter but we encode to display depending on what it was before
@@ -133,6 +134,7 @@ void inline displayEncode(float* src_d, int64_t width, float Y_peak, float Y_bla
             displayEncode_Kernel<Vship_TRC_BT709><<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d, width, Y_peak, Y_black, Y_refl, exposure);
             break;
     }
+    GPU_CHECK(hipGetLastError());
 }
 
 

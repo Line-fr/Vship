@@ -98,6 +98,7 @@ std::tuple<double, double, double> diffmapscore(float* diffmap, float* temp, flo
         } else {
             sumreduce<<<dim3(bl_x), dim3(th_x), 0, stream>>>(temps[oscillate], src, width);
         }
+        GPU_CHECK(hipGetLastError());
         src = temps[oscillate];
         oscillate ^= 1;
         first = false;
@@ -107,9 +108,9 @@ std::tuple<double, double, double> diffmapscore(float* diffmap, float* temp, flo
     double resnormQ = 0.0f;
     double resnorm3 = 0.0f;
     double resnorminf = 0.0f;
-    hipMemcpyDtoHAsync(back_to_cpu, src, sizeof(float)*width*3, stream);
+    GPU_CHECK(hipMemcpyDtoHAsync(back_to_cpu, src, sizeof(float)*width*3, stream));
 
-    hipStreamSynchronize(stream);
+    GPU_CHECK(hipStreamSynchronize(stream));
 
     for (int i = 0; i < width; i++){
         if (first){

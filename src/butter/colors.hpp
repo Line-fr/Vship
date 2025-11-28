@@ -94,6 +94,7 @@ void linearRGB(float* src[3], int64_t width, int64_t height, hipStream_t stream)
     int64_t th_x = std::min((int64_t)256, width*height);
     int64_t bl_x = (width*height-1)/th_x + 1;
     linearrgb_kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src[0], src[1], src[2], width, height);
+    GPU_CHECK(hipGetLastError());
 }
 
 }

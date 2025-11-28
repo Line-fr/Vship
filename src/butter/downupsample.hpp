@@ -53,6 +53,7 @@ void inline addsupersample2X(float* diffmap, float* diffmapsmall, int64_t width,
     int64_t bl_x = (width-1)/th_x + 1;
     int64_t bl_y = (height-1)/th_y + 1;
     addsupersample2X_kernel<<<dim3(bl_x, bl_y), dim3(th_x, th_y), 0, stream>>>(diffmap, diffmapsmall, width, height, w);
+    GPU_CHECK(hipGetLastError());
 }
 
 }

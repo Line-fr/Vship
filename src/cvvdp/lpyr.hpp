@@ -47,6 +47,7 @@ void gaussPyrReduce(float* dst, float* src, int64_t source_width, int64_t source
     int th_x = 256;
     int64_t bl_x = (nw*nh+th_x-1)/th_x;
     gaussPyrReduce_Kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(dst, src, source_width, source_height);
+    GPU_CHECK(hipGetLastError());
 }
 
 //separable, but not worth it for a kernel of size 5
@@ -104,6 +105,7 @@ void gaussPyrExpand(float* dst, float* src, int64_t new_width, int64_t new_heigh
     int th_x = 256;
     int64_t bl_x = (new_width*new_height+th_x-1)/th_x;
     gaussPyrExpand_Kernel<subdst, adddst, clampMin><<<dim3(bl_x), dim3(th_x), 0, stream>>>(dst, src, new_width, new_height);
+    GPU_CHECK(hipGetLastError());
 }
 
 template<bool isMean, int multiplier>
@@ -132,6 +134,7 @@ void baseBandPyrRefine(float* p, float* Lbkg, int64_t width, hipStream_t stream)
     int th_x = 256;
     int64_t bl_x = (width + th_x-1)/th_x;
     baseBandPyrRefine_Kernel<isMean, multiplier><<<dim3(bl_x), dim3(th_x), 0, stream>>>(p, Lbkg, width);   
+    GPU_CHECK(hipGetLastError());
 }
 
 std::vector<float> get_frequencies(const int64_t width, const int64_t height, const float ppd){

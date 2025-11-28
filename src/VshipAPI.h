@@ -39,26 +39,27 @@ typedef enum{
     Vship_NoError = 0,
 
     //vship internal issues
-    Vship_OutOfVRAM,
-    Vship_OutOfRAM,
+    Vship_OutOfVRAM = 1,
+    Vship_OutOfRAM = 2,
+    Vship_HIPError = 12,
     
     //input issues
-    Vship_BadDisplayModel,
-    Vship_DifferingInputType,
-    Vship_NonRGBSInput, //should never happen since .resize should give RGBS always
+    Vship_BadDisplayModel = 3,
+    Vship_DifferingInputType = 4,
+    Vship_NonRGBSInput = 5, //should never happen since .resize should give RGBS always
     
     //Device related
-    Vship_DeviceCountError,
-    Vship_NoDeviceDetected,
-    Vship_BadDeviceArgument,
-    Vship_BadDeviceCode,
+    Vship_DeviceCountError = 6,
+    Vship_NoDeviceDetected = 7,
+    Vship_BadDeviceArgument = 8,
+    Vship_BadDeviceCode = 9,
 
     //API related
-    Vship_BadHandler,
-    Vship_BadPointer,
+    Vship_BadHandler = 10,
+    Vship_BadPointer = 11,
 
     //should not be used
-    Vship_BadErrorType,
+    Vship_BadErrorType = 13,
 } Vship_Exception;
 
 //Get the number of GPU

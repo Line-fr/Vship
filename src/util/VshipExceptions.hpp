@@ -15,6 +15,7 @@ enum VSHIPEXCEPTTYPE{
     //vship internal issues
     OutOfVRAM,
     OutOfRAM,
+    HIPError,
     
     //input issues
     BadDisplayModel,
@@ -46,6 +47,9 @@ std::string errorMessage(VSHIPEXCEPTTYPE type){
         case OutOfRAM:
         return "OutOfRAM: Vship was not able to allocate CPU memory. This is a rare error that should be reported. Check your RAM usage";
         
+        case HIPError:
+        return "InternalError: A GPU Call failed inside Vship. This may be due to a bad environment but is likely due to a bug in Vship.";
+
         case BadDisplayModel:
         return "BadDisplayModel: Vship was not able to find a corresponding model as specified. (Advice) See valid models in the doc or remove this option";
 
@@ -83,9 +87,10 @@ class VshipError : public std::exception
 {
     std::string file;
     int line;
+    std::string detail = "";
 public:
     VSHIPEXCEPTTYPE type;
-    VshipError(VSHIPEXCEPTTYPE type, const std::string filename, const int line) : std::exception(), type(type), file(filename), line(line){
+    VshipError(VSHIPEXCEPTTYPE type, const std::string filename, const int line, const std::string detail = "") : std::exception(), type(type), file(filename), line(line), detail(detail){
     }
     
     std::string getErrorMessage() const
@@ -94,8 +99,13 @@ public:
         ss << "VshipException" << std::endl;
         ss << errorMessage(type) << std::endl;
         ss << " - At line " << line << " of " << file << std::endl;
+        if (detail != "") ss << "Detail: " << detail << std::endl;
         return ss.str();
     }
 };
+
+#define GPU_CHECK(x)\
+{hipError_t err_hip = x;\
+if (err_hip != hipSuccess) throw VshipError(HIPError, __FILE__, __LINE__, hipGetErrorString(err_hip));}
 
 #endif

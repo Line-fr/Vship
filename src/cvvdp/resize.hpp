@@ -53,7 +53,9 @@ void resizePlane(float* dest, float* temp, float* src, int64_t source_width, int
     int64_t bl2_x = (resize_width*resize_height + th_x-1)/th_x;
 
     horizontalResizeTranspose_Kernel<<<dim3(bl1_x), dim3(th_x), 0, stream>>>(temp, src, source_width, source_height, resize_width);
+    GPU_CHECK(hipGetLastError());
     horizontalResizeTranspose_Kernel<<<dim3(bl2_x), dim3(th_x), 0, stream>>>(dest, temp, source_height, resize_width, resize_height);
+    GPU_CHECK(hipGetLastError());
 }
 
 }

@@ -38,6 +38,7 @@ void mergeChromaNorm(float* p0, float* p1, float* p2, float* p3, int64_t size, h
     int th_x = 256;
     int bl_x = (size+th_x-1)/th_x;
     mergeChromaNorm_Kernel<divisor><<<dim3(bl_x), dim3(th_x), 0, stream>>>(p0, p1, p2, p3, size);
+    GPU_CHECK(hipGetLastError());
 }
 
 //we should have D values in Lpyr bands and channels.
@@ -58,8 +59,9 @@ void getDistMap(LpyrManager& Lpyr, hipStream_t stream){
         gaussPyrExpand<false, true, false>(Lpyr.getContrast(0, band), Lpyr.getContrast(0, band+1), w, h, stream);
     }
     const auto [w0, h0] = Lpyr.getResolution(0);
-    hipMemcpyDtoDAsync(Lpyr.getLbkg(0), Lpyr.getContrast(0, 0), sizeof(float)*w0*h0, stream);
+    GPU_CHECK(hipMemcpyDtoDAsync(Lpyr.getLbkg(0), Lpyr.getContrast(0, 0), sizeof(float)*w0*h0, stream));
     JODIZE_Kernel<<<dim3((w0*h0+255)/256), dim3(256), 0, stream>>>(Lpyr.getLbkg(0), w0*h0);
+    GPU_CHECK(hipGetLastError());
 }
 
 }

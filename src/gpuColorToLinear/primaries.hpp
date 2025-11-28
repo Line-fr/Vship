@@ -131,6 +131,7 @@ void inline primariesToPrimaries_allTemplate(float* p0, float* p1, float* p2, in
     const int thx = 256;
     const int blx = (width + thx -1)/thx;
     primariesToPrimaries_kernel<T1, T2><<<dim3(blx), dim3(thx), 0, stream>>>(p0, p1, p2, width);
+    GPU_CHECK(hipGetLastError());
 }
 
 template<Vship_Primaries_t T2>

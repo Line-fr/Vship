@@ -16,12 +16,12 @@ public:
             gaussiankernel[2*GAUSSIANSIZE+2+i] = gaussiankernel[2*GAUSSIANSIZE+1+i] + gaussiankernel[i];
         }
     
-        hipMalloc(&gaussiankernel_d, sizeof(float)*(4*GAUSSIANSIZE+3));
-        hipMemcpyHtoD((hipDeviceptr_t)gaussiankernel_d, gaussiankernel, (4*GAUSSIANSIZE+3)*sizeof(float));
+        GPU_CHECK(hipMalloc(&gaussiankernel_d, sizeof(float)*(4*GAUSSIANSIZE+3)));
+        GPU_CHECK(hipMemcpyHtoD((hipDeviceptr_t)gaussiankernel_d, gaussiankernel, (4*GAUSSIANSIZE+3)*sizeof(float)));
         gaussiankernel_integral_d = gaussiankernel_d + 2*GAUSSIANSIZE+1;
     }
     void destroy(){
-        hipFree(gaussiankernel_d);
+        GPU_CHECK(hipFree(gaussiankernel_d));
     }
 };
 

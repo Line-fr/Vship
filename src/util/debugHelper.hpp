@@ -13,8 +13,8 @@ void writeGPUPlaneToFile(std::string filename, float* p, int64_t width, int64_t 
     }
 
     std::vector<float> cpu_p(width*height);
-    hipMemcpyDtoHAsync(cpu_p.data(), p, sizeof(float)*width*height, stream);
-    hipStreamSynchronize(stream);
+    GPU_CHECK(hipMemcpyDtoHAsync(cpu_p.data(), p, sizeof(float)*width*height, stream));
+    GPU_CHECK(hipStreamSynchronize(stream));
 
     //write plane
 

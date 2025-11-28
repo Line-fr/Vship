@@ -229,7 +229,7 @@ FFVship | GPU | 37s
 CVVDP Implementation | HW Type | Score | Time
 --- | --- | --- | ---
 Original Repo | GPU | 9.4808 | 162s
-FFVship | GPU | 9.54324 | 22s
+FFVship | GPU | 9.52268 | 22s
 
 
 `vship` dramatically outperforms CPU-based and GPU-based implementations of these metrics

@@ -185,6 +185,7 @@ void YUVToLinRGBPipeline_alltemplate(float* p0, float* p1, float* p2, int64_t wi
     const int thx = 256;
     const int blx = (width + thx -1)/thx;
     YUVToLinRGBPipeline_Kernel<matrix, transfer><<<dim3(blx), dim3(thx), 0, stream>>>(p0, p1, p2, width);
+    GPU_CHECK(hipGetLastError());
 }
 
 template <Vship_TransferFunction_t transfer>

@@ -225,6 +225,7 @@ std::vector<float3> allscore_map(float3* im1, float3* im2, float3* temp, float3*
             blr_x = (blr_x -1)/th_x + 1;
             //sum reduce
             sumreduce<<<dim3(blr_x), dim3(th_x), 6*sizeof(float3)*th_x, stream>>>(temp+scaleoutdone[scale]+((blr_x >= reduce_up_to) ? ((oscillate^1)+1)*6*bl_x*bl_y : 0), temp+scaleoutdone[scale]+ (oscillate+1)*6*bl_x*bl_y, oldblr_x);
+            GPU_CHECK(hipGetLastError());
             oscillate ^= 1;
             oldblr_x = blr_x;
         }
@@ -238,7 +239,7 @@ std::vector<float3> allscore_map(float3* im1, float3* im2, float3* temp, float3*
     //printf("I am sending : %llu %llu %lld %d", hostback, temp, sizeof(float3)*scaleoutdone[6], stream);
     GPU_CHECK(hipMemcpyDtoHAsync(hostback, (hipDeviceptr_t)temp, sizeof(float3)*scaleoutdone[6], stream));
 
-    hipStreamSynchronize(stream);
+    GPU_CHECK(hipStreamSynchronize(stream));
 
     //let s reduce!
     for (int scale = 0; scale < 6; scale++){

@@ -164,11 +164,15 @@ __host__ int inline upsample(float* temp, float* src[3], int64_t width, int64_t 
             if (subw == 0){
             } else if (subw == 1){
                 bicubicHorizontalLeftUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
+                GPU_CHECK(hipGetLastError());
                 bicubicHorizontalLeftUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp+2*width*height, src[2], width, height);
+                GPU_CHECK(hipGetLastError());
                 width *= 2;
             } else if (subw == 2){
                 bicubicHorizontalLeftUpscaleX4_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
+                GPU_CHECK(hipGetLastError());
                 bicubicHorizontalLeftUpscaleX4_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(temp+4*width*height, src[2], width, height);
+                GPU_CHECK(hipGetLastError());
                 width *= 4;
             } else {
                 return 1; //not implemented
@@ -179,11 +183,15 @@ __host__ int inline upsample(float* temp, float* src[3], int64_t width, int64_t 
             if (subw == 0){
             } else if (subw == 1){
                 bicubicHorizontalCenterUpscaleX2_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
+                GPU_CHECK(hipGetLastError());
                 bicubicHorizontalCenterUpscaleX2_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp+2*width*height, src[2], width, height);
+                GPU_CHECK(hipGetLastError());
                 width *= 2;
             } else if (subw == 2){
                 bicubicHorizontalCenterUpscaleX4_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp, src[1], width, height);
+                GPU_CHECK(hipGetLastError());
                 bicubicHorizontalCenterUpscaleX4_Kernel<<<dim3(blx2, bly1), dim3(thx, thy), 0, stream>>>(temp+4*width*height, src[2], width, height);
+                GPU_CHECK(hipGetLastError());
                 width *= 4;
             } else {
                 return 1; //not implemented
@@ -194,13 +202,13 @@ __host__ int inline upsample(float* temp, float* src[3], int64_t width, int64_t 
     }
 
     if (subh == 0){
-        hipMemcpyDtoDAsync(src[1], temp, sizeof(float)*width*height, stream);
-        hipMemcpyDtoDAsync(src[2], temp+width*height, sizeof(float)*width*height, stream);
+        GPU_CHECK(hipMemcpyDtoDAsync(src[1], temp, sizeof(float)*width*height, stream));
+        GPU_CHECK(hipMemcpyDtoDAsync(src[2], temp+width*height, sizeof(float)*width*height, stream));
     }
     //we need to copy the data to temp
     if (subw == 0){
-        hipMemcpyDtoDAsync(temp, src[1], sizeof(float)*width*height, stream);
-        hipMemcpyDtoDAsync(temp+width*height, src[2], sizeof(float)*width*height, stream);
+        GPU_CHECK(hipMemcpyDtoDAsync(temp, src[1], sizeof(float)*width*height, stream));
+        GPU_CHECK(hipMemcpyDtoDAsync(temp+width*height, src[2], sizeof(float)*width*height, stream));
     }
 
     blx1 = (width + thx-1)/thx;
@@ -212,7 +220,9 @@ __host__ int inline upsample(float* temp, float* src[3], int64_t width, int64_t 
             if (subh == 0){
             } else if (subh == 1){
                 bicubicVerticalTopUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(src[1], temp, width, height);
+                GPU_CHECK(hipGetLastError());
                 bicubicVerticalTopUpscaleX2_Kernel<<<dim3(blx1, bly1), dim3(thx, thy), 0, stream>>>(src[2], temp+width*height, width, height);
+                GPU_CHECK(hipGetLastError());
                 height *= 2;
             } else {
                 return 1; //not implemented
@@ -223,7 +233,9 @@ __host__ int inline upsample(float* temp, float* src[3], int64_t width, int64_t 
             if (subh == 0){
             } else if (subh == 1){
                 bicubicVerticalCenterUpscaleX2_Kernel<<<dim3(blx1, bly2), dim3(thx, thy), 0, stream>>>(src[1], temp, width, height);
+                GPU_CHECK(hipGetLastError());
                 bicubicVerticalCenterUpscaleX2_Kernel<<<dim3(blx1, bly2), dim3(thx, thy), 0, stream>>>(src[2], temp+width*height, width, height);
+                GPU_CHECK(hipGetLastError());
                 height *= 2;
             } else {
                 return 1; //not implemented

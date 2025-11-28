@@ -1,6 +1,9 @@
 #ifndef VSHIPCOLOR_API_HEADER
 #define VSHIPCOLOR_API_HEADER
 
+#include <stdint.h>
+#include <stdbool.h>
+
 enum Vship_Sample_t{
     Vship_SampleFLOAT = 0,
     Vship_SampleHALF = 1,

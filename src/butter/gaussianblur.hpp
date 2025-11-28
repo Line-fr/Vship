@@ -37,8 +37,9 @@ public:
             const int th_x = std::min(windowsize*2+1, 256);
             const int bl_x = (windowsize*2)/th_x+1;
             loadGaussianKernel<<<dim3(bl_x), dim3(th_x), 0, 0>>>(get(i), getIntegral(i), windowsize, sigma);
+            GPU_CHECK(hipGetLastError());
         }
-        hipDeviceSynchronize();
+        GPU_CHECK(hipDeviceSynchronize());
     }
     float* get(int i){
         return gaussiankernel_d+indices[i];
@@ -50,7 +51,7 @@ public:
         return ((indices[i+1]-indices[i])-3)/4;
     }
     void destroy(){
-        hipFree(gaussiankernel_d);
+        GPU_CHECK(hipFree(gaussiankernel_d));
         free(indices);
     }
 };
@@ -200,7 +201,9 @@ void blur(float* mem_d, float* temp, int64_t width, int64_t height, GaussianHand
     int64_t verticalbl_y = (height-1)/verticalth_y+1;
 
     horizontalBlur_Kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(temp, mem_d, width, height, gaussianKernel, gaussianKernel_integral, gaussiansize);
+    GPU_CHECK(hipGetLastError());
     verticalBlur_Kernel<<<dim3(verticalbl_x, verticalbl_y), dim3(verticalth_x, verticalth_y), 0, stream>>>(mem_d, temp, width, height, gaussianKernel, gaussianKernel_integral, gaussiansize);
+    GPU_CHECK(hipGetLastError());
 }
 
 void blur(float* dst, float* mem_d, float* temp, int64_t width, int64_t height, GaussianHandle& gaussianHandle, int i, hipStream_t stream){
@@ -216,6 +219,7 @@ void blur(float* dst, float* mem_d, float* temp, int64_t width, int64_t height, 
         int64_t bl_x = (width-1)/(2*th_x)+1;
         int64_t bl_y = (height-1)/(2*th_y)+1;
         TiledGaussianBlur_Kernel<<<dim3(bl_x*bl_y), dim3(th_x, th_y), 0, stream>>>(mem_d, dst, width, height, gaussianKernel, gaussianKernel_integral);
+        GPU_CHECK(hipGetLastError());
     } else {
         int64_t th_x = std::min((int64_t)256, wh);
         int64_t bl_x = (wh-1)/th_x + 1;
@@ -225,7 +229,9 @@ void blur(float* dst, float* mem_d, float* temp, int64_t width, int64_t height, 
         int64_t verticalbl_x = (width-1)/verticalth_x+1;
         int64_t verticalbl_y = (height-1)/verticalth_y+1;
         horizontalBlur_Kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(temp, mem_d, width, height, gaussianKernel, gaussianKernel_integral, gaussiansize);
+        GPU_CHECK(hipGetLastError());
         verticalBlur_Kernel<<<dim3(verticalbl_x, verticalbl_y), dim3(verticalth_x, verticalth_y), 0, stream>>>(dst, temp, width, height, gaussianKernel, gaussianKernel_integral, gaussiansize);
+        GPU_CHECK(hipGetLastError());
     }
 }
 void blurDstNoTemp(float* dst, float* mem_d, int64_t width, int64_t height, GaussianHandle& gaussianHandle, int i, hipStream_t stream){
@@ -240,6 +246,7 @@ void blurDstNoTemp(float* dst, float* mem_d, int64_t width, int64_t height, Gaus
     int64_t bl_x = (width-1)/(2*th_x)+1;
     int64_t bl_y = (height-1)/(2*th_y)+1;
     TiledGaussianBlur_Kernel<<<dim3(bl_x*bl_y), dim3(th_x, th_y), 0, stream>>>(mem_d, dst, width, height, gaussianKernel, gaussianKernel_integral);
+    GPU_CHECK(hipGetLastError());
 }
 
 //all gaussian sigmas:

@@ -50,8 +50,8 @@ float* getdiffmap(float* src1_d[3], float* src2_d[3], float* mem_d, int64_t widt
 
     //set the accumulators to 0
     for (int c = 0; c < 3; c++){
-        hipMemsetAsync(block_diff_ac[c], 0, sizeof(float)*width*height, stream);
-        hipMemsetAsync(block_diff_dc[c], 0, sizeof(float)*width*height, stream);
+        GPU_CHECK(hipMemsetAsync(block_diff_ac[c], 0, sizeof(float)*width*height, stream));
+        GPU_CHECK(hipMemsetAsync(block_diff_dc[c], 0, sizeof(float)*width*height, stream));
     }
 
     const float hf_asymmetry_ = 0.8f;
@@ -171,11 +171,11 @@ std::tuple<float, float, float> butterprocess(const uint8_t *dstp, int64_t dstst
     try{
         finalres = diffmapscore(diffmap, mem_d+9*width*height, mem_d+10*width*height, pinned, width*height, Qnorm, stream);
     } catch (const VshipError& e){
-        hipFree(mem_d);
+        GPU_CHECK(hipFree(mem_d));
         throw e;
     }
 
-    hipFreeAsync(mem_d, stream);
+    GPU_CHECK(hipFreeAsync(mem_d, stream));
 
     return finalres;
 }
@@ -194,7 +194,7 @@ class ButterComputingImplementation{
 public:
     //Qnorm replace the old norm2 and allows getting really any norm wanted
     void init(Vship_Colorspace_t source_colorspace, Vship_Colorspace_t source_colorspace2, int Qnorm, float intensity_multiplier){
-        hipStreamCreate(&stream);
+        GPU_CHECK(hipStreamCreate(&stream));
         converter1.init(source_colorspace, VshipColorConvert::linRGBBT709, stream);
         converter2.init(source_colorspace2, VshipColorConvert::linRGBBT709, stream);
 
@@ -213,8 +213,8 @@ public:
 
         int device;
         hipDeviceProp_t devattr;
-        hipGetDevice(&device);
-        hipGetDeviceProperties(&devattr, device);
+        GPU_CHECK(hipGetDevice(&device));
+        GPU_CHECK(hipGetDeviceProperties(&devattr, device));
 
         maxshared = devattr.sharedMemPerBlock;
 
@@ -229,8 +229,8 @@ public:
         gaussianhandle.destroy();
         converter1.destroy();
         converter2.destroy();
-        hipStreamDestroy(stream);
-        hipHostFree(pinned);
+        GPU_CHECK(hipStreamDestroy(stream));
+        GPU_CHECK(hipHostFree(pinned));
     }
     //if dstp is NULL, distmap won't be retrieved
     std::tuple<double, double, double> run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){

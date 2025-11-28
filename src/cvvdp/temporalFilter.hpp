@@ -70,7 +70,7 @@ public:
         }
 
         for (int j = 0; j < 4; j++){
-            hipMemcpyHtoD(convolutionKernel_d + j*size, temporal_filters[j].data(), sizeof(float)*size);
+            GPU_CHECK(hipMemcpyHtoD(convolutionKernel_d + j*size, temporal_filters[j].data(), sizeof(float)*size));
         }
     }
     __device__ __host__ float* getFilter(int j){ //returns gpu adresses
@@ -79,7 +79,7 @@ public:
         return convolutionKernel_d + j*size;
     }
     void destroy(){
-        hipFree(convolutionKernel_d);
+        GPU_CHECK(hipFree(convolutionKernel_d));
     }
 };
 
@@ -130,7 +130,7 @@ public:
         temporal_size = 0;
     }
     void destroy(){
-        hipFree(internal_memory_d);
+        GPU_CHECK(hipFree(internal_memory_d));
         tempFilterPreprocessor.destroy();
     }
 };
@@ -189,6 +189,7 @@ void computeTemporalChannels(TemporalRing& ring, float* Y_sustained, float* RG_s
     int th_x = 256;
     int bl_x = (ring.width*ring.height+th_x-1)/th_x;
     temporalConvolutionKernel_d<<<dim3(bl_x), dim3(th_x), 0, stream>>>(ring, Y_sustained, RG_sustained, YV_sustained, Y_transient);
+    GPU_CHECK(hipGetLastError());
 }
 
 

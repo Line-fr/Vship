@@ -44,11 +44,12 @@ namespace helper{
     bool gpuKernelCheck(){
         int inputtest = 0;
         int* inputtest_d;
-        hipMalloc(&inputtest_d, sizeof(int)*1);
-        hipMemset(inputtest_d, 0, sizeof(int)*1);
+        GPU_CHECK(hipMalloc(&inputtest_d, sizeof(int)*1));
+        GPU_CHECK(hipMemset(inputtest_d, 0, sizeof(int)*1));
         kernelTest<<<dim3(1), dim3(1), 0, 0>>>(inputtest_d);
-        hipMemcpyDtoH(&inputtest, inputtest_d, sizeof(int));
-        hipFree(inputtest_d);
+        GPU_CHECK(hipGetLastError());
+        GPU_CHECK(hipMemcpyDtoH(&inputtest, inputtest_d, sizeof(int)));
+        GPU_CHECK(hipFree(inputtest_d));
         return (inputtest == 4320984);
     }
 
@@ -58,7 +59,7 @@ namespace helper{
         if (count <= gpuid || gpuid < 0){
             throw VshipError(BadDeviceArgument, __FILE__, __LINE__);
         }
-        hipSetDevice(gpuid);
+        GPU_CHECK(hipSetDevice(gpuid));
         if (!gpuKernelCheck()){
             throw VshipError(BadDeviceCode, __FILE__, __LINE__);
         }
@@ -71,9 +72,9 @@ namespace helper{
         int count = checkGpuCount();
 
         for (int i = 0; i < count; i++){
-            hipSetDevice(i);
-            hipGetDevice(&device);
-            hipGetDeviceProperties(&devattr, device);
+            GPU_CHECK(hipSetDevice(i));
+            GPU_CHECK(hipGetDevice(&device));
+            GPU_CHECK(hipGetDeviceProperties(&devattr, device));
             ss << "GPU " << i << ": " << devattr.name << std::endl;
         }
         return ss.str();

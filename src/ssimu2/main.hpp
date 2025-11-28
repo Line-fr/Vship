@@ -28,6 +28,7 @@ void memoryorganizer(float3* out, float* srcp0, float* srcp1, float* srcp2, int6
     int th_x = std::min((int64_t)256, width*height);
     int bl_x = (width*height-1)/th_x + 1;
     memoryorganizer_kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(out, srcp0, srcp1, srcp2, width, height);
+    GPU_CHECK(hipGetLastError());
 }
 
 int64_t getTotalScaleSize(int64_t width, int64_t height){
@@ -113,7 +114,7 @@ class SSIMU2ComputingImplementation{
     hipStream_t stream;
 public:
     void init(Vship_Colorspace_t source_colorspace, Vship_Colorspace_t source_colorspace2){
-        hipStreamCreate(&stream);
+        GPU_CHECK(hipStreamCreate(&stream));
         converter1.init(source_colorspace, VshipColorConvert::linRGBBT709, stream);
         converter2.init(source_colorspace2, VshipColorConvert::linRGBBT709, stream);
 
@@ -129,8 +130,8 @@ public:
 
         int device;
         hipDeviceProp_t devattr;
-        hipGetDevice(&device);
-        hipGetDeviceProperties(&devattr, device);
+        GPU_CHECK(hipGetDevice(&device));
+        GPU_CHECK(hipGetDeviceProperties(&devattr, device));
 
         maxshared = devattr.sharedMemPerBlock;
 
@@ -145,8 +146,8 @@ public:
         gaussianhandle.destroy();
         converter1.destroy();
         converter2.destroy();
-        hipStreamDestroy(stream);
-        hipHostFree(pinned);
+        GPU_CHECK(hipStreamDestroy(stream));
+        GPU_CHECK(hipHostFree(pinned));
     }
     double run(const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
         const int64_t totalscalesize = getTotalScaleSize(width, height);
@@ -178,7 +179,7 @@ public:
             throw e;
         }
 
-        hipFreeAsync(mem_d, stream);
+        GPU_CHECK(hipFreeAsync(mem_d, stream));
 
         return res;
     }

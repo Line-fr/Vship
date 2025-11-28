@@ -36,7 +36,7 @@ public:
             LUT_logrho[i] = std::log10(CSF_LUT::rho[i]);
             log_Lbkg_LUTIndex_CPU[i] = std::log10(CSF_LUT::L_bkg[i]);
         }
-        hipMemcpyHtoD(log_Lbkg_LUTIndex, log_Lbkg_LUTIndex_CPU, sizeof(float)*32);
+        GPU_CHECK(hipMemcpyHtoD(log_Lbkg_LUTIndex, log_Lbkg_LUTIndex_CPU, sizeof(float)*32));
 
         //we create the logS_r_LUT on CPU since they are relatively small and not worth sending;
         for (int band = 0; band < levels; band++){
@@ -54,12 +54,12 @@ public:
                 }
                 //std::cout << std::endl;
 
-                hipMemcpyHtoD(mem_d+32*(1+band*4+channel), res, sizeof(float)*32);
+                GPU_CHECK(hipMemcpyHtoD(mem_d+32*(1+band*4+channel), res, sizeof(float)*32));
             }
         }
     }
     void destroy(){
-        hipFree(mem_d);
+        GPU_CHECK(hipFree(mem_d));
     }
     //src is Lbkg of ref
     __device__ float computeSensitivityGPU(float src, int band, int channel){

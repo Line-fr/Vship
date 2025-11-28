@@ -93,11 +93,11 @@ public:
         const int64_t plane_heights[3] = {height, height >> source_colorspace.subsampling.subh, height >> source_colorspace.subsampling.subh};
         const int byteSize = bytesizeSample(source_colorspace.sample);
         for (int i = 0; i < 3; i++){
-            hipMemcpyHtoDAsync(src_d, (void*)(inp[i]), lineSize[i]*plane_heights[i] - (lineSize[i] - byteSize*plane_widths[i]), stream);
+            GPU_CHECK(hipMemcpyHtoDAsync(src_d, (void*)(inp[i]), lineSize[i]*plane_heights[i] - (lineSize[i] - byteSize*plane_widths[i]), stream));
             convertToFloatPlane(preCropOut[i], (uint8_t*)src_d, lineSize[i], plane_widths[i], plane_heights[i], source_colorspace.sample, source_colorspace.range, source_colorspace.colorFamily, (bool)(i != 0), stream);
         }
         if (maxstride*height > sizeof(float)*maxWidth*maxHeight*2){
-            hipFreeAsync(src_d, stream);
+            GPU_CHECK(hipFreeAsync(src_d, stream));
         }
         //now we have our float data with the right range in out
         //let's upsample chroma using mem_d as a temporary plane
@@ -142,7 +142,7 @@ public:
                 resizePlane(fin, interm, base, source_colorspace.width, source_colorspace.height, source_colorspace.target_width, source_colorspace.target_height, stream);
             }
         }
-        hipFreeAsync(mem_d, stream);
+        GPU_CHECK(hipFreeAsync(mem_d, stream));
     }
 };
 
