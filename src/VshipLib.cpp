@@ -68,6 +68,31 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI
 #define EXPORTVSHIPLIB //to use dllexport for windows
 #include "VshipAPI.h"
 
+Vship_Exception convertLocalErrorToAPI(const VshipError& e){
+    Vship_Exception res;
+    res.type = (Vship_ExceptionType)e.type;
+    res.line = e.line;
+    int msgLen = std::min(e.file.size(), (size_t)255);
+    memcpy(res.file, e.file.c_str(), msgLen);
+    res.file[msgLen] = '\0';
+    msgLen = std::min(e.detail.size(), (size_t)255);
+    memcpy(res.details, e.detail.c_str(), msgLen);
+    return res;
+}
+
+VshipError convertAPIErrorToLocal(const Vship_Exception& e){
+    return VshipError((VSHIPEXCEPTTYPE)e.type, std::string(e.file), e.line, std::string(e.details));
+}
+
+Vship_Exception APINoError(){
+    Vship_Exception res;
+    res.type = Vship_NoError;
+    res.file[0] = '\0';
+    res.details[0] = '\0';
+    res.line = 0;
+    return res;
+}
+
 extern "C"{
 Vship_Version Vship_GetVersion(){
     Vship_Version res;
@@ -85,10 +110,10 @@ Vship_Exception Vship_GetDeviceCount(int* number){
     try{
         count = helper::checkGpuCount();
     } catch (const VshipError& e){
-        return (Vship_Exception)e.type;
+        return convertLocalErrorToAPI(e);
     }
     *number = count;
-    return Vship_NoError;
+    return APINoError();
 }
 
 Vship_Exception Vship_GetDeviceInfo(Vship_DeviceInfo* device_info, int gpu_id){
@@ -96,10 +121,10 @@ Vship_Exception Vship_GetDeviceInfo(Vship_DeviceInfo* device_info, int gpu_id){
     try{
         count = helper::checkGpuCount();
     } catch (const VshipError& e){
-        return (Vship_Exception)e.type;
+        return convertLocalErrorToAPI(e);
     }
     if (gpu_id >= count){
-        return Vship_BadDeviceArgument;
+        return convertLocalErrorToAPI(VshipError(BadDeviceArgument, __FILE__, __LINE__));
     }
     hipDeviceProp_t devattr;
     GPU_CHECK(hipGetDeviceProperties(&devattr, gpu_id));
@@ -108,20 +133,20 @@ Vship_Exception Vship_GetDeviceInfo(Vship_DeviceInfo* device_info, int gpu_id){
     device_info->integrated = devattr.integrated;
     device_info->MultiProcessorCount = devattr.multiProcessorCount;
     device_info->WarpSize = devattr.warpSize;
-    return Vship_NoError;
+    return APINoError();
 }
 
 Vship_Exception Vship_GPUFullCheck(int gpu_id){
     try{
         helper::gpuFullCheck(gpu_id);
     } catch (const VshipError& e){
-        return (Vship_Exception)e.type;
+        return convertLocalErrorToAPI(e);
     }
-    return Vship_NoError;
+    return APINoError();
 }
 
 int Vship_GetErrorMessage(Vship_Exception exception, char* out_message, int len){
-    std::string cppstr = errorMessage((VSHIPEXCEPTTYPE)exception);
+    std::string cppstr = convertAPIErrorToLocal(exception).getErrorMessage();
     if (len == 0) return cppstr.size()+1; //required size to fit the whole message
     memcpy(out_message, cppstr.c_str(), std::min(len-1, (int)cppstr.size()));
     out_message[len-1] = '\0'; //end character
@@ -131,30 +156,30 @@ int Vship_GetErrorMessage(Vship_Exception exception, char* out_message, int len)
 Vship_Exception Vship_SetDevice(int gpu_id){
     int numgpu;
     Vship_Exception errcount = Vship_GetDeviceCount(&numgpu);
-    if (errcount != Vship_NoError){
+    if (errcount.type != Vship_NoError){
         return errcount;
     }
     if (gpu_id >= numgpu){
-        return Vship_BadDeviceArgument;
+        return convertLocalErrorToAPI(VshipError(BadDeviceArgument, __FILE__, __LINE__));
     }
     GPU_CHECK(hipSetDevice(gpu_id));
-    return Vship_NoError;
+    return APINoError();
 }
 
 Vship_Exception Vship_PinnedMalloc(void** ptr, uint64_t size){
     hipError_t erralloc = hipHostMalloc(ptr, size);
     if (erralloc != hipSuccess){
-        return Vship_OutOfRAM;
+        return convertLocalErrorToAPI(VshipError(OutOfRAM, __FILE__, __LINE__));
     }
-    return Vship_NoError;
+    return APINoError();
 }
 
 Vship_Exception Vship_PinnedFree(void* ptr){
     hipError_t err = hipHostFree(ptr);
     if (err != hipSuccess){
-        return Vship_BadPointer;
+        return convertLocalErrorToAPI(VshipError(BadPointer, __FILE__, __LINE__));
     }
-    return Vship_NoError;
+    return APINoError();
 }
 
 RessourceManager<ssimu2::SSIMU2ComputingImplementation*> HandlerManagerSSIMU2;
@@ -162,7 +187,7 @@ RessourceManager<butter::ButterComputingImplementation*> HandlerManagerButteraug
 RessourceManager<cvvdp::CVVDPComputingImplementation*> HandlerManagerCVVDP;
 
 Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     handler->id = HandlerManagerSSIMU2.allocate();
     HandlerManagerSSIMU2.lock.lock();
     HandlerManagerSSIMU2.elements[handler->id] = new ssimu2::SSIMU2ComputingImplementation();
@@ -171,24 +196,24 @@ Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, Vship_Colorspace_
     try{
         implem.init(src_colorspace, dis_colorspace);
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
-    return err;
+    return APINoError();
 }
 
 Vship_Exception Vship_SSIMU2Free(Vship_SSIMU2Handler handler){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     HandlerManagerSSIMU2.lock.lock();
     if (handler.id >= HandlerManagerSSIMU2.elements.size()){
         HandlerManagerSSIMU2.lock.unlock();
-        return Vship_BadHandler;
+        return convertLocalErrorToAPI(VshipError(BadHandler, __FILE__, __LINE__));
     }
     auto* implem = HandlerManagerSSIMU2.elements[handler.id];
     HandlerManagerSSIMU2.lock.unlock();
     try{
         implem->destroy();
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
     delete implem;
     HandlerManagerSSIMU2.free(handler.id);
@@ -196,7 +221,7 @@ Vship_Exception Vship_SSIMU2Free(Vship_SSIMU2Handler handler){
 }
 
 Vship_Exception Vship_ComputeSSIMU2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     HandlerManagerSSIMU2.lock.lock();
     //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
     ssimu2::SSIMU2ComputingImplementation& ssimu2computingimplem = *HandlerManagerSSIMU2.elements[handler.id];
@@ -205,13 +230,13 @@ Vship_Exception Vship_ComputeSSIMU2(Vship_SSIMU2Handler handler, double* score, 
     try{
         *score = ssimu2computingimplem.run(srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
     return err;
 }
 
 Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     handler->id = HandlerManagerButteraugli.allocate();
     HandlerManagerButteraugli.lock.lock();
     HandlerManagerButteraugli.elements[handler->id] = new butter::ButterComputingImplementation();
@@ -221,24 +246,24 @@ Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_C
         //Qnorm = 2 by default to mimic old behavior
         implem->init(src_colorspace, dis_colorspace, Qnorm, intensity_multiplier);
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
     return err;
 }
 
 Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler handler){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     HandlerManagerButteraugli.lock.lock();
     if (handler.id >= HandlerManagerButteraugli.elements.size()){
         HandlerManagerButteraugli.lock.unlock();
-        return Vship_BadHandler;
+        return convertLocalErrorToAPI(VshipError(BadHandler, __FILE__, __LINE__));
     }
     auto* implem = HandlerManagerButteraugli.elements[handler.id];
     HandlerManagerButteraugli.lock.unlock();
     try{
         implem->destroy();
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
     delete implem;
     HandlerManagerButteraugli.free(handler.id);
@@ -246,7 +271,7 @@ Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler handler){
 }
 
 Vship_Exception Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     HandlerManagerButteraugli.lock.lock();
     //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
     butter::ButterComputingImplementation* buttercomputingimplem = HandlerManagerButteraugli.elements[handler.id];
@@ -258,13 +283,13 @@ Vship_Exception Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship
         score->norm3 = std::get<1>(res);
         score->norminf = std::get<2>(res);
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
     return err;
 }
 
 Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     handler->id = HandlerManagerCVVDP.allocate();
     HandlerManagerCVVDP.lock.lock();
     HandlerManagerCVVDP.elements[handler->id] = new cvvdp::CVVDPComputingImplementation();
@@ -275,24 +300,24 @@ Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vship_Colorspace_t 
     try{
         implem->init(src_colorspace, dis_colorspace, fps, resizeToDisplay, model_key);
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
     return err;
 }
 
 Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     HandlerManagerCVVDP.lock.lock();
     if (handler.id >= HandlerManagerCVVDP.elements.size()){
         HandlerManagerCVVDP.lock.unlock();
-        return Vship_BadHandler;
+        return convertLocalErrorToAPI(VshipError(BadHandler, __FILE__, __LINE__));
     }
     auto* implem = HandlerManagerCVVDP.elements[handler.id];
     HandlerManagerCVVDP.lock.unlock();
     try{
         implem->destroy();
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
     delete implem;
     HandlerManagerCVVDP.free(handler.id);
@@ -300,7 +325,7 @@ Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler){
 }
 
 Vship_Exception Vship_ResetCVVDP(Vship_CVVDPHandler handler){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     HandlerManagerCVVDP.lock.lock();
     //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
     cvvdp::CVVDPComputingImplementation* cvvdpcomputingimplem = HandlerManagerCVVDP.elements[handler.id];
@@ -309,14 +334,14 @@ Vship_Exception Vship_ResetCVVDP(Vship_CVVDPHandler handler){
     try{
         cvvdpcomputingimplem->flushTemporalRing();
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
     return err;
 }
 
 //The temporalFilter stays loaded but the score goes back to neutral
 Vship_Exception Vship_ResetScoreCVVDP(Vship_CVVDPHandler handler){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     HandlerManagerCVVDP.lock.lock();
     //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
     cvvdp::CVVDPComputingImplementation* cvvdpcomputingimplem = HandlerManagerCVVDP.elements[handler.id];
@@ -325,7 +350,7 @@ Vship_Exception Vship_ResetScoreCVVDP(Vship_CVVDPHandler handler){
     try{
         cvvdpcomputingimplem->flushOnlyScore();
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
     return err;
 }
@@ -333,7 +358,7 @@ Vship_Exception Vship_ResetScoreCVVDP(Vship_CVVDPHandler handler){
 //this function allows loading images to the temporal filter of CVVDP without computing metric.
 //this is useful to start computing at the middle of a video, you can put previous frames with this.
 Vship_Exception Vship_LoadTemporalCVVDP(Vship_CVVDPHandler handler, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     HandlerManagerCVVDP.lock.lock();
     //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
     cvvdp::CVVDPComputingImplementation* cvvdpcomputingimplem = HandlerManagerCVVDP.elements[handler.id];
@@ -342,13 +367,13 @@ Vship_Exception Vship_LoadTemporalCVVDP(Vship_CVVDPHandler handler, const uint8_
     try{
         cvvdpcomputingimplem->loadImageToRing(srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
     return err;
 }
 
 Vship_Exception Vship_ComputeCVVDP(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
-    Vship_Exception err = Vship_NoError;
+    Vship_Exception err = APINoError();
     HandlerManagerCVVDP.lock.lock();
     //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
     cvvdp::CVVDPComputingImplementation* cvvdpcomputingimplem = HandlerManagerCVVDP.elements[handler.id];
@@ -357,7 +382,7 @@ Vship_Exception Vship_ComputeCVVDP(Vship_CVVDPHandler handler, double* score, co
     try{
         *score = cvvdpcomputingimplem->run(dstp, dststride, srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
-        err = (Vship_Exception)e.type;
+        err = convertLocalErrorToAPI(e);
     }
     return err;
 }

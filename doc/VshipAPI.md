@@ -55,7 +55,7 @@ For this tutorial, we will not bother too much with errors with will create a si
 Vship_Exception err;
 char errmsg[1024];
 #define ErrorCheck(line) err = line;\
-if (err != 0){\
+if (err.type != 0){\
     Vship_GetErrorMessage(err, errmsg, 1024);\
     printf("Vship Error occured: %s", errmsg);\
     exit(1);\

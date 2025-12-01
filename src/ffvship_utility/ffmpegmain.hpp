@@ -84,7 +84,14 @@ class GpuWorker {
         }
 
         ASSERT_WITH_MESSAGE(false, "Unknown metric specified for GpuWorker.");
-        return {{0.0f, 0.0f, 0.0f}, Vship_BadErrorType};
+        Vship_Exception badres;
+        badres.type = Vship_BadErrorType;
+        badres.line = __LINE__;
+        int msgLen = std::min(sizeof(__FILE__), 256lu);
+        memcpy(badres.file, __FILE__, msgLen);
+        badres.file[msgLen] = '\0';
+        badres.details[0] = '\0';
+        return {{0.0f, 0.0f, 0.0f}, badres};
     }
 
     static uint8_t *allocate_external_rgb_buffer(uint64_t bytes) {
@@ -95,7 +102,7 @@ class GpuWorker {
             reinterpret_cast<void **>(&buffer_ptr), buffer_size_bytes);
 
         ASSERT_WITH_MESSAGE(
-            result == Vship_NoError && buffer_ptr != nullptr,
+            result.type == Vship_NoError && buffer_ptr != nullptr,
             "Pinned buffer allocation failed in allocate_external_rgb_buffer");
 
         return buffer_ptr;
@@ -120,7 +127,7 @@ class GpuWorker {
             ASSERT_WITH_MESSAGE(false,
                                 "Unknown metric during memory allocation.");
         }
-        if (err != Vship_NoError){
+        if (err.type != Vship_NoError){
             char errmsg[1024];
             Vship_GetErrorMessage(err, errmsg, 1024);
             std::cerr << errmsg << std::endl;

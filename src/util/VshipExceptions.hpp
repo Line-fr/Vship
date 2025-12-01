@@ -85,10 +85,10 @@ std::string errorMessage(VSHIPEXCEPTTYPE type){
 
 class VshipError : public std::exception
 {
+public:
     std::string file;
     int line;
     std::string detail = "";
-public:
     VSHIPEXCEPTTYPE type;
     VshipError(VSHIPEXCEPTTYPE type, const std::string filename, const int line, const std::string detail = "") : std::exception(), type(type), file(filename), line(line), detail(detail){
     }

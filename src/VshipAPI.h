@@ -60,6 +60,13 @@ typedef enum{
 
     //should not be used
     Vship_BadErrorType = 13,
+} Vship_ExceptionType;
+
+typedef struct Vship_Exception{
+    Vship_ExceptionType type = Vship_NoError;
+    char file[256];
+    int line = -1;
+    char details[256];
 } Vship_Exception;
 
 //Get the number of GPU
