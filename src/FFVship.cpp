@@ -100,7 +100,7 @@ void frame_worker_thread(frame_queue_t &input_queue,
         const uint8_t* enc_buffer_planes[3] = {enc_buffer, enc_buffer+planeSize2[0], enc_buffer+planeSize2[0]+planeSize2[1]};
         const auto& [scores, vshipError] = gpu_worker.compute_metric_score(src_buffer_planes, enc_buffer_planes);
         
-        if (vshipError.type != Vship_NoError){
+        if (vshipError != Vship_NoError){
             char errmsg[1024];
             Vship_GetErrorMessage(vshipError, errmsg, 1024);
             std::cerr << " error: " << errmsg << std::endl;
@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
         char errmsg[1024];
         int numgpu;
         Vship_Exception err = Vship_GetDeviceCount(&numgpu);
-        if (err.type != Vship_NoError){
+        if (err != Vship_NoError){
             Vship_GetErrorMessage(err, errmsg, 1024);
             std::cerr << errmsg << std::endl;
             return 1;
@@ -238,7 +238,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < numgpu; i++){
             std::cout << "GPU " << i << ": ";
             err = Vship_GetDeviceInfo(&devinfo, i);
-            if (err.type != Vship_NoError){
+            if (err != Vship_NoError){
                 Vship_GetErrorMessage(err, errmsg, 1024);
                 std::cerr << errmsg << std::endl;
                 return 1;
@@ -262,7 +262,7 @@ int main(int argc, char **argv) {
     // gpu sanity check
     // if succeed, this function also does hipSetDevice
     Vship_Exception err = Vship_GPUFullCheck(cli_args.gpu_id);
-    if (err.type != Vship_NoError){
+    if (err != Vship_NoError){
         char errmsg[1024];
         Vship_GetErrorMessage(err, errmsg, 1024);
         std::cerr << errmsg << std::endl;
