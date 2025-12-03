@@ -12,7 +12,7 @@ ifeq ($(OS),Windows_NT)
     fpicamd :=
     plugin_install_path := $(APPDATA)\VapourSynth\plugins64
     exe_install_path := $(ProgramFiles)\FFVship.exe
-    ffvshiplibheader :=  -lffms2 -lvship
+    ffvshiplibheader :=  -lffms2 -llibvship
 	ffvshipincludeheader := -I include
 	fatbincompressamd := 
 	fatbincompresscuda := 
@@ -34,7 +34,7 @@ endif
 .FORCE:
 
 buildFFVSHIP: src/FFVship.cpp .FORCE
-	g++ src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -L ./ -Wno-unused-result -Wno-ignored-attributes $(ffvshiplibheader) -o FFVship$(exeend)
+	clang++ src/FFVship.cpp -g -std=c++17 $(ffvshipincludeheader) -L ./ -Wno-unused-result -Wno-ignored-attributes $(ffvshiplibheader) -o FFVship$(exeend)
 
 build: src/VshipLib.cpp .FORCE
 	hipcc src/VshipLib.cpp -g -std=c++17 -I "$(current_dir)include" --offload-arch=native -Wno-unused-result -Wno-ignored-attributes -shared $(fpicamd) -o "$(current_dir)libvship$(dllend)"
