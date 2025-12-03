@@ -225,15 +225,6 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    {
-        char errmsg[1024];
-        int numgpu;
-        Vship_Exception err = Vship_GetDeviceCount(&numgpu);
-        Vship_GetDetailedLastError(errmsg, 1024);
-        std::cerr << errmsg << std::endl;
-        return 1;
-    }
-
     if (cli_args.list_gpus) {
         char errmsg[1024];
         int numgpu;
