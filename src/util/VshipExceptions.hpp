@@ -39,7 +39,7 @@ enum VSHIPEXCEPTTYPE{
 std::string errorMessage(VSHIPEXCEPTTYPE type){
     switch (type){
         case NoError:
-        return "NoError: Vship succeeded";
+        return "NoError: When everything is right, you should not be searching for problems but appreciate what was given to you.";
 
         case OutOfVRAM:
         return "OutOfVRAM: Vship was not able to perform GPU memory allocation. (Advice) Reduce or Set numStream argument";

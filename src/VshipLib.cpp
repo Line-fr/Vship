@@ -71,7 +71,7 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI
 template<typename ImplementationType>
 struct HandlerData{
     ImplementationType implem;
-    VshipError lastError = VshipError(NoError, "", -1, "");
+    VshipError lastError = VshipError(NoError, "Your Heart", 0, "");
 };
 
 RessourceManager<HandlerData<ssimu2::SSIMU2ComputingImplementation>*> HandlerManagerSSIMU2;
@@ -80,7 +80,7 @@ RessourceManager<HandlerData<cvvdp::CVVDPComputingImplementation>*> HandlerManag
 
 extern "C"{
 
-VshipError lastError = VshipError(NoError, "", -1, "");
+VshipError lastError = VshipError(NoError, "Your Heart", 0, "");
 
 Vship_Version Vship_GetVersion(){
     Vship_Version res;
@@ -140,16 +140,18 @@ Vship_Exception Vship_GPUFullCheck(int gpu_id){
 int Vship_GetErrorMessage(Vship_Exception exception, char* out_message, int len){
     std::string cppstr = errorMessage((VSHIPEXCEPTTYPE)exception);
     if (len == 0) return cppstr.size()+1; //required size to fit the whole message
-    memcpy(out_message, cppstr.c_str(), std::min(len-1, (int)cppstr.size()));
-    out_message[len-1] = '\0'; //end character
+    const int msglength = std::min(len-1, (int)cppstr.size());
+    memcpy(out_message, cppstr.c_str(), msglength);
+    out_message[msglength] = '\0'; //end character
     return cppstr.size()+1;
 }
 
 int Vship_GetDetailedLastError(char* out_message, int len){
     std::string cppstr = lastError.getErrorMessage();
     if (len == 0) return cppstr.size()+1; //required size to fit the whole message
-    memcpy(out_message, cppstr.c_str(), std::min(len-1, (int)cppstr.size()));
-    out_message[len-1] = '\0'; //end character
+    const int msglength = std::min(len-1, (int)cppstr.size());
+    memcpy(out_message, cppstr.c_str(), msglength);
+    out_message[msglength] = '\0'; //end character
     return cppstr.size()+1;
 }
 
@@ -259,8 +261,9 @@ int Vship_SSIMU2GetDetailedLastError(Vship_SSIMU2Handler handler, char* out_mess
 
     std::string cppstr = handlerdata->lastError.getErrorMessage();
     if (len == 0) return cppstr.size()+1; //required size to fit the whole message
-    memcpy(out_message, cppstr.c_str(), std::min(len-1, (int)cppstr.size()));
-    out_message[len-1] = '\0'; //end character
+    const int msglength = std::min(len-1, (int)cppstr.size());
+    memcpy(out_message, cppstr.c_str(), msglength);
+    out_message[msglength] = '\0'; //end character
     return cppstr.size()+1;
 }
 
@@ -342,8 +345,9 @@ int Vship_ButteraugliGetDetailedLastError(Vship_ButteraugliHandler handler, char
 
     std::string cppstr = handlerdata->lastError.getErrorMessage();
     if (len == 0) return cppstr.size()+1; //required size to fit the whole message
-    memcpy(out_message, cppstr.c_str(), std::min(len-1, (int)cppstr.size()));
-    out_message[len-1] = '\0'; //end character
+    const int msglength = std::min(len-1, (int)cppstr.size());
+    memcpy(out_message, cppstr.c_str(), msglength);
+    out_message[msglength] = '\0'; //end character
     return cppstr.size()+1;
 }
 
@@ -492,8 +496,9 @@ int Vship_CVVDPGetDetailedLastError(Vship_CVVDPHandler handler, char* out_messag
 
     std::string cppstr = handlerdata->lastError.getErrorMessage();
     if (len == 0) return cppstr.size()+1; //required size to fit the whole message
-    memcpy(out_message, cppstr.c_str(), std::min(len-1, (int)cppstr.size()));
-    out_message[len-1] = '\0'; //end character
+    const int msglength = std::min(len-1, (int)cppstr.size());
+    memcpy(out_message, cppstr.c_str(), msglength);
+    out_message[msglength] = '\0'; //end character
     return cppstr.size()+1;
 }
 
