@@ -86,6 +86,10 @@ EXPORTPREPROCESS Vship_Exception Vship_GPUFullCheck(int gpu_id);
 //however, if you want the exact amount, the integer returned is the size needed. So you can use len=0 to retrieve the size, allocate and then the correct len.
 EXPORTPREPROCESS int Vship_GetErrorMessage(Vship_Exception exception, char* out_message, int len);
 
+//works exactly like the above function but return more details, only about the last error that happened
+//for multithreaded scenarios, (ie one thread per handler) refer to the Handler versions of this function below
+EXPORTPREPROCESS int Vship_GetDetailedLastError(char* out_message, int len);
+
 //for maximum throughput, it is recommend to use 3 SSIMU2Handler with each a thread to use in parallel
 //is only an id to refer to an object in an array in the API dll.
 //this is because the original object contains types that are not represented without hip and the original code.
@@ -105,6 +109,10 @@ EXPORTPREPROCESS Vship_Exception Vship_SSIMU2Free(Vship_SSIMU2Handler handler);
 
 //the frame is not overwritten
 EXPORTPREPROCESS Vship_Exception Vship_ComputeSSIMU2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
+
+//works exactly like Vship_GetDetailedLastError but returns the last error of a handler instead of being global which is better in multithreaded scenarios
+//if it returns 0, it means an error occurent inside, you should use Vship_GetDetailedLastError
+EXPORTPREPROCESS int Vship_SSIMU2GetDetailedLastError(Vship_SSIMU2Handler handler, char* out_message, int len);
 
 typedef struct Vship_ButteraugliHandler{
     int id;
@@ -127,6 +135,10 @@ EXPORTPREPROCESS Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler 
 //or be allocated of size dststride*height
 //output in score
 EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
+
+//works exactly like Vship_GetDetailedLastError but returns the last error of a handler instead of being global which is better in multithreaded scenarios
+//if it returns 0, it means an error occurent inside, you should use Vship_GetDetailedLastError
+EXPORTPREPROCESS int Vship_ButteraugliGetDetailedLastError(Vship_ButteraugliHandler handler, char* out_message, int len);
 
 typedef struct Vship_CVVDPHandler{
     int id;
@@ -154,6 +166,10 @@ EXPORTPREPROCESS Vship_Exception Vship_LoadTemporalCVVDP(Vship_CVVDPHandler hand
 //output the score of the whole sequence that it has already seen. You can reset the CVVDP handler to start over on a new sequence
 //ideally, for a video, you feed all the frames, and then only at the very last frame submitted you take the score
 EXPORTPREPROCESS Vship_Exception Vship_ComputeCVVDP(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
+
+//works exactly like Vship_GetDetailedLastError but returns the last error of a handler instead of being global which is better in multithreaded scenarios
+//if it returns 0, it means an error occurent inside, you should use Vship_GetDetailedLastError
+EXPORTPREPROCESS int Vship_CVVDPGetDetailedLastError(Vship_CVVDPHandler handler, char* out_message, int len);
 
 #ifdef __cplusplus
 } //extern "C"

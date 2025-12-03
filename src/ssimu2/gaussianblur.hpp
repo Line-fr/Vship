@@ -64,7 +64,7 @@ __device__ void GaussianSmart_Device(float3* tampon, int64_t x, int64_t y, int64
     float3 out2 = makeFloat3(0.f, 0.f, 0.f);
     //border handling precompute
     int beg = max((int64_t)0, x-8)-(x-8);
-    int end2 = min(width, x+9)-(x-8);
+    int end2 = min(width, x+9)-min(width, (x-8));
     tot = gaussiankernel_integral[end2] - gaussiankernel_integral[beg];
     for (int i = 0; i < 17; i++){ //starting 8 to the left and going 8 to the right
         out += tampon[thy*32 + thx+i]*gaussiankernel[i];
@@ -80,7 +80,7 @@ __device__ void GaussianSmart_Device(float3* tampon, int64_t x, int64_t y, int64
     //verticalBlur on tampon restraint into rectangle [8 - 24][8 - 24] -> 1 pass per thread
     out = makeFloat3(0.f, 0.f, 0.f);
     beg = max((int64_t)0, y-8)-(y-8);
-    end2 = min(height, y+9)-(y-8);
+    end2 = min(height, y+9)-min(height, (y-8));
     tot = gaussiankernel_integral[end2] - gaussiankernel_integral[beg];
     for (int i = 0; i < 17; i++){ //starting 8 to the left and going 8 to the right
         out += tampon[(thy+i)*32 + thx+8]*gaussiankernel[i];
