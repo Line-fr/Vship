@@ -128,7 +128,7 @@ __global__ void TiledGaussianBlur_Kernel(float* src, float* dst, int64_t width, 
 
         //border handling precompute
         const int beg = max((int64_t)0, x-8+region_x*16)-(x-8+region_x*16);
-        const int end2 = min(width, x+9+region_x*16)-(x-8+region_x*16);
+        const int end2 = min(width, x+9+region_x*16)-min(width, (x-8+region_x*16));
         tot[region_x] = gaussiankernel_integral[end2]-gaussiankernel_integral[beg];
 
         #pragma unroll
@@ -155,7 +155,7 @@ __global__ void TiledGaussianBlur_Kernel(float* src, float* dst, int64_t width, 
         
         //border handling precompute
         const int beg = max((int64_t)0, y-8+region_y*16)-(y-8+region_y*16);
-        const int end2 = min(height, y+9+region_y*16)-(y-8+region_y*16);
+        const int end2 = min(height, y+9+region_y*16)-min(height, (y-8+region_y*16));
         tot[region_y] = gaussiankernel_integral[end2] - gaussiankernel_integral[beg];
 
         #pragma unroll
