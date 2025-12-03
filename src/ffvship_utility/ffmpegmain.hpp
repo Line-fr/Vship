@@ -122,7 +122,7 @@ class GpuWorker {
         }
         if (err != Vship_NoError){
             char errmsg[1024];
-            Vship_GetErrorMessage(err, errmsg, 1024);
+            Vship_GetDetailedLastError(errmsg, 1024);
             std::cerr << errmsg << std::endl;
             ASSERT_WITH_MESSAGE(false, "Failed to initialize GPU Worker");
             return;

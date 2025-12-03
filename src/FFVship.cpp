@@ -102,7 +102,7 @@ void frame_worker_thread(frame_queue_t &input_queue,
         
         if (vshipError != Vship_NoError){
             char errmsg[1024];
-            Vship_GetErrorMessage(vshipError, errmsg, 1024);
+            Vship_GetDetailedLastError(errmsg, 1024);
             std::cerr << " error: " << errmsg << std::endl;
             frame_buffer_pool.insert(src_buffer);
             frame_buffer_pool.insert(enc_buffer);
@@ -230,7 +230,7 @@ int main(int argc, char **argv) {
         int numgpu;
         Vship_Exception err = Vship_GetDeviceCount(&numgpu);
         if (err != Vship_NoError){
-            Vship_GetErrorMessage(err, errmsg, 1024);
+            Vship_GetDetailedLastError(errmsg, 1024);
             std::cerr << errmsg << std::endl;
             return 1;
         }
@@ -239,7 +239,7 @@ int main(int argc, char **argv) {
             std::cout << "GPU " << i << ": ";
             err = Vship_GetDeviceInfo(&devinfo, i);
             if (err != Vship_NoError){
-                Vship_GetErrorMessage(err, errmsg, 1024);
+                Vship_GetDetailedLastError(errmsg, 1024);
                 std::cerr << errmsg << std::endl;
                 return 1;
             }
@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
     Vship_Exception err = Vship_GPUFullCheck(cli_args.gpu_id);
     if (err != Vship_NoError){
         char errmsg[1024];
-        Vship_GetErrorMessage(err, errmsg, 1024);
+        Vship_GetDetailedLastError(errmsg, 1024);
         std::cerr << errmsg << std::endl;
         return 1;
     }
