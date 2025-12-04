@@ -110,10 +110,6 @@ EXPORTPREPROCESS Vship_Exception Vship_SSIMU2Free(Vship_SSIMU2Handler handler);
 //the frame is not overwritten
 EXPORTPREPROCESS Vship_Exception Vship_ComputeSSIMU2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
 
-//works exactly like Vship_GetDetailedLastError but returns the last error of a handler instead of being global which is better in multithreaded scenarios
-//if it returns 0, it means an error occurent inside, you should use Vship_GetDetailedLastError
-EXPORTPREPROCESS int Vship_SSIMU2GetDetailedLastError(Vship_SSIMU2Handler handler, char* out_message, int len);
-
 typedef struct Vship_ButteraugliHandler{
     int id;
 } Vship_ButteraugliHandler;
@@ -135,10 +131,6 @@ EXPORTPREPROCESS Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler 
 //or be allocated of size dststride*height
 //output in score
 EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
-
-//works exactly like Vship_GetDetailedLastError but returns the last error of a handler instead of being global which is better in multithreaded scenarios
-//if it returns 0, it means an error occurent inside, you should use Vship_GetDetailedLastError
-EXPORTPREPROCESS int Vship_ButteraugliGetDetailedLastError(Vship_ButteraugliHandler handler, char* out_message, int len);
 
 typedef struct Vship_CVVDPHandler{
     int id;
@@ -166,10 +158,6 @@ EXPORTPREPROCESS Vship_Exception Vship_LoadTemporalCVVDP(Vship_CVVDPHandler hand
 //output the score of the whole sequence that it has already seen. You can reset the CVVDP handler to start over on a new sequence
 //ideally, for a video, you feed all the frames, and then only at the very last frame submitted you take the score
 EXPORTPREPROCESS Vship_Exception Vship_ComputeCVVDP(Vship_CVVDPHandler handler, double* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
-
-//works exactly like Vship_GetDetailedLastError but returns the last error of a handler instead of being global which is better in multithreaded scenarios
-//if it returns 0, it means an error occurent inside, you should use Vship_GetDetailedLastError
-EXPORTPREPROCESS int Vship_CVVDPGetDetailedLastError(Vship_CVVDPHandler handler, char* out_message, int len);
 
 #ifdef __cplusplus
 } //extern "C"
