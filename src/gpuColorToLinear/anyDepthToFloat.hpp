@@ -61,7 +61,7 @@ __device__ float inline PickValue(const uint8_t* const source_plane, const int64
         } else {
             //only remains byteSample != 1 and non float type => byteSample == 2 uints
             //bitmasking to avoid assuming that garbage data is 0
-            return *((uint16_t*)baseAdress) & ((1 << bitSample)-1);
+            return *((uint16_t*)baseAdress) & ((1u << bitSample)-1u);
         }
     }
 }
