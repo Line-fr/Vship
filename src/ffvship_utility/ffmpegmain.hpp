@@ -913,7 +913,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     if (!metric_name.empty()) {
         opts.metric = parse_metric_name(metric_name);
         if (opts.metric == MetricType::Unknown){
-            std::cerr << "Unknown metric type. Expected 'SSIMULACRA2' or 'Butteraugli'." << std::endl;
+            std::cerr << "Unknown metric type. Expected 'SSIMULACRA2', 'Butteraugli' or 'CVVDP'." << std::endl;
             opts.NoAssertExit = true;
         }
     }
