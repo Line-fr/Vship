@@ -13,6 +13,7 @@ Name | Type | Required | Default
 reference | `vapoursynth.VideoNode` | Yes
 distorted | `vapoursynth.VideoNode` | Yes
 model_name | `str` | No | `standard_fhd`
+model_config_json | `str` | No | ""
 resizeToDisplay | `int` | No | `0`
 distmap | `int` | No | `0`
 gpu_id | `int` | No | `0`
@@ -60,6 +61,35 @@ The list of possible model is here:
 - standard_hdr_linear_zoom
 
 Each Display has its own resolution. An accurate result of the rescaled content to the specified screen can be obtained setting resizeToDisplay to 1 too.
+
+### model_config_json
+
+Allows to specify a path to a config file written the same way as the original CVVDP repo. Here is the format supported by vship:
+
+```
+{
+        "new_Display_Name" : {
+                "name": "string",
+                "colorspace": "string that is either HDR, sRGB/SDR or CVVDP stuff: BT.709-linear, BT.2020-PQ, BT.2020-HLG",
+                "resolution": [width_int, height_int],
+                "max_luminance": float,
+                "viewing_distance_meters": float,
+                "diagonal_size_inches": float,
+                "contrast": float,
+                "E_ambient": float,
+                "k_refl": float,
+                "exposure": float,
+                "source": "string",
+        },
+        "standard_fhd" : {
+                "name": "overwrite default colorspace for standard_fhd display",
+                "colorspace": "HDR",
+        }
+}
+```
+
+if the display name is new, then all fields except name, source, k_refl and exposure will have to be specified (k_refl and exposure have defaults)
+if the display name corresponds to another display defined earlier in the config file or in the basic displays, the new values will overwrite older ones and may not require to be all set as such.
 
 ### gpu_id
 

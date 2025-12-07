@@ -27,6 +27,7 @@ struct MetricParameters{
     //CVVDP
     bool resizeToDisplay = 0;
     std::string model_key = "standard_fhd";
+    std::string model_config_json = "";
 
     //butteraugli
     int intensity_target_nits = 203;
@@ -115,7 +116,7 @@ class GpuWorker {
         } else if (selected_metric == MetricType::Butteraugli) {
             err = Vship_ButteraugliInit(&butterworker, image_colorspace, encoded_colorspace, metricParam.Qnorm, metricParam.intensity_target_nits);
         } else if (selected_metric == MetricType::CVVDP){
-            err = Vship_CVVDPInit(&cvvdpworker, image_colorspace, encoded_colorspace, fps, metricParam.resizeToDisplay, metricParam.model_key.c_str());
+            err = Vship_CVVDPInit2(&cvvdpworker, image_colorspace, encoded_colorspace, fps, metricParam.resizeToDisplay, metricParam.model_key.c_str(), metricParam.model_config_json.c_str());
         } else {
             ASSERT_WITH_MESSAGE(false,
                                 "Unknown metric during memory allocation.");
@@ -869,6 +870,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
 
     parser.add_flag({"--resizeToDisplay"}, &opts.metricParam.resizeToDisplay, "Allow to resize to the screen resolution specified in the model (default off)");
     parser.add_flag({"--displayModel"}, &opts.metricParam.model_key, "Allow specifying screen disposition to CVVDP (default standard_fhd)");
+    parser.add_flag({"--displayConfig"}, &opts.metricParam.model_config_json, "Allow specifying an external json display configuration path");
     parser.add_flag({"--intensity-target"}, &opts.metricParam.intensity_target_nits, "Target nits for Butteraugli");
     parser.add_flag({"--qnorm"}, &opts.metricParam.Qnorm, "Optional Norm to compute (default to 2)");
     parser.add_flag({"--threads", "-t"}, &opts.cpu_threads, "Number of Decoder process, recommended is 2");

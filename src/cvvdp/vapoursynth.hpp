@@ -154,6 +154,12 @@ namespace cvvdp{
             model_key_cstr = "standard_fhd";
         }
         const std::string model_key(model_key_cstr);
+
+        const char* model_config_json_cstr = vsapi->mapGetData(in , "model_config_json", 0, &error);
+        if (error != peSuccess){
+            model_config_json_cstr = "";
+        }
+        const std::string model_config_json(model_config_json_cstr);
     
         if (d.diffmap){
             viout.format = formatout;
@@ -195,7 +201,7 @@ namespace cvvdp{
         src_colorspace.primaries = Vship_PRIMARIES_BT709;
 
         try{
-            data->CVVDPStreams.init(src_colorspace, src_colorspace, fps, resizeToDisplay, model_key);
+            data->CVVDPStreams.init(src_colorspace, src_colorspace, fps, resizeToDisplay, model_key, model_config_json);
             
             //save resize width for the distmap
             data->new_width = data->CVVDPStreams.resize_width;

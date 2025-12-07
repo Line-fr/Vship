@@ -47,7 +47,9 @@ typedef enum{
     Vship_BadDisplayModel = 3,
     Vship_DifferingInputType = 4,
     Vship_NonRGBSInput = 5, //should never happen since .resize should give RGBS always
-    
+    Vship_BadPath = 13,
+    Vship_BadJson = 14,
+
     //Device related
     Vship_DeviceCountError = 6,
     Vship_NoDeviceDetected = 7,
@@ -59,7 +61,7 @@ typedef enum{
     Vship_BadPointer = 11,
 
     //should not be used
-    Vship_BadErrorType = 13,
+    Vship_BadErrorType = 15,
 } Vship_Exception;
 
 //Get the number of GPU
@@ -138,6 +140,14 @@ typedef struct Vship_CVVDPHandler{
 
 //handler pointer will be replaced, it is a return value. Don't forget to free it after usage.
 EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr);
+
+//allows specifying a path for a json containing display informations.
+//basically properties will be searched through basic models and then overwritten by the custom model
+// (so you can overwrite only some properties of an existing model if you wish to)
+//however if you go with a completely new display name, you will have to specify everything
+//passing NULL allows to have no path (similarly "\0" works)
+EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit2(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr, const char* model_config_json_cstr);
+
 
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);

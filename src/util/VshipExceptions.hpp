@@ -21,6 +21,8 @@ enum VSHIPEXCEPTTYPE{
     BadDisplayModel = 3,
     DifferingInputType = 4,
     NonRGBSInput = 5, //should never happen since .resize should give RGBS always
+    BadPath = 13,
+    BadJson = 14,
     
     //Device related
     DeviceCountError = 6,
@@ -33,7 +35,7 @@ enum VSHIPEXCEPTTYPE{
     BadPointer = 11,
 
     //should not be used
-    BadErrorType = 13,
+    BadErrorType = 15,
 };
 
 std::string errorMessage(VSHIPEXCEPTTYPE type){
@@ -59,6 +61,12 @@ std::string errorMessage(VSHIPEXCEPTTYPE type){
         case NonRGBSInput:
         return "NonRGBSInput: Vship did not manage to get RGBS format of your inputs. This should not happen. (Advice) try converting yourself to RGBS";
     
+        case BadPath:
+        return "BadPath: Vship failed to open a file.";
+
+        case BadJson:
+        return "BadJson: Vship failed to parse the json";
+
         case DeviceCountError:
         return "DeviceCountError: Vship was unable to verify the number of GPU on your system. (Advice) Did you select the correct binary for your device AMD/NVIDIA. (Advice) if linux AMD, are you in video and render groups?";
         

@@ -60,7 +60,7 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI
     vspapi->configPlugin("com.lumen.vship", "vship", "VapourSynth SSIMULACRA2 on GPU", VS_MAKE_VERSION(4, 0), VAPOURSYNTH_API_VERSION, 0, plugin);
     vspapi->registerFunction("SSIMULACRA2", "reference:vnode;distorted:vnode;numStream:int:opt;gpu_id:int:opt;", "clip:vnode;", ssimu2::ssimulacra2Create, NULL, plugin);
     vspapi->registerFunction("BUTTERAUGLI", "reference:vnode;distorted:vnode;qnorm:int:opt;intensity_multiplier:float:opt;distmap:int:opt;numStream:int:opt;gpu_id:int:opt;", "clip:vnode;", butter::butterCreate, NULL, plugin);
-    vspapi->registerFunction("CVVDP", "reference:vnode;distorted:vnode;model_name:data:opt;resizeToDisplay:int:opt;distmap:int:opt;gpu_id:int:opt;", "clip:vnode;", cvvdp::CVVDPCreate, NULL, plugin);
+    vspapi->registerFunction("CVVDP", "reference:vnode;distorted:vnode;model_name:data:opt;model_config_json:data:opt;resizeToDisplay:int:opt;distmap:int:opt;gpu_id:int:opt;", "clip:vnode;", cvvdp::CVVDPCreate, NULL, plugin);
     vspapi->registerFunction("GpuInfo", "gpu_id:int:opt;", "gpu_human_data:data;", GpuInfo, NULL, plugin);
 }
 
@@ -306,7 +306,7 @@ Vship_Exception Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship
     return err;
 }
 
-Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr){
+Vship_Exception Vship_CVVDPInit2(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr, const char* model_config_json_cstr){
     Vship_Exception err = Vship_NoError;
     handler->id = HandlerManagerCVVDP.allocate();
     HandlerManagerCVVDP.lock.lock();
@@ -315,13 +315,21 @@ Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vship_Colorspace_t 
     HandlerManagerCVVDP.lock.unlock();
 
     std::string model_key(model_key_cstr);
+    std::string model_config_json = "";
+    if (model_config_json_cstr != NULL){
+        model_config_json = std::string(model_config_json_cstr);
+    } 
     try{
-        handlerdata->implem.init(src_colorspace, dis_colorspace, fps, resizeToDisplay, model_key);
+        handlerdata->implem.init(src_colorspace, dis_colorspace, fps, resizeToDisplay, model_key, model_config_json);
     } catch (const VshipError& e){
         lastError = e;
         err = (Vship_Exception)e.type;
     }
     return err;
+}
+
+Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr){
+    return Vship_CVVDPInit2(handler, src_colorspace, dis_colorspace, fps, resizeToDisplay, model_key_cstr, NULL);
 }
 
 Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler){

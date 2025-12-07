@@ -174,8 +174,8 @@ class CVVDPComputingImplementation{
 public:
     int64_t resize_width = 0;
     int64_t resize_height = 0;
-    void init(Vship_Colorspace_t source_colorspace, Vship_Colorspace_t source_colorspace2, float fps, bool resizeToDisplay, std::string model_key){
-        model = new DisplayModel(model_key);
+    void init(Vship_Colorspace_t source_colorspace, Vship_Colorspace_t source_colorspace2, float fps, bool resizeToDisplay, std::string model_key, std::string model_config_json){
+        model = new DisplayModel(model_key, model_config_json);
         GPU_CHECK(hipStreamCreate(&stream1));
         GPU_CHECK(hipStreamCreate(&stream2));
         GPU_CHECK(hipEventCreate(&event));
