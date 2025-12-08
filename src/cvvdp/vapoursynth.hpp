@@ -16,6 +16,8 @@ namespace cvvdp{
     } CVVDPData;
     
     static const VSFrame *VS_CC CVVDPGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+        (void)frameData;
+        
         CVVDPData *d = (CVVDPData *)instanceData;
     
         if (activationReason == arInitial) {
@@ -95,6 +97,8 @@ namespace cvvdp{
     
     // Free all allocated data on filter destruction
     static void VS_CC CVVDPFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
+        (void)core;
+        
         CVVDPData *d = (CVVDPData *)instanceData;
         vsapi->freeNode(d->reference);
         vsapi->freeNode(d->distorted);
@@ -108,6 +112,8 @@ namespace cvvdp{
     
     // This function is responsible for validating arguments and creating a new filter  
     static void VS_CC CVVDPCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
+        (void)userData;
+        
         CVVDPData d;
         CVVDPData *data;
     

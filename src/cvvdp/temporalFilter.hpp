@@ -4,23 +4,23 @@ namespace cvvdp{
 
 //will write on its input but put it back as before
 //if inp is of size less than N/2, remaining values are counted as 0
-std::vector<float> inverseRealFourrierTransform(std::vector<float> inp, int size){
+std::vector<float> inverseRealFourrierTransform(std::vector<float> inp, uint size){
     //ahead normalization process for reversing a FFT
-    if ((int)inp.size() > size/2){
+    if (inp.size() > size/2){
         inp[size/2] /= 2;
     }
     inp[0] /= 2;
 
     std::vector<float> res(size, 0);
-    for (int i = 0; i < size; i++){
-        for (int k = 0; k < inp.size(); k++){
+    for (uint i = 0; i < size; i++){
+        for (uint k = 0; k < inp.size(); k++){
             //we offset the index of res to get frequencies starting from 0 then positive then negative
             res[(i+inp.size()-1)%size] += 2*inp[k]*std::cos(2*PI*k*i/size)/size; //2/N is normalization factor and exceptions are handled before
         }
     }
 
     //putting back inp as before, except if inp values were reaching float lower limits, it should be lossless
-    if ((int)inp.size() > size/2){
+    if (inp.size() > size/2){
         inp[size/2] *= 2;
     }
     inp[0] *= 2;

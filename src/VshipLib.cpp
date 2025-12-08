@@ -6,7 +6,10 @@
 #include "cvvdp/vapoursynth.hpp"
 #include "util/gpuhelper.hpp"
 
-static void VS_CC GpuInfo(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
+static void VS_CC GpuInfo(const VSMap *in, VSMap *out, void *userData, VSCore * core, const VSAPI *vsapi) {
+    (void)userData;
+    (void)core;
+
     std::stringstream ss;
     int count, device;
     hipDeviceProp_t devattr;

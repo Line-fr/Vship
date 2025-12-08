@@ -158,7 +158,7 @@ int64_t LpyrMemoryNeedPerPlane(int64_t width, int64_t height, float ppd){
     int64_t res = 0;
     int64_t w = width;
     int64_t h = height;
-    for (int level = 0; level < bands.size(); level++){
+    for (uint level = 0; level < bands.size(); level++){
         res += h*w;
 
         w = (w+1)/2;

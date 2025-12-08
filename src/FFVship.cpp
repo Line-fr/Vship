@@ -83,7 +83,6 @@ void frame_reader_thread2(frame_reader_thread2_arguments args){
 
 void frame_worker_thread(frame_queue_t &input_queue,
                          frame_pool_t &frame_buffer_pool, GpuWorker &gpu_worker,
-                         MetricType metric,
                          score_queue_t &output_score_queue,
                          int64_t planeSize[3],
                          int64_t planeSize2[3],
@@ -157,11 +156,11 @@ void print_aggergate_metric_statistics(const std::vector<double> &data,
     const size_t count = sorted.size();
     double average = 0;
     double squared_sum = 0;
-    for (int i = 0; i < sorted.size(); i++){
+    for (unsigned long i = 0; i < sorted.size(); i++){
         average += sorted[i];
     }
     average /= count;
-    for (int i = 0; i < sorted.size(); i++){
+    for (unsigned long i = 0; i < sorted.size(); i++){
         squared_sum += (sorted[i] - average)*(sorted[i] - average);
     }
     const double stddev = std::sqrt(squared_sum/count);
@@ -271,10 +270,10 @@ int main(int argc, char **argv) {
 
     auto init = std::chrono::high_resolution_clock::now();
 
-    const int queue_capacity = cli_args.cpu_threads;
+    const uint queue_capacity = cli_args.cpu_threads;
 
-    const int num_gpus = cli_args.gpu_threads;
-    const int num_frame_buffer = num_gpus*2 + 2*queue_capacity + 2*cli_args.cpu_threads; //maximum number of buffers in nature possible
+    const uint num_gpus = cli_args.gpu_threads;
+    const uint num_frame_buffer = num_gpus*2 + 2*queue_capacity + 2*cli_args.cpu_threads; //maximum number of buffers in nature possible
 
     FFMSIndexResult source_index = FFMSIndexResult(cli_args.source_file, cli_args.source_index, cli_args.cache_index, !cli_args.live_index_score_output, !cli_args.live_index_score_output);
     FFMSIndexResult encode_index = FFMSIndexResult(cli_args.encoded_file, cli_args.encoded_index, cli_args.cache_index, !cli_args.live_index_score_output, !cli_args.live_index_score_output);
@@ -398,7 +397,7 @@ int main(int argc, char **argv) {
     std::vector<GpuWorker> gpu_workers;
     gpu_workers.reserve(num_gpus);
 
-    for (int i = 0; i < num_gpus; i++){
+    for (uint i = 0; i < num_gpus; i++){
         //size of encoded version gets deduced by crops but stride needs to be given
         gpu_workers.emplace_back(cli_args.metric, source_colorspace, encoded_colorspace, v1.processor->unpack_stride, v2.processor->unpack_stride, source_fps, cli_args.metricParam);
     }
@@ -428,10 +427,10 @@ int main(int argc, char **argv) {
 
     int error = 0;
     std::vector<std::thread> workers;
-    for (int i = 0; i < num_gpus; ++i) {
+    for (uint i = 0; i < num_gpus; ++i) {
         workers.emplace_back(frame_worker_thread, std::ref(frame_queue),
                              std::ref(frame_buffer_pool),
-                             std::ref(gpu_workers[i]), cli_args.metric,
+                             std::ref(gpu_workers[i]),
                              std::ref(score_queue),
                              v1.processor->planeSizeUnpack, v2.processor->planeSizeUnpack,
                              &error);

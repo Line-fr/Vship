@@ -667,7 +667,7 @@ __host__ void MaltaDiffMap(const float* lum0, const float* lum1, float* block_di
     const int64_t th_y = 16;
     const int64_t bl_x = (width - 1)/th_x + 1;
     const int64_t bl_y = (height - 1)/th_y + 1;
-    MaltaDiffMap_Kernel<<<dim3(bl_x, bl_y), dim3(th_x, th_y)>>>(lum0, lum1, block_diff_ac, width, height, w_0gt1, w_0lt1, norm1, len, mulli);
+    MaltaDiffMap_Kernel<<<dim3(bl_x, bl_y), dim3(th_x, th_y), 0, stream>>>(lum0, lum1, block_diff_ac, width, height, w_0gt1, w_0lt1, norm1, len, mulli);
     GPU_CHECK(hipGetLastError());
 }
 

@@ -14,6 +14,8 @@ namespace butter{
     } ButterData;
     
     static const VSFrame *VS_CC butterGetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+        (void)frameData;
+        
         ButterData *d = (ButterData *)instanceData;
     
         if (activationReason == arInitial) {
@@ -95,6 +97,8 @@ namespace butter{
     
     // Free all allocated data on filter destruction
     static void VS_CC butterFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
+        (void)core;
+        
         ButterData *d = (ButterData *)instanceData;
         vsapi->freeNode(d->reference);
         vsapi->freeNode(d->distorted);
@@ -110,6 +114,8 @@ namespace butter{
     
     // This function is responsible for validating arguments and creating a new filter  
     static void VS_CC butterCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
+        (void)userData;
+        
         ButterData d;
         ButterData *data;
     

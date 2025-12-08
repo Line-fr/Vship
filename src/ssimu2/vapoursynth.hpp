@@ -14,6 +14,8 @@ typedef struct Ssimulacra2Data{
 } Ssimulacra2Data;
 
 static const VSFrame *VS_CC ssimulacra2GetFrame(int n, int activationReason, void *instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+    (void)frameData;
+    
     Ssimulacra2Data *d = (Ssimulacra2Data *)instanceData;
 
     if (activationReason == arInitial) {
@@ -81,6 +83,8 @@ static const VSFrame *VS_CC ssimulacra2GetFrame(int n, int activationReason, voi
 
 // Free all allocated data on filter destruction
 static void VS_CC ssimulacra2Free(void *instanceData, VSCore *core, const VSAPI *vsapi) {
+    (void)core;
+    
     Ssimulacra2Data *d = (Ssimulacra2Data *)instanceData;
     vsapi->freeNode(d->reference);
     vsapi->freeNode(d->distorted);
@@ -95,7 +99,9 @@ static void VS_CC ssimulacra2Free(void *instanceData, VSCore *core, const VSAPI 
 }
 
 // This function is responsible for validating arguments and creating a new filter  
-static void VS_CC ssimulacra2Create(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
+static void VS_CC ssimulacra2Create(const VSMap *in, VSMap *out, void * userData, VSCore *core, const VSAPI *vsapi) {
+    (void)userData;
+
     Ssimulacra2Data d;
     Ssimulacra2Data *data;
 

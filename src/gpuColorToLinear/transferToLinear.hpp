@@ -66,6 +66,7 @@ __device__ void inline transferLinearize(float3& a){
 
 template <>
 __device__ void inline transferLinearize<Vship_TRC_Linear>(float& a){
+    (void)a;
 }
 
 //source Wikipedia

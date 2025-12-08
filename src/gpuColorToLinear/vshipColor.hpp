@@ -23,8 +23,8 @@ enum ConverterDestination_t{
 class Converter{
     Vship_Colorspace_t source_colorspace;
     ConverterDestination_t destination;
-    int64_t width;
-    int64_t height;
+    uint64_t width;
+    uint64_t height;
     hipStream_t stream;
     float* mem_d = NULL;
 
@@ -60,11 +60,11 @@ public:
         return source_colorspace.target_height - source_colorspace.crop.top - source_colorspace.crop.bottom;
     }
     void convert(float* out[3], const uint8_t *inp[3], const int64_t lineSize[3]){
-        int64_t maxWidth = std::max(source_colorspace.target_width, source_colorspace.width);
-        int64_t maxHeight= std::max(source_colorspace.target_height, source_colorspace.height);
+        uint64_t maxWidth = std::max(source_colorspace.target_width, source_colorspace.width);
+        uint64_t maxHeight= std::max(source_colorspace.target_height, source_colorspace.height);
 
-        int basePlaneAllocation = 3;
-        int maxplaneBuffer = 2;
+        uint basePlaneAllocation = 3;
+        uint maxplaneBuffer = 2;
         if (!isResized && !isCropped) basePlaneAllocation = 0;
         hipError_t erralloc = hipMallocAsync(&mem_d, sizeof(float)*width*height*basePlaneAllocation + sizeof(float)*maxWidth*maxHeight*maxplaneBuffer, stream);
         if (erralloc != hipSuccess){
@@ -80,7 +80,7 @@ public:
         }
 
         uint8_t* src_d = (uint8_t*)temp_d;
-        int64_t maxstride = std::max(lineSize[0], std::max(lineSize[1], lineSize[2]));
+        uint64_t maxstride = std::max(lineSize[0], std::max(lineSize[1], lineSize[2]));
         if (maxstride*height > sizeof(float)*maxWidth*maxHeight*2){
             //we need to allocate another plane to export the current data to gpu
             hipError_t erralloc = hipMallocAsync(&src_d, maxstride*height, stream);
@@ -89,10 +89,10 @@ public:
             }
         }
         //before chroma upsampling
-        const int64_t plane_widths[3] = {width, width >> source_colorspace.subsampling.subw, width >> source_colorspace.subsampling.subw};
-        const int64_t plane_heights[3] = {height, height >> source_colorspace.subsampling.subh, height >> source_colorspace.subsampling.subh};
-        const int byteSize = bytesizeSample(source_colorspace.sample);
-        for (int i = 0; i < 3; i++){
+        const uint64_t plane_widths[3] = {width, width >> source_colorspace.subsampling.subw, width >> source_colorspace.subsampling.subw};
+        const uint64_t plane_heights[3] = {height, height >> source_colorspace.subsampling.subh, height >> source_colorspace.subsampling.subh};
+        const uint byteSize = bytesizeSample(source_colorspace.sample);
+        for (uint i = 0; i < 3; i++){
             GPU_CHECK(hipMemcpyHtoDAsync(src_d, (void*)(inp[i]), lineSize[i]*plane_heights[i] - (lineSize[i] - byteSize*plane_widths[i]), stream));
             convertToFloatPlane(preCropOut[i], (uint8_t*)src_d, lineSize[i], plane_widths[i], plane_heights[i], source_colorspace.sample, source_colorspace.range, source_colorspace.colorFamily, (bool)(i != 0), stream);
         }

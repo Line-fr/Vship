@@ -21,7 +21,7 @@
 
 namespace cvvdp{
 
-double CVVDPprocess(const uint8_t *dstp, int64_t dststride, int64_t source_width, int64_t source_height, int64_t resize_width, int64_t resize_height, TemporalRing& temporalRing1, TemporalRing& temporalRing2, CSF_Handler& csfhandle, GaussianHandle& gaussianhandle, DisplayModel* model, int64_t maxshared, hipStream_t stream1, hipStream_t stream2, hipEvent_t event, hipEvent_t event2){
+double CVVDPprocess(const uint8_t *dstp, int64_t dststride, int64_t resize_width, int64_t resize_height, TemporalRing& temporalRing1, TemporalRing& temporalRing2, CSF_Handler& csfhandle, GaussianHandle& gaussianhandle, DisplayModel* model, hipStream_t stream1, hipStream_t stream2, hipEvent_t event, hipEvent_t event2){
     const int64_t minwidth = temporalRing1.width;
     const int64_t minheight = temporalRing1.height;
     const int64_t width = resize_width;
@@ -166,7 +166,6 @@ class CVVDPComputingImplementation{
     Vship_Colorspace_t dis_colorspace;
     int64_t source_width = 0;
     int64_t source_height = 0;
-    int maxshared = 0;
     hipStream_t stream1 = 0;
     hipStream_t stream2 = 0;
     hipEvent_t event;
@@ -220,13 +219,6 @@ public:
         gaussianhandle.init();
         score_squareSum = 0;
         numFrame = 0;
-
-        int device;
-        hipDeviceProp_t devattr;
-        GPU_CHECK(hipGetDevice(&device));
-        GPU_CHECK(hipGetDeviceProperties(&devattr, device));
-
-        maxshared = devattr.sharedMemPerBlock;
     }
     void destroy(){
         temporalRing1.destroy();
@@ -348,7 +340,7 @@ public:
     }
     double run(const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]){
         loadImageToRing(srcp1, srcp2, lineSize, lineSize2);
-        const double current_score = CVVDPprocess(dstp, dststride, source_width, source_height, resize_width, resize_height, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, maxshared, stream1, stream2, event, event2);
+        const double current_score = CVVDPprocess(dstp, dststride, resize_width, resize_height, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, stream1, stream2, event, event2);
         score_squareSum += std::pow(current_score, beta_t);
         double resQ;
         if (numFrame == 0){
