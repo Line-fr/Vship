@@ -25,7 +25,6 @@ template<Vship_Sample_t T, bool misalignementHandling>
 __device__ float inline PickValue(const uint8_t* const source_plane, const int64_t i, const int64_t stride, const int64_t width){
     constexpr int byteSample = bytesizeSample(T);
     //1 for float types and bitsize for integers
-    constexpr int bitSample = bitprecisionSample(T);
     
     const int line = i/width;
     const int column = i%width;
@@ -51,6 +50,7 @@ __device__ float inline PickValue(const uint8_t* const source_plane, const int64
         } else {
             //only remains byteSample != 1 and non float type => byteSample == 2 uints
             //bitmasking to avoid assuming that garbage data is 0
+            constexpr int bitSample = bitprecisionSample(T);
             return *((uint16_t*)raw) & ((1u << bitSample)-1u);
         }
     } else {
@@ -61,6 +61,7 @@ __device__ float inline PickValue(const uint8_t* const source_plane, const int64
         } else {
             //only remains byteSample != 1 and non float type => byteSample == 2 uints
             //bitmasking to avoid assuming that garbage data is 0
+            constexpr int bitSample = bitprecisionSample(T);
             return *((uint16_t*)baseAdress) & ((1u << bitSample)-1u);
         }
     }

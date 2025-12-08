@@ -117,7 +117,12 @@ Vship_Exception Vship_GetDeviceInfo(Vship_DeviceInfo* device_info, int gpu_id){
         return Vship_BadDeviceArgument;
     }
     hipDeviceProp_t devattr;
-    GPU_CHECK(hipGetDeviceProperties(&devattr, gpu_id));
+    try{
+        GPU_CHECK(hipGetDeviceProperties(&devattr, gpu_id));
+    } catch (VshipError& e){
+        lastError = e;
+        return (Vship_Exception)e.type;
+    }
     memcpy(device_info->name, devattr.name, 256); //256 char to copy
     device_info->VRAMSize = devattr.totalGlobalMem;
     device_info->integrated = devattr.integrated;
@@ -164,7 +169,12 @@ Vship_Exception Vship_SetDevice(int gpu_id){
         lastError = VshipError(BadDeviceArgument, __FILE__, __LINE__, "In Vship_SetDevice");
         return Vship_BadDeviceArgument;
     }
-    GPU_CHECK(hipSetDevice(gpu_id));
+    try{
+        GPU_CHECK(hipSetDevice(gpu_id));
+    } catch (VshipError& e){
+        lastError = e;
+        return (Vship_Exception)e.type;
+    }
     return Vship_NoError;
 }
 
