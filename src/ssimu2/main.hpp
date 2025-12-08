@@ -175,7 +175,7 @@ public:
         try {
             res = ssimu2GPUProcess(src1_d, src2_d, temp_d, pinned, width, height, gaussianhandle, maxshared, stream);
         } catch (const VshipError& e){
-            hipFree(mem_d);
+            (void)hipFree(mem_d);
             throw e;
         }
 
