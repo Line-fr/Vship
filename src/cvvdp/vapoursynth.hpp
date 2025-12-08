@@ -25,10 +25,8 @@ namespace cvvdp{
             const VSFrame *src1 = vsapi->getFrameFilter(n, d->reference, frameCtx);
             const VSFrame *src2 = vsapi->getFrameFilter(n, d->distorted, frameCtx);
             
-            int height = vsapi->getFrameHeight(src1, 0);
-            int width = vsapi->getFrameWidth(src1, 0);
-            int stride = vsapi->getStride(src1, 0);
-            int stride2 = vsapi->getStride(src2, 0);
+            //int height = vsapi->getFrameHeight(src1, 0);
+            //int width = vsapi->getFrameWidth(src1, 0);
 
             VSFrame *dst;
             if (d->diffmap){

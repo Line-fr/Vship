@@ -172,7 +172,6 @@ class LpyrManager{
     std::vector<float*> adresses;
     int64_t planeOffset;
     std::vector<float> band_frequencies;
-    float ppd;
 public: 
     //plane contains 5 planes each twice the size
     //the last plane will contain L_bkg while the first planes should contain the 4 temporal channels for the first half

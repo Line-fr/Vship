@@ -170,10 +170,10 @@ __global__ void YUVToLinRGBPipeline_Kernel(float* p0, float* p1, float* p2, int6
     float3 val = {p0[x], p1[x], p2[x]};
 
     val = YUVToLinRGBPipeline_Device<matrix, transfer>(val);
-    if (x == 0) {
-        float3 tmp = gammaLightYUVConversion<matrix>(float3({p0[x], p1[x], p2[x]}));
-        //printf("at x=%lld, before YUVtoLinRGB: %f %f %f, middle %f %f %f, after: %f %f %f\n", x, p0[x], p1[x], p2[x], tmp.x, tmp.y, tmp.z, val.x, val.y, val.z);
-    }
+    //if (x == 0) {
+    //    float3 tmp = gammaLightYUVConversion<matrix>(float3({p0[x], p1[x], p2[x]}));
+    //    printf("at x=%lld, before YUVtoLinRGB: %f %f %f, middle %f %f %f, after: %f %f %f\n", x, p0[x], p1[x], p2[x], tmp.x, tmp.y, tmp.z, val.x, val.y, val.z);
+    //}
 
     p0[x] = val.x;
     p1[x] = val.y;

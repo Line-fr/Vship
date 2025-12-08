@@ -47,8 +47,8 @@ public:
         if (colorspace.target_height == -1) source_colorspace.target_height = colorspace.height;
         isResized = true;
         if (source_colorspace.target_width == colorspace.width && source_colorspace.target_height == colorspace.height) isResized = false;
-        int64_t maxWidth = std::max(source_colorspace.target_width, source_colorspace.width);
-        int64_t maxHeight= std::max(source_colorspace.target_height, source_colorspace.height);
+        //int64_t maxWidth = std::max(source_colorspace.target_width, source_colorspace.width);
+        //int64_t maxHeight= std::max(source_colorspace.target_height, source_colorspace.height);
         
     }
     void destroy(){

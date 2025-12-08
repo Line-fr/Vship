@@ -98,7 +98,7 @@ class VshipError : public std::exception
     std::string detail = "";
 public:
     VSHIPEXCEPTTYPE type;
-    VshipError(VSHIPEXCEPTTYPE type, const std::string filename, const int line, const std::string detail = "") : std::exception(), type(type), file(filename), line(line), detail(detail){
+    VshipError(VSHIPEXCEPTTYPE type, const std::string filename, const int line, const std::string detail = "") : std::exception(), file(filename), line(line), detail(detail), type(type){
     }
     
     std::string getErrorMessage() const

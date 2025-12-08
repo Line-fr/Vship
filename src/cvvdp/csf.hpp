@@ -19,7 +19,6 @@ class CSF_Handler{
     //on gpu
     float* mem_d; //one allocation, we free at destroy
     float* log_Lbkg_LUTIndex; //size 32 floats
-    float* logS_r_LUT; //for each band, for each channel, 32 floats
 public:
     void init(const int64_t width, const int64_t height, const float ppd){
         std::vector<float> band_frequencies = get_frequencies(width, height, ppd);

@@ -23,8 +23,8 @@ static const VSFrame *VS_CC ssimulacra2GetFrame(int n, int activationReason, voi
         const VSFrame *src1 = vsapi->getFrameFilter(n, d->reference, frameCtx);
         const VSFrame *src2 = vsapi->getFrameFilter(n, d->distorted, frameCtx);
         
-        int64_t height = vsapi->getFrameHeight(src1, 0);
-        int64_t width = vsapi->getFrameWidth(src1, 0);
+        //int64_t height = vsapi->getFrameHeight(src1, 0);
+        //int64_t width = vsapi->getFrameWidth(src1, 0);
 
         VSFrame *dst = vsapi->copyFrame(src2, core);
 

@@ -256,7 +256,7 @@ class FFMSIndexResult {
                 out.insert(i);
             }
         }
-        return std::move(out);
+        return out;
     }
 
     ~FFMSIndexResult() {
