@@ -18,6 +18,8 @@
 #include <condition_variable>
 #include <cassert>
 
+using uint = unsigned int;
+
 #include "VshipColor.h"
 #include "VshipAPI.h"
 

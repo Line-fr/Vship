@@ -72,6 +72,8 @@
     #include<hip/hip_fp16.h>
 #endif
 
+using uint = unsigned int;
+
 #ifdef _WIN32
     #define aligned_alloc(a, b) _aligned_malloc(b, a)
 #endif
