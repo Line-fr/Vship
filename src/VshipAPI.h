@@ -96,7 +96,7 @@ EXPORTPREPROCESS int Vship_GetDetailedLastError(char* out_message, int len);
 //is only an id to refer to an object in an array in the API dll.
 //this is because the original object contains types that are not represented without hip and the original code.
 typedef struct Vship_SSIMU2Handler{
-    uint id;
+    unsigned int id;
 } Vship_SSIMU2Handler;
 
 EXPORTPREPROCESS Vship_Exception Vship_PinnedMalloc(void** ptr, uint64_t size);
@@ -113,7 +113,7 @@ EXPORTPREPROCESS Vship_Exception Vship_SSIMU2Free(Vship_SSIMU2Handler handler);
 EXPORTPREPROCESS Vship_Exception Vship_ComputeSSIMU2(Vship_SSIMU2Handler handler, double* score, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
 
 typedef struct Vship_ButteraugliHandler{
-    uint id;
+    unsigned int id;
 } Vship_ButteraugliHandler;
 
 typedef struct Vship_ButteraugliScore{
@@ -135,7 +135,7 @@ EXPORTPREPROCESS Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler 
 EXPORTPREPROCESS Vship_Exception Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship_ButteraugliScore* score, const uint8_t *dstp, int64_t dststride, const uint8_t* srcp1[3], const uint8_t* srcp2[3], const int64_t lineSize[3], const int64_t lineSize2[3]);
 
 typedef struct Vship_CVVDPHandler{
-    uint id;
+    unsigned int id;
 } Vship_CVVDPHandler;
 
 //handler pointer will be replaced, it is a return value. Don't forget to free it after usage.
