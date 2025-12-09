@@ -570,6 +570,10 @@ class VideoManager {
         processor = std::make_unique<BasicConverterProcessor>(reader->current_frame);
 
         int ret = ffmpegToVshipFormat(colorspace, reader->current_frame);
+        //define it entirely to avoid undefined values wandering around
+        colorspace.target_width = -1;
+        colorspace.target_height = -1;
+        colorspace.crop = {0, 0, 0, 0};
 
         ASSERT_WITH_MESSAGE(
             processor != nullptr,

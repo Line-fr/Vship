@@ -21,8 +21,8 @@ enum Vship_Range_t{
 };
 
 typedef struct Vship_ChromaSubsample_t {
-    int subw = 0;
-    int subh = 0;
+    int subw;// = 0;
+    int subh;// = 0;
 } Vship_ChromaSubsample_t;
 
 enum Vship_ChromaLocation_t{
@@ -74,21 +74,22 @@ typedef struct Vship_CropRectangle_t {
     int right = 0;
 } Vship_CropRectangle_t;
 
+//commentary defines the most classic YUV420P BT709
 typedef struct Vship_Colorspace_t {
     int64_t width;
     int64_t height;
-    int64_t target_width = -1; //we can resize at the end of conversion
-    int64_t target_height = -1; //we can resize at the end of conversion
+    int64_t target_width;// = -1; //we can resize at the end of conversion
+    int64_t target_height;// = -1; //we can resize at the end of conversion
     //final size is target_width - crop/target_height - crop (resize is applied before cropping)
-    Vship_Sample_t sample = Vship_SampleUINT8;
-    Vship_Range_t range = Vship_RangeLimited;
-    Vship_ChromaSubsample_t subsampling = {1, 1};
-    Vship_ChromaLocation_t chromaLocation = Vship_ChromaLoc_Left;
-    Vship_ColorFamily_t colorFamily = Vship_ColorYUV;
-    Vship_YUVMatrix_t YUVMatrix = Vship_MATRIX_BT709;
-    Vship_TransferFunction_t transferFunction = Vship_TRC_BT709;
-    Vship_Primaries_t primaries = Vship_PRIMARIES_BT709;
-    Vship_CropRectangle_t crop = {0, 0, 0, 0};
+    Vship_Sample_t sample;// = Vship_SampleUINT8;
+    Vship_Range_t range;// = Vship_RangeLimited;
+    Vship_ChromaSubsample_t subsampling;// = {1, 1};
+    Vship_ChromaLocation_t chromaLocation;// = Vship_ChromaLoc_Left;
+    Vship_ColorFamily_t colorFamily;// = Vship_ColorYUV;
+    Vship_YUVMatrix_t YUVMatrix;// = Vship_MATRIX_BT709;
+    Vship_TransferFunction_t transferFunction;// = Vship_TRC_BT709;
+    Vship_Primaries_t primaries;// = Vship_PRIMARIES_BT709;
+    Vship_CropRectangle_t crop;// = {0, 0, 0, 0};
 } Vship_Colorspace_t;
 
 #endif
