@@ -102,9 +102,6 @@ void frame_worker_thread(frame_queue_t &input_queue,
         const auto& [scores, vshipError] = gpu_worker.compute_metric_score(src_buffer_planes, enc_buffer_planes);
         
         if (vshipError != Vship_NoError){
-            char errmsg[1024];
-            Vship_GetDetailedLastError(errmsg, 1024);
-            std::cerr << " error: " << errmsg << std::endl;
             frame_buffer_pool.insert(src_buffer);
             frame_buffer_pool.insert(enc_buffer);
             *error = 1;

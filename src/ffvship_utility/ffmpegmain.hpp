@@ -69,18 +69,45 @@ class GpuWorker {
         if (selected_metric == MetricType::SSIMULACRA2) {
             double s;
             Vship_Exception err = Vship_ComputeSSIMU2(ssimu2worker, &s, srcp1, srcp2, lineSize, lineSize2);
+            if (err != Vship_NoError){
+                char errmsg[1024];
+                int l = Vship_SSIMU2GetDetailedLastError(ssimu2worker, errmsg, 1024);
+                if (l == 0) {
+                    //error occured in the return error
+                    Vship_GetDetailedLastError(errmsg, 1024);
+                }
+                std::cerr << " error: " << errmsg << std::endl;
+            }
             return {{s, s, s}, err};
         }
 
         if (selected_metric == MetricType::Butteraugli) {
             Vship_ButteraugliScore butterscore;
             Vship_Exception err = Vship_ComputeButteraugli(butterworker, &butterscore, nullptr, 0, srcp1, srcp2, lineSize, lineSize2);
+            if (err != Vship_NoError){
+                char errmsg[1024];
+                int l = Vship_ButteraugliGetDetailedLastError(butterworker, errmsg, 1024);
+                if (l == 0) {
+                    //error occured in the return error
+                    Vship_GetDetailedLastError(errmsg, 1024);
+                }
+                std::cerr << " error: " << errmsg << std::endl;
+            }
             return {{butterscore.normQ, butterscore.norm3, butterscore.norminf}, err};
         }
 
         if (selected_metric == MetricType::CVVDP){
             double s;
             Vship_Exception err = Vship_ComputeCVVDP(cvvdpworker, &s, nullptr, 0, srcp1, srcp2, lineSize, lineSize2);
+            if (err != Vship_NoError){
+                char errmsg[1024];
+                int l = Vship_CVVDPGetDetailedLastError(cvvdpworker, errmsg, 1024);
+                if (l == 0) {
+                    //error occured in the return error
+                    Vship_GetDetailedLastError(errmsg, 1024);
+                }
+                std::cerr << " error: " << errmsg << std::endl;
+            }
             return {{s, s, s}, err};
         }
 
