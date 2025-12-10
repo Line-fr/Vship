@@ -74,13 +74,14 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI
 template<typename ImplementationType>
 struct HandlerData{
     ImplementationType implem;
+    VshipError lastError = VshipError(NoError, "Your Heart", 0, "");
 };
 
 RessourceManager<HandlerData<ssimu2::SSIMU2ComputingImplementation>*> HandlerManagerSSIMU2;
 RessourceManager<HandlerData<butter::ButterComputingImplementation>*> HandlerManagerButteraugli;
 RessourceManager<HandlerData<cvvdp::CVVDPComputingImplementation>*> HandlerManagerCVVDP;
 
-thread_local VshipError lastError = VshipError(NoError, "Your Heart", 0, "");
+VshipError lastError = VshipError(NoError, "Your Heart", 0, "");
 
 extern "C"{
 
@@ -209,6 +210,7 @@ Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, Vship_Colorspace_
     try{
         handlerdata->implem.init(src_colorspace, dis_colorspace);
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
@@ -228,6 +230,7 @@ Vship_Exception Vship_SSIMU2Free(Vship_SSIMU2Handler handler){
     try{
         handlerdata->implem.destroy();
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
@@ -251,10 +254,29 @@ Vship_Exception Vship_ComputeSSIMU2(Vship_SSIMU2Handler handler, double* score, 
     try{
         *score = handlerdata->implem.run(srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
     return err;
+}
+
+int Vship_SSIMU2GetDetailedLastError(Vship_SSIMU2Handler handler, char* out_message, int len){
+    HandlerManagerSSIMU2.lock.lock();
+    if (handler.id >= HandlerManagerSSIMU2.elements.size()){
+        HandlerManagerSSIMU2.lock.unlock();
+        lastError = VshipError(BadHandler, __FILE__, __LINE__, "Handler internal state in Vship_SSIMU2GetDetailedLastError is not valid, did you allocate or use after free?");
+        return 0;
+    }
+    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
+    auto* handlerdata = HandlerManagerSSIMU2.elements[handler.id];
+    HandlerManagerSSIMU2.lock.unlock();
+    std::string cppstr = handlerdata->lastError.getErrorMessage();
+    if (len == 0) return cppstr.size()+1; //required size to fit the whole message
+    const int msglength = std::min(len-1, (int)cppstr.size());
+    memcpy(out_message, cppstr.c_str(), msglength);
+    out_message[msglength] = '\0'; //end character
+    return cppstr.size()+1;
 }
 
 Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier){
@@ -268,6 +290,7 @@ Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_C
         //Qnorm = 2 by default to mimic old behavior
         handlerdata->implem.init(src_colorspace, dis_colorspace, Qnorm, intensity_multiplier);
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
@@ -287,6 +310,7 @@ Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler handler){
     try{
         handlerdata->implem.destroy();
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
@@ -313,10 +337,29 @@ Vship_Exception Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship
         score->norm3 = std::get<1>(res);
         score->norminf = std::get<2>(res);
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
     return err;
+}
+
+int Vship_ButteraugliGetDetailedLastError(Vship_ButteraugliHandler handler, char* out_message, int len){
+    HandlerManagerButteraugli.lock.lock();
+    if (handler.id >= HandlerManagerButteraugli.elements.size()){
+        HandlerManagerButteraugli.lock.unlock();
+        lastError = VshipError(BadHandler, __FILE__, __LINE__, "Handler internal state in Vship_ButteraugliGetDetailedLastError is not valid, did you allocate or use after free?");
+        return 0;
+    }
+    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
+    auto* handlerdata = HandlerManagerButteraugli.elements[handler.id];
+    HandlerManagerButteraugli.lock.unlock();
+    std::string cppstr = handlerdata->lastError.getErrorMessage();
+    if (len == 0) return cppstr.size()+1; //required size to fit the whole message
+    const int msglength = std::min(len-1, (int)cppstr.size());
+    memcpy(out_message, cppstr.c_str(), msglength);
+    out_message[msglength] = '\0'; //end character
+    return cppstr.size()+1;
 }
 
 Vship_Exception Vship_CVVDPInit2(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr, const char* model_config_json_cstr){
@@ -335,6 +378,7 @@ Vship_Exception Vship_CVVDPInit2(Vship_CVVDPHandler* handler, Vship_Colorspace_t
     try{
         handlerdata->implem.init(src_colorspace, dis_colorspace, fps, resizeToDisplay, model_key, model_config_json);
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
@@ -358,6 +402,7 @@ Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler){
     try{
         handlerdata->implem.destroy();
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
@@ -381,6 +426,7 @@ Vship_Exception Vship_ResetCVVDP(Vship_CVVDPHandler handler){
     try{
         handlerdata->implem.flushTemporalRing();
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
@@ -403,6 +449,7 @@ Vship_Exception Vship_ResetScoreCVVDP(Vship_CVVDPHandler handler){
     try{
         handlerdata->implem.flushOnlyScore();
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
@@ -426,6 +473,7 @@ Vship_Exception Vship_LoadTemporalCVVDP(Vship_CVVDPHandler handler, const uint8_
     try{
         handlerdata->implem.loadImageToRing(srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
@@ -447,10 +495,29 @@ Vship_Exception Vship_ComputeCVVDP(Vship_CVVDPHandler handler, double* score, co
     try{
         *score = handlerdata->implem.run(dstp, dststride, srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
+        handlerdata->lastError = e;
         lastError = e;
         err = (Vship_Exception)e.type;
     }
     return err;
+}
+
+int Vship_CVVDPGetDetailedLastError(Vship_CVVDPHandler handler, char* out_message, int len){
+    HandlerManagerCVVDP.lock.lock();
+    if (handler.id >= HandlerManagerCVVDP.elements.size()){
+        HandlerManagerCVVDP.lock.unlock();
+        lastError = VshipError(BadHandler, __FILE__, __LINE__, "Handler internal state in Vship_CVVDPGetDetailedLastError is not valid, did you allocate or use after free?");
+        return 0;
+    }
+    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
+    auto* handlerdata = HandlerManagerCVVDP.elements[handler.id];
+    HandlerManagerCVVDP.lock.unlock();
+    std::string cppstr = handlerdata->lastError.getErrorMessage();
+    if (len == 0) return cppstr.size()+1; //required size to fit the whole message
+    const int msglength = std::min(len-1, (int)cppstr.size());
+    memcpy(out_message, cppstr.c_str(), msglength);
+    out_message[msglength] = '\0'; //end character
+    return cppstr.size()+1;
 }
 
 } //extern "C"

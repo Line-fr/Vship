@@ -140,6 +140,16 @@ ErrorCheck(Vship_ButteraugliFree(butterhandler));
 
 ## Good practices
 
+### Error managment
+
+There is 3 levels of error managment that are really applicable with vship.
+
+level 1 is using the error returned by function (type Vship_Exception) and use Vship_GetErrorMessage to obtain its meaning while considering the function failed. This returns some basic informations about why it failed.
+
+level 2 allows to get more detail and consist in Vship_GetDetailedLastError. However in threaded scenarios where multiple errors could arise at the same time in multiple handlers, this function might not be enough.
+
+level 3 is the above but using Vship_`Metric`GetDetailedLastError which returns the last error of a specific handler which alleviate threading issues.
+
 ### Performance concerns
 
 It is important if you wish to maximize throughput to create about 3 handlers that process frames in parallel. You can test the importance of this by playing with the `-g` option of FFVship. 
@@ -223,8 +233,6 @@ free(errmsg2);
 
 This function works similarly to Vship_GetErrorMessage. But the error message that is returned contains more details. This function will hold onto the last error that happened in vship as a whole.This means that if a call has an error and another right after does not, this function will still return the error message of the error.
 
-Note that The error is stored as thread_local which means only the thread getting the error can retrieve the details but also that it is threadsafe
-
 ### Vship_PinnedMalloc(void** ptr, uint64_t size)
 
 This function allows a special and **expensive** type of allocation. The allocated data can be sent to the GPU with less latency and using less memory bandwidth by eliminating a memory copy. As such, for optimal speed, you should be using these planes for the images you plan on sending to the gpu for compute but only if you were to reuse the memory allocated because allocating and freeing for each frame with this function will occur slowdown.
@@ -259,6 +267,10 @@ To avoid leaks, every handler that was allocated should be freed later using thi
 
 Using an allocated handler, you can retrieve the score between two `const uint8_t*[3]` frames who each have their own strides (bytes per line) per plane. The color conversion is done by vship with respect to the colorspace given at init to the handler.
 
+### int Vship_SSIMU2GetDetailedLastError(Vship_SSIMU2Handler handler, char* out_message, int len);
+
+This function works similarly to Vship_GetDetailedLastError. However it is specific to a handler. This ensures that if an error appears on another thread or handler within your implementation, it will not affect the current thread owning the handler. Basically a way to threadsafe Vship_GetDetailedlastError.
+
 ### Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier)
 
 This function is used to perform some preprocessing using colorspaces. It creates a handler to be used on the compute function. A handler should only be used to process one frame at a time, should not be used after free but it can process multiple frames sequentially. It is possible and even recommended to create multiple Handler to process multiple frames in parallel.
@@ -275,6 +287,10 @@ To avoid leaks, every handler that was allocated should be freed later using thi
 Using an allocated handler, you can retrieve the score between two `const uint8_t*[3]` frames who each have their own strides (bytes per line) per plane. The color conversion is done by vship with respect to the colorspace given at init to the handler.
 
 It is possible to retrieve the distortion map of butteraugli. If you supply NULL to dstp, the distortion map will be discarded without even going back to the CPU. As such, only the score will be obtained. However, if you supply a valid pointer allocated of the right size `sizeof(float)*image_height*dststride`, the distortion will be retrieved and stored here. image_height here represent the new height of the image. If the colorspace specifies a resize and a crop, you will need to take that into account.
+
+### int Vship_ButteraugliGetDetailedLastError(Vship_ButteraugliHandler handler, char* out_message, int len);
+
+This function works similarly to Vship_GetDetailedLastError. However it is specific to a handler. This ensures that if an error appears on another thread or handler within your implementation, it will not affect the current thread owning the handler. Basically a way to threadsafe Vship_GetDetailedlastError.
 
 ### Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr)
 
@@ -299,3 +315,7 @@ If you wish to reuse a handler but for a different video or even a different par
 Using an allocated handler, you can retrieve the score between two `const uint8_t*[3]` frames who each have their own strides (bytes per line) per plane. The color conversion is done by vship with respect to the colorspace given at init to the handler.
 
 It is possible to retrieve the distortion map of CVVDP. If you supply NULL to dstp, the distortion map will be discarded without even going back to the CPU. As such, only the score will be obtained. However, if you supply a valid pointer allocated of the right size `sizeof(float)*image_height*dststride`, the distortion will be retrieved and stored here. image_height here represent the new height of the image. If the colorspace specifies a resize and a crop, you will need to take that into account.
+
+### int Vship_CVVDPGetDetailedLastError(Vship_CVVDPHandler handler, char* out_message, int len);
+
+This function works similarly to Vship_GetDetailedLastError. However it is specific to a handler. This ensures that if an error appears on another thread or handler within your implementation, it will not affect the current thread owning the handler. Basically a way to threadsafe Vship_GetDetailedlastError.
