@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-enum Vship_Sample_t{
+typedef enum Vship_Sample_t{
     Vship_SampleFLOAT = 0,
     Vship_SampleHALF = 1,
     Vship_SampleUINT8 = 2,
@@ -13,31 +13,31 @@ enum Vship_Sample_t{
     Vship_SampleUINT12 = 7,
     Vship_SampleUINT14 = 9,
     Vship_SampleUINT16 = 11,
-};
+} Vship_Sample_t;
 
-enum Vship_Range_t{
+typedef enum Vship_Range_t{
     Vship_RangeLimited = 0,
     Vship_RangeFull = 1,
-};
+} Vship_Range_t;
 
 typedef struct Vship_ChromaSubsample_t {
     int subw;// = 0;
     int subh;// = 0;
 } Vship_ChromaSubsample_t;
 
-enum Vship_ChromaLocation_t{
+typedef enum Vship_ChromaLocation_t{
     Vship_ChromaLoc_Left = 0,
     Vship_ChromaLoc_Center = 1,
     Vship_ChromaLoc_TopLeft = 2,
     Vship_ChromaLoc_Top = 3,
-};
+} Vship_ChromaLocation_t;
 
-enum Vship_ColorFamily_t{
+typedef enum Vship_ColorFamily_t{
     Vship_ColorYUV,
     Vship_ColorRGB,
-};
+} Vship_ColorFamily_t;
 
-enum Vship_YUVMatrix_t{
+typedef enum Vship_YUVMatrix_t{
     Vship_MATRIX_RGB = 0,
     Vship_MATRIX_BT709 = 1,
     Vship_MATRIX_BT470_BG = 5,
@@ -45,9 +45,9 @@ enum Vship_YUVMatrix_t{
     Vship_MATRIX_BT2020_NCL = 9,
     Vship_MATRIX_BT2020_CL = 10,
     Vship_MATRIX_BT2100_ICTCP = 14,
-};
+} Vship_YUVMatrix_t;
 
-enum Vship_TransferFunction_t{
+typedef enum Vship_TransferFunction_t{
     Vship_TRC_BT709 = 1,
     Vship_TRC_BT470_M = 4,
     Vship_TRC_BT470_BG = 5,
@@ -57,21 +57,21 @@ enum Vship_TransferFunction_t{
     Vship_TRC_PQ = 16,
     Vship_TRC_ST428 = 17,
     Vship_TRC_HLG = 18,
-};
+} Vship_TransferFunction_t;
 
-enum Vship_Primaries_t{
+typedef enum Vship_Primaries_t{
     Vship_PRIMARIES_INTERNAL = -1, //corresponds to XYZ really
     Vship_PRIMARIES_BT709 = 1,
     Vship_PRIMARIES_BT470_M = 4,
     Vship_PRIMARIES_BT470_BG = 5,
     Vship_PRIMARIES_BT2020 = 9,
-};
+} Vship_Primaries_t;
 
 typedef struct Vship_CropRectangle_t {
-    int top = 0;
-    int bottom = 0;
-    int left = 0;
-    int right = 0;
+    int top;// = 0;
+    int bottom;// = 0;
+    int left;// = 0;
+    int right;// = 0;
 } Vship_CropRectangle_t;
 
 //commentary defines the most classic YUV420P BT709
