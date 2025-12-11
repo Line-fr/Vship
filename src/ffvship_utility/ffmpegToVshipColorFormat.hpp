@@ -194,10 +194,10 @@ int ffmpegToVshipFormat(Vship_Colorspace_t& out, const FFMS_Frame* in){
             return 1;
     }
 
-    if (out.width%(1 << out.subsampling.subw) != 0 || out.height%(1 << out.subsampling.subh)){
+    /*if (out.width%(1 << out.subsampling.subw) != 0 || out.height%(1 << out.subsampling.subh)){
         std::cerr << "Width and height are not compatible with the subsampling. (For example odd width in YUV4:2:0). This is not supported by vship" << std::endl;
         return 1;
-    }
+    }*/
 
     switch ((FFMS_ChromaLocations)in->ChromaLocation){
         case FFMS_LOC_UNSPECIFIED:

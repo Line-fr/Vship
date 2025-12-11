@@ -89,8 +89,8 @@ public:
             }
         }
         //before chroma upsampling
-        const uint64_t plane_widths[3] = {width, width >> source_colorspace.subsampling.subw, width >> source_colorspace.subsampling.subw};
-        const uint64_t plane_heights[3] = {height, height >> source_colorspace.subsampling.subh, height >> source_colorspace.subsampling.subh};
+        const uint64_t plane_widths[3] = {width, ((width-1) >> source_colorspace.subsampling.subw)+1, ((width-1) >> source_colorspace.subsampling.subw)+1};
+        const uint64_t plane_heights[3] = {height, ((height-1) >> source_colorspace.subsampling.subh)+1, ((height-1) >> source_colorspace.subsampling.subh)+1};
         const uint byteSize = bytesizeSample(source_colorspace.sample);
         for (uint i = 0; i < 3; i++){
             GPU_CHECK(hipMemcpyHtoDAsync(src_d, (void*)(inp[i]), lineSize[i]*plane_heights[i] - (lineSize[i] - byteSize*plane_widths[i]), stream));
