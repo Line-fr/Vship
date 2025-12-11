@@ -27,8 +27,8 @@ else
 	header_install_path := $(DESTDIR)$(PREFIX)/include
     ffvshiplibheader := $(shell pkg-config --libs ffms2) -lvship
 	ffvshipincludeheader := $(shell pkg-config --cflags-only-I ffms2 libavutil)
-	fatbincompressamd := --offload-compress
-	fatbincompresscuda := --compress-mode=balance
+	fatbincompressamd := 
+	fatbincompresscuda := 
 endif
 
 .FORCE:
