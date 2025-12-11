@@ -803,8 +803,8 @@ struct CommandLineOptions {
     int every_nth_frame = 1;
     int encoded_offset = 0;
 
-    Vship_CropRectangle_t cropSource;
-    Vship_CropRectangle_t cropEncoded;
+    Vship_CropRectangle_t cropSource = {0, 0, 0, 0};
+    Vship_CropRectangle_t cropEncoded = {0, 0, 0, 0};
 
     std::vector<int> source_indices_list;
     std::vector<int> encoded_indices_list;
