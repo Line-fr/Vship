@@ -18,6 +18,7 @@ int ffmpegToVshipFormat(Vship_Colorspace_t& out, const FFMS_Frame* in){
             out.subsampling.subw = 1;
             out.subsampling.subh = 1;
         break;
+        case AV_PIX_FMT_UYVY422:
         case AV_PIX_FMT_YUYV422:
         case AV_PIX_FMT_YUVA422P:
         case AV_PIX_FMT_YUV422P:
