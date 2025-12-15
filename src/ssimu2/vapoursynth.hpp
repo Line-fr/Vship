@@ -161,6 +161,7 @@ static void VS_CC ssimulacra2Create(const VSMap *in, VSMap *out, void * userData
     src_colorspace.target_width = -1;
     src_colorspace.height = viref->height;
     src_colorspace.target_height = -1;
+    src_colorspace.crop = {0, 0, 0, 0};
     src_colorspace.sample = Vship_SampleFLOAT;
     src_colorspace.range = Vship_RangeFull;
     src_colorspace.subsampling = {0, 0};
