@@ -437,6 +437,7 @@ class BasicConverterProcessor {
         switch (src_pixfmt){
 
             //bitdepth 8, 422
+            case AV_PIX_FMT_UYVY422:
             case AV_PIX_FMT_YUYV422:
             unpack_stride[0] = width;
             unpack_stride[1] = (width/2);
@@ -507,6 +508,20 @@ class BasicConverterProcessor {
                         unpack_buffer[0][j*unpack_stride[0]+2*i+1] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+2];
                         //V
                         unpack_buffer[2][j*unpack_stride[2]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+3];
+                    }
+                }
+            break;
+            case AV_PIX_FMT_UYVY422:
+                for (int j = 0; j < height; j++){
+                    for (int i = 0; i < width/2; i++){
+                        //U
+                        unpack_buffer[1][j*unpack_stride[1]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i];
+                        //Y
+                        unpack_buffer[0][j*unpack_stride[0]+2*i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+1];
+                        //V
+                        unpack_buffer[2][j*unpack_stride[2]+i] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+2];
+                        //Y
+                        unpack_buffer[0][j*unpack_stride[0]+2*i+1] = ((uint8_t*)(src->Data[0]))[j*src->Linesize[0]+4*i+3];
                     }
                 }
             break;
