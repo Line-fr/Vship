@@ -249,8 +249,8 @@ public:
             bufferSize = 0;
         }
         //allocate memory to send the raw to gpu
-        float* mem_d;
-        float* mem_d2;
+        float* mem_d = NULL;
+        float* mem_d2 = NULL;
         if (bufferSize > 0){
             hipError_t erralloc = hipMallocAsync(&mem_d, (bufferSize), stream1);
             if (erralloc != hipSuccess){
