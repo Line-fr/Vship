@@ -165,10 +165,6 @@ namespace cvvdp{
         }
         const std::string model_config_json(model_config_json_cstr);
     
-        if (d.diffmap){
-            viout.format = formatout;
-        }
-    
         try{
             //if succeed, this function also does hipSetDevice
             helper::gpuFullCheck(gpuid);
@@ -214,6 +210,12 @@ namespace cvvdp{
         } catch (const VshipError& e){
             vsapi->mapSetError(out, e.getErrorMessage().c_str());
             return;
+        }
+
+        if (d.diffmap){
+            viout.format = formatout;
+            viout.width = data->new_width;
+            viout.height = data->new_height;
         }
     
         VSFilterDependency deps[] = {{d.reference, rpStrictSpatial}, {d.distorted, rpStrictSpatial}};
