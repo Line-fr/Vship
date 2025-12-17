@@ -250,15 +250,17 @@ public:
         }
         //allocate memory to send the raw to gpu
         float* mem_d;
-        hipError_t erralloc = hipMallocAsync(&mem_d, (bufferSize), stream1);
-        if (erralloc != hipSuccess){
-            throw VshipError(OutOfVRAM, __FILE__, __LINE__);
-        }
-        //for second stream
         float* mem_d2;
-        erralloc = hipMallocAsync(&mem_d2, (bufferSize), stream2);
-        if (erralloc != hipSuccess){
-            throw VshipError(OutOfVRAM, __FILE__, __LINE__);
+        if (bufferSize > 0){
+            hipError_t erralloc = hipMallocAsync(&mem_d, (bufferSize), stream1);
+            if (erralloc != hipSuccess){
+                throw VshipError(OutOfVRAM, __FILE__, __LINE__);
+            }
+            //for second stream
+            erralloc = hipMallocAsync(&mem_d2, (bufferSize), stream2);
+            if (erralloc != hipSuccess){
+                throw VshipError(OutOfVRAM, __FILE__, __LINE__);
+            }
         }
 
         //defined onnly if we resize in this function
@@ -309,8 +311,10 @@ public:
             }
         }
         //everything is in temporalRing buffer so we can free memory already
-        GPU_CHECK(hipFreeAsync(mem_d, stream1));
-        GPU_CHECK(hipFreeAsync(mem_d2, stream2));
+        if (bufferSize > 0){
+            GPU_CHECK(hipFreeAsync(mem_d, stream1));
+            GPU_CHECK(hipFreeAsync(mem_d2, stream2));
+        }
 
         //now we work on src_d which has size minimum of source and resize
 
