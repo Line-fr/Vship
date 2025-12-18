@@ -20,11 +20,11 @@ gpu_id | `int` | No | `0`
 
 ### reference
 
-Reference clip to compare distorted clip to. Must be a [Vapoursynth VideoNode][vs-videonode].
+Reference clip to compare distorted clip to. Must be a [VapourSynth VideoNode][vs-videonode].
 
 ### distorted
 
-Distorted clip to compare to reference clip with. It must be a [Vapoursynth VideoNode][vs-videonode] with the same length, width, and height as the reference clip.
+Distorted clip to compare to reference clip with. It must be a [VapourSynth VideoNode][vs-videonode] with the same length, width, and height as the reference clip.
 
 ### qnorm
 
@@ -43,7 +43,7 @@ When enabled (`1`), method returns the distmap. Otherwise, the method returns th
 distmap = reference.vship.BUTTERAUGLI(distorted, distmap = 1)
 ```
 
-`distmap` is a [Vapoursynth VideoNode][vs-videonode] with the following properties:
+`distmap` is a [VapourSynth VideoNode][vs-videonode] with the following properties:
 
 ```
 VideoNode
@@ -58,7 +58,7 @@ VideoNode
 
 ### numStream
 
-It corresponds to the number of concurrent frames running through the GPU at a time. Lowering it allows to control and lower the amount of VRAM consumed. By default, as much stream are created as there are vapoursynth threads. (which is the maximum amount, any higher will get lowered to this value)
+It corresponds to the number of concurrent frames running through the GPU at a time. Lowering it allows to control and lower the amount of VRAM consumed. By default, as much stream are created as there are VapourSynth threads. (which is the maximum amount, any higher will get lowered to this value)
 
 ### gpu_id
 
@@ -66,7 +66,7 @@ ID of the GPU to run VSHIP on. It will perform the GPU Check functions as descri
 
 ## Butteraugli Return Values
 
-The method will always return a [Vapoursynth VideoNode][vs-videonode] with the following properties on each individual [VideoFrame][vs-videoframe]: `_BUTTERAUGLI_QNorm`, `_BUTTERAUGLI_3Norm`, `_BUTTERAUGLI_INFNorm`. These values return regardless of the [`distmap`][wiki-distmap] argument value provided.
+The method will always return a [VapourSynth VideoNode][vs-videonode] with the following properties on each individual [VideoFrame][vs-videoframe]: `_BUTTERAUGLI_QNorm`, `_BUTTERAUGLI_3Norm`, `_BUTTERAUGLI_INFNorm`. These values return regardless of the [`distmap`][wiki-distmap] argument value provided.
 
 Name | Type | Description
 --- | --- | ---
@@ -79,7 +79,7 @@ Name | Type | Description
 
 ### VRAM Consumption
 
-VRAM consumption can be calculated using the following: `31 * 4 * width * height` where width and height refer to the dimensions of the video. Bytes per Vapoursynth thread: `Plane Buffer * sizeof(float) * width * height`.
+VRAM consumption can be calculated using the following: `31 * 4 * width * height` where width and height refer to the dimensions of the video. Bytes per VapourSynth thread: `Plane Buffer * sizeof(float) * width * height`.
 
 [wiki-error-management]: Vship-Error-Managment.md
 
