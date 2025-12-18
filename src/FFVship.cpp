@@ -538,9 +538,13 @@ int main(int argc, char **argv) {
     } else if (cli_args.metric == MetricType::SSIMULACRA2) {
         print_aggergate_metric_statistics(scores, "SSIMULACRA2");
     } else if (cli_args.metric == MetricType::CVVDP){
-        const double cvvdp_val = scores[scores.size()-1];
-        std::cout << "----------------CVVDP---------------" << std::endl;
-        std::cout << "Video Score: " << cvvdp_val << std::endl;
+        if (cli_args.metricParam.disableTemporalPooling){
+            std::cout << "No Score returned with temporal pooling disabled. Only per frame score is valid (use --json output)" << std::endl;
+        } else {
+            const double cvvdp_val = scores[scores.size()-1];
+            std::cout << "----------------CVVDP---------------" << std::endl;
+            std::cout << "Video Score: " << cvvdp_val << std::endl;
+        }
     }
     return 0;
 }

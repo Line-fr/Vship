@@ -24,6 +24,9 @@ if (!(condition)) {\
 enum class MetricType { SSIMULACRA2, Butteraugli, CVVDP, Unknown };
 
 struct MetricParameters{
+    //for all temporal metrics
+    bool disableTemporalPooling = false; //get frame based score
+
     //CVVDP
     bool resizeToDisplay = 0;
     std::string model_key = "standard_fhd";
@@ -43,6 +46,7 @@ class GpuWorker {
     int64_t lineSize2[3];
 
     MetricType selected_metric;
+    MetricParameters metricParam;
 
     Vship_SSIMU2Handler ssimu2worker;
     Vship_ButteraugliHandler butterworker;
@@ -51,6 +55,7 @@ class GpuWorker {
   public:
     GpuWorker(MetricType metric, Vship_Colorspace_t source_colorspace, Vship_Colorspace_t encoded_colorspace, const int64_t lineSize[3], const int64_t lineSize2[3], float fps, MetricParameters metricParam){
         selected_metric = metric;
+        this->metricParam = metricParam;
         this->image_colorspace = source_colorspace;
         this->encoded_colorspace = encoded_colorspace;
         for (int i = 0; i < 3; i++){
@@ -107,6 +112,17 @@ class GpuWorker {
                     Vship_GetDetailedLastError(errmsg, 1024);
                 }
                 std::cerr << " error: " << errmsg << std::endl;
+            } else if (metricParam.disableTemporalPooling) {
+                err = Vship_ResetScoreCVVDP(cvvdpworker);
+                if (err != Vship_NoError){
+                    char errmsg[1024];
+                    int l = Vship_CVVDPGetDetailedLastError(cvvdpworker, errmsg, 1024);
+                    if (l == 0) {
+                        //error occured in the return error
+                        Vship_GetDetailedLastError(errmsg, 1024);
+                    }
+                    std::cerr << " error: " << errmsg << std::endl;
+                }
             }
             return {{s, s, s}, err};
         }
@@ -917,6 +933,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     parser.add_flag({"--resizeToDisplay"}, &opts.metricParam.resizeToDisplay, "Allow to resize to the screen resolution specified in the model (default off)");
     parser.add_flag({"--displayModel"}, &opts.metricParam.model_key, "Allow specifying screen disposition to CVVDP (default standard_fhd)");
     parser.add_flag({"--displayConfig"}, &opts.metricParam.model_config_json, "Allow specifying an external json display configuration path");
+    parser.add_flag({"--disableTemporalPooling"}, &opts.metricParam.disableTemporalPooling, "Allow to retrieve basic frame based score for temporal metrics (currently CVVDP)");
     parser.add_flag({"--intensity-target"}, &opts.metricParam.intensity_target_nits, "Target nits for Butteraugli");
     parser.add_flag({"--qnorm"}, &opts.metricParam.Qnorm, "Optional Norm to compute (default to 2)");
     parser.add_flag({"--threads", "-t"}, &opts.cpu_threads, "Number of Decoder process, recommended is 2");
