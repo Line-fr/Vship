@@ -439,7 +439,7 @@ int main(int argc, char **argv) {
                                       ? num_frames
                                       : num_frames * 3;
     std::vector<double> scores(score_vector_size);
-    ProgressBarT* progressBar;
+    ProgressBarT* progressBar = NULL;
     if (!cli_args.live_index_score_output) {
         std::cout << "Metric Processing Progress (Frames)" << std::endl;
         progressBar = new ProgressBarT(num_frames);
