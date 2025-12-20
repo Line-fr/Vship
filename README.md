@@ -39,17 +39,19 @@ featuring Vship:
 ## Installation
 
 The steps to build `vship` from source are provided below.
+See [Compilation and Usage](./doc/VshipAPI.md#compilation-and-usage) for more details.
+For compiling on Windows, see [FFVship Windows Compilation](./doc/FFVship-Windows-Compilation.md).
 
 ### Dependencies
-For all build options the following are requried:
+For all build options the following are required:
 
 - `make`
-- `hipcc` (AMD HIP SDK) or `nvcc` (NVIDIA Cuda SDK)
+- `hipcc` (AMD HIP SDK) or `nvcc` (NVIDIA CUDA SDK)
 
-Additionaly, to build the FFvship cli tool:
+Additionally, to build the FFvship cli tool:
 
-- ffms2 (and libavutil header to compile)
-- pkg-config
+- [ffms2](https://github.com/FFMS/ffms2) (and libavutil header to compile)
+- [pkg-config](https://gitlab.freedesktop.org/pkg-config/pkg-config)
 
 ### Build Instructions
 
@@ -79,6 +81,10 @@ make install PREFIX=/usr
 
 ### FFVship
 
+To control the performance-to-VRAM trade-off, set the `-g` argument in FFVship to control the
+number of GPU threads to use. You can also control the number of decoder threads with `-t`.
+I recommend 4 GPU threads as a good compromise between performance and VRAM usage.
+
 This contains only some of the numerous options offered by Vship
 I recommend checking the doc or using -h to get the full list.
 ```
@@ -92,30 +98,12 @@ usage: ./FFVship [-h] [--source SOURCE] [--encoded ENCODED]
 
 ### Vapoursynth
 
-### Streams
-
-In order to control the performance-to-VRAM trade-off, you may set
-`numStream argument`. 4 is typically a good compromise between both.
-
-```python
-import vapoursynth as vs
-core = vs.core
-
-# Adjust based on your GPU's VRAM
-result = core.vship.SSIMULACRA2(sourcefile, distortedfile, numStream = 4)
-```
-
-VRAM requirements per active Stream:
-
-- **SSIMULACRA2**: `12 * 4 * width * height` bytes
-- **Butteraugli**: `31 * 4 * width * height` bytes
-- **CVVDP**: ~`4 * width * height * (10*4/3 + fps*3*0.5)` bytes
-
-where width is the width of the input image/video
-height is the height of the input image/video
-and fps is the frame per second of the input video
+To control the performance-to-VRAM trade-off, set the `numStream` argument to control
+how many GPU threads to use. I recommend 4 as a good compromise between both.
 
 ### SSIMULACRA2
+
+See [SSIMULACRA2](./doc/SSIMULACRA2.md) for details like calculating VRAM usage.
 
 ```python
 import vapoursynth as vs
@@ -126,7 +114,7 @@ ref = core.bs.VideoSource("reference.mp4")
 dist = core.bs.VideoSource("distorted.mp4")
 
 # Calculate SSIMULACRA2 scores
-#numStream is the newer way of controling the performance-to-VRAM trade-off
+#numStream controls the performance-to-VRAM trade-off
 result = ref.vship.SSIMULACRA2(dist, numStream = 4)
 
 # Extract scores from frame properties
@@ -138,6 +126,8 @@ print(f"Average SSIMULACRA2 score: {sum(scores) / len(scores)}")
 
 ### Butteraugli
 
+See [BUTTERAUGLI](./doc/BUTTERAUGLI.md) for more details like calculating VRAM usage.
+
 ```python
 import vapoursynth as vs
 core = vs.core
@@ -147,37 +137,34 @@ ref = core.bs.VideoSource("reference.mp4")
 dist = core.bs.VideoSource("distorted.mp4")
 
 # Calculate Butteraugli scores
+# distmap controls whether to return a visual distortion map or the reference clip
 # intensity_multiplier controls sensitivity
-result = ref.vship.BUTTERAUGLI(dist, distmap=0, numStream = 4)
+# qnorm controls which Norm to calculate and return in _BUTTERAUGLI_QNorm
+result = ref.vship.BUTTERAUGLI(dist, distmap = 0, numStream = 4, qnorm = 5)
 
 # Extract scores from frame properties (three different norms available)
-scores_2norm = [frame.props["_BUTTERAUGLI_2Norm"] for frame in result.frames()]
 scores_3norm = [frame.props["_BUTTERAUGLI_3Norm"] for frame in result.frames()]
 scores_infnorm = [frame.props["_BUTTERAUGLI_INFNorm"] for frame in result.frames()]
+scores_5norm = [frame.props["_BUTTERAUGLI_QNorm"] for frame in result.frames()]
 
-# Get all scores in one pass
-all_scores = [[frame.props["_BUTTERAUGLI_2Norm"],
-               frame.props["_BUTTERAUGLI_3Norm"],
-               frame.props["_BUTTERAUGLI_INFNorm"]]
+# Alternatively get all scores in one pass
+all_scores = [frame.props["_BUTTERAUGLI_3Norm"],
+               frame.props["_BUTTERAUGLI_INFNorm"],
+               frame.props["_BUTTERAUGLI_QNorm"]]
               for frame in result.frames()]
 
 # Print average scores
 print(f"Average Butteraugli 3Norm distance: {sum(scores_3norm) / len(scores_3norm)})
-print(f"Average Butteraugli 2Norm distance: {sum(scores_2norm) / len(scores_2norm)})
 print(f"Average Butteraugli MaxNorm distance: {sum(scores_infnorm) / len(scores_infnorm)})
-```
+print(f"Average Butteraugli 5Norm distance: {sum(scores_5norm) / len(scores_5norm)})
 
-You are also able to generate visual distortion maps with Butteraugli:
-
-```python
-# Set distmap=1 to visualize distortion
-distmap_result = ref.vship.BUTTERAUGLI(dist, distmap=1)
-
-# The resulting clip is a grayscale visualization of distortions
-distmap_result.set_output()
+# Output grayscale visualation of distortion for visual analysis
+ref.vship.BUTTERAUGLI(dist, distmap = 1, numStream = 4).set_output()
 ```
 
 ### CVVDP
+
+See [CVVDP](./doc/CVVDP.md) for more details like calculating VRAM usage.
 
 ```python
 import vapoursynth as vs
@@ -187,9 +174,11 @@ core = vs.core
 ref = core.bs.VideoSource("reference.mp4")
 dist = core.bs.VideoSource("distorted.mp4")
 
-# Calculate Butteraugli scores
-# intensity_multiplier controls sensitivity
-result = ref.vship.CVVDP(dist, distmap=0)
+# Calculate CVVDP scores
+# distmap controls whether to return a visual distortion map or the reference clip
+# model_name controls which Display Model to use
+# resizeToDisplay conrols whether or not to resize the reference and distorted inputs to the Display Model resolution
+result = ref.vship.CVVDP(dist, distmap = 0, model_name = "standard_fhd", resizeToDisplay = 0)
 
 # Extract scores from frame properties
 scores = [frame.props["_CVVDP"] for frame in result.frames()]
@@ -197,16 +186,9 @@ scores = [frame.props["_CVVDP"] for frame in result.frames()]
 # Only use the last score of CVVDP. (it takes into account every frame that it has seen up to now)
 #it is different because it is an actually temporal metric unlike others
 print(f"CVVDP Video Score: {scores[-1]}")
-```
 
-You are also able to generate visual distortion maps with Butteraugli:
-
-```python
-# Set distmap=1 to visualize distortion
-distmap_result = ref.vship.CVVDP(dist, distmap=1)
-
-# The resulting clip is a grayscale visualization of distortions
-distmap_result.set_output()
+# Output grayscale visualation of distortion for visual analysis
+ref.vship.CVVDP(dist, distmap = 1).set_output()
 ```
 
 ## Performance

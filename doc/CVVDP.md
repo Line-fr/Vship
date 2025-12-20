@@ -20,11 +20,11 @@ gpu_id | `int` | No | `0`
 
 ### reference
 
-Reference clip to compare distorted clip to. Must be a [Vapoursynth VideoNode][vs-videonode].
+Reference clip to compare distorted clip to. Must be a [VapourSynth VideoNode][vs-videonode].
 
 ### distorted
 
-Distorted clip to compare to reference clip with. It must be a [Vapoursynth VideoNode][vs-videonode] with the same length, width, and height as the reference clip.
+Distorted clip to compare to reference clip with. It must be a [VapourSynth VideoNode][vs-videonode] with the same length, width, and height as the reference clip.
 
 ### distmap
 
@@ -35,7 +35,7 @@ When enabled (`1`), method returns the distmap. Otherwise, the method returns th
 distmap = reference.vship.CVVDP(distorted, distmap = 1)
 ```
 
-`distmap` is a [Vapoursynth VideoNode][vs-videonode] with the following properties:
+`distmap` is a [VapourSynth VideoNode][vs-videonode] with the following properties:
 
 ```
 VideoNode
@@ -97,7 +97,7 @@ ID of the GPU to run VSHIP on. It will perform the GPU Check functions as descri
 
 ## CVVDP Return Values
 
-The method will always return a [Vapoursynth VideoNode][vs-videonode] with the following property on each individual [VideoFrame][vs-videoframe]: `_CVVDP`
+The method will always return a [VapourSynth VideoNode][vs-videonode] with the following property on each individual [VideoFrame][vs-videoframe]: `_CVVDP`
 
 As CVVDP is a video metric, it does its own score accumulation to return a single score.
 As such, ONLY THE LAST SCORE SHOULD BE USED but every score should be computed! In fact, the score of frame i corresponds to the score of the sequence from frame 0 to frame i.
@@ -107,3 +107,5 @@ As such, ONLY THE LAST SCORE SHOULD BE USED but every score should be computed! 
 VRAM consumption can be calculated using the following: `4 * width * height * (10*4/3 + fps*3*0.5)` where width and height refer to the dimensions of the video and fps to its frames per second. This formula is an approximation.
 
 [wiki-error-management]: Vship-Error-Managment.md
+[vs-videonode]: https://www.vapoursynth.com/doc/pythonreference.html#VideoNode
+[vs-videoframe]: https://www.vapoursynth.com/doc/pythonreference.html#VideoFrame
