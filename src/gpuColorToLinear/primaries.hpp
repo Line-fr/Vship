@@ -11,6 +11,37 @@ __device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, V
     return a;
 }
 
+//https://fr.mathworks.com/help/images/ref/whitepoint.html
+//https://en.wikipedia.org/wiki/NTSC
+//http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
+template<>
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_ST170_M, Vship_PRIMARIES_INTERNAL>(float3 a){
+    float3 res;
+    res.x = fmaf(a.x, 0.39349893f, fmaf(a.y, 0.3652766f, a.z*0.19162447f));
+    res.y = fmaf(a.x, 0.2123645f, fmaf(a.y, 0.70109542f, a.z*0.08654008f));
+    res.z = fmaf(a.x, 0.01873804f, fmaf(a.y, 0.1119396f, a.z*0.95812235f));
+    return res;
+}
+
+template<>
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, Vship_PRIMARIES_ST170_M>(float3 a){
+    float3 res;
+    res.x = fmaf(a.x, 3.5061991f, fmaf(a.y, -1.7398879f, -a.z*0.54408866f));
+    res.y = fmaf(a.x, -1.06899334f, fmaf(a.y, 1.97767857f, a.z*0.03516964f));
+    res.z = fmaf(a.x, 0.05632201f, fmaf(a.y, -0.1970296f, a.z*1.05023986f));
+    return res;
+}
+
+template<>
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_ST240_M, Vship_PRIMARIES_INTERNAL>(float3 a){
+    return primariesToPrimaries_device<Vship_PRIMARIES_ST170_M, Vship_PRIMARIES_INTERNAL>(a);
+}
+
+template<>
+__device__ float3 inline primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, Vship_PRIMARIES_ST240_M>(float3 a){
+    return primariesToPrimaries_device<Vship_PRIMARIES_INTERNAL, Vship_PRIMARIES_ST170_M>(a);
+}
+
 //http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
 //https://en.wikipedia.org/wiki/PAL
 template<>

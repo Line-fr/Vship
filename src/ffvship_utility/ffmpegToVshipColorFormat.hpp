@@ -368,6 +368,12 @@ int ffmpegToVshipFormat(Vship_Colorspace_t& out, const FFMS_Frame* in){
         case AVCOL_PRI_BT470BG:
             out.primaries = Vship_PRIMARIES_BT470_BG;
             break;
+        case AVCOL_PRI_SMPTE170M:
+            out.primaries = Vship_PRIMARIES_ST170_M;
+            break;
+        case AVCOL_PRI_SMPTE240M:
+            out.primaries = Vship_PRIMARIES_ST240_M;
+            break;
         /*
         case AVCOL_PRI_SMPTE170M:
             out.color_primaries = ZIMG_PRIMARIES_ST170_M;
