@@ -143,21 +143,18 @@ dist = core.bs.VideoSource("distorted.mp4")
 result = ref.vship.BUTTERAUGLI(dist, distmap = 0, numStream = 4, qnorm = 5)
 
 # Extract scores from frame properties (three different norms available)
-scores_2norm = [frame.props["_BUTTERAUGLI_2Norm"] for frame in result.frames()]
 scores_3norm = [frame.props["_BUTTERAUGLI_3Norm"] for frame in result.frames()]
 scores_infnorm = [frame.props["_BUTTERAUGLI_INFNorm"] for frame in result.frames()]
 scores_5norm = [frame.props["_BUTTERAUGLI_QNorm"] for frame in result.frames()]
 
 # Alternatively get all scores in one pass
-all_scores = [[frame.props["_BUTTERAUGLI_2Norm"],
-               frame.props["_BUTTERAUGLI_3Norm"],
+all_scores = [frame.props["_BUTTERAUGLI_3Norm"],
                frame.props["_BUTTERAUGLI_INFNorm"],
                frame.props["_BUTTERAUGLI_QNorm"]]
               for frame in result.frames()]
 
 # Print average scores
 print(f"Average Butteraugli 3Norm distance: {sum(scores_3norm) / len(scores_3norm)})
-print(f"Average Butteraugli 2Norm distance: {sum(scores_2norm) / len(scores_2norm)})
 print(f"Average Butteraugli MaxNorm distance: {sum(scores_infnorm) / len(scores_infnorm)})
 print(f"Average Butteraugli 5Norm distance: {sum(scores_5norm) / len(scores_5norm)})
 
