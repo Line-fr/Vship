@@ -225,7 +225,7 @@ int ffmpegToVshipFormat(Vship_Colorspace_t& out, const FFMS_Frame* in){
         */
 
         default:
-            std::cerr << "Unhandled LibAV Chroma position" << std::endl;
+            std::cerr << "Unhandled LibAV Chroma position: " << in->ChromaLocation << std::endl;
             return 1;
     }
     
@@ -279,7 +279,7 @@ int ffmpegToVshipFormat(Vship_Colorspace_t& out, const FFMS_Frame* in){
         //    break;
         */
         default:
-            std::cerr << "Unhandled LibAV YUV color matrix" << std::endl;
+            std::cerr << "Unhandled LibAV YUV color matrix: " << in->ColorSpace << std::endl;
             return 1;
     }
 
@@ -351,7 +351,7 @@ int ffmpegToVshipFormat(Vship_Colorspace_t& out, const FFMS_Frame* in){
             break;
 
         default:
-            std::cerr << "Unhandled LibAV color transfer function" << std::endl;
+            std::cerr << "Unhandled LibAV color transfer function: " << in->TransferCharateristics << std::endl;
             return 1;
     }
     
@@ -398,7 +398,7 @@ int ffmpegToVshipFormat(Vship_Colorspace_t& out, const FFMS_Frame* in){
         */
             
         default:
-            std::cerr << "Unhandled LibAV color primaries" << std::endl;
+            std::cerr << "Unhandled LibAV color primaries: " << in->ColorPrimaries << std::endl;
             return 1;
     }
 
