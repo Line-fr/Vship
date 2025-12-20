@@ -180,6 +180,12 @@ void inline primariesToPrimaries_template1(float* p0, float* p1, float* p2, int6
         case Vship_PRIMARIES_BT470_M:
             primariesToPrimaries_allTemplate<Vship_PRIMARIES_BT470_M, T2>(p0, p1, p2, width, stream);
             break;
+        case Vship_PRIMARIES_ST170_M:
+            primariesToPrimaries_allTemplate<Vship_PRIMARIES_ST170_M, T2>(p0, p1, p2, width, stream);
+            break;
+        case Vship_PRIMARIES_ST240_M:
+            primariesToPrimaries_allTemplate<Vship_PRIMARIES_ST240_M, T2>(p0, p1, p2, width, stream);
+            break;
         case Vship_PRIMARIES_BT2020:
             primariesToPrimaries_allTemplate<Vship_PRIMARIES_BT2020, T2>(p0, p1, p2, width, stream);
             break;
@@ -200,6 +206,12 @@ void inline primariesToPrimaries(float* p0, float* p1, float* p2, int64_t width,
             break;
         case Vship_PRIMARIES_BT470_M:
             primariesToPrimaries_template1<Vship_PRIMARIES_BT470_M>(p0, p1, p2, width, src_primary, stream);
+            break;
+        case Vship_PRIMARIES_ST170_M:
+            primariesToPrimaries_template1<Vship_PRIMARIES_ST170_M>(p0, p1, p2, width, src_primary, stream);
+            break;
+        case Vship_PRIMARIES_ST240_M:
+            primariesToPrimaries_template1<Vship_PRIMARIES_ST240_M>(p0, p1, p2, width, src_primary, stream);
             break;
         case Vship_PRIMARIES_BT2020:
             primariesToPrimaries_template1<Vship_PRIMARIES_BT2020>(p0, p1, p2, width, src_primary, stream);

@@ -140,6 +140,23 @@ __device__ void inline transferLinearize<Vship_TRC_BT601>(float& a){
     gamma_to_linrgbfunc(a, 2.8f);
 }
 
+template <>
+__device__ void inline transferLinearize<Vship_TRC_ST240_M>(float& a){
+    if (a >= 0){
+        if (a < 0.0228){
+            a = 4*a;
+        } else {
+            a = 1.1115f*powf(a, 0.45f) - 0.1115;
+        }
+    } else {
+        if (a > -0.0228){
+            a = 4*a;
+        } else {
+            a = -1.1115f*powf(-a, 0.45f) + 0.1115;
+        }
+    }
+}
+
 //source https://github.com/haasn/libplacebo/blob/master/src/shaders/colorspace.c (14/05/2025 line 670)
 template <>
 __device__ void inline transferLinearize<Vship_TRC_ST428>(float& a){

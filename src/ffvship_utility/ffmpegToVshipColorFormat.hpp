@@ -309,11 +309,9 @@ int ffmpegToVshipFormat(Vship_Colorspace_t& out, const FFMS_Frame* in){
         case AVCOL_TRC_SMPTE170M:
             out.transferFunction = Vship_TRC_BT601;
             break;
-        /*
         case AVCOL_TRC_SMPTE240M:
-            out.transfer_characteristics = ZIMG_TRANSFER_ST240_M;
+            out.transfer_characteristics = Vship_TRC_ST240_M;
             break;
-        */
         case AVCOL_TRC_LINEAR:
             out.transferFunction = Vship_TRC_Linear;
             break;

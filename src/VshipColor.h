@@ -52,6 +52,7 @@ typedef enum Vship_TransferFunction_t{
     Vship_TRC_BT470_M = 4,
     Vship_TRC_BT470_BG = 5,
     Vship_TRC_BT601 = 6, //same as 5
+    Vship_TRC_ST240_M = 7,
     Vship_TRC_Linear = 8,
     Vship_TRC_sRGB = 13,
     Vship_TRC_PQ = 16,
