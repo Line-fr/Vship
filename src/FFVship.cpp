@@ -258,8 +258,14 @@ int main(int argc, char **argv) {
     }
 
     // gpu sanity check
-    // if succeed, this function also does hipSetDevice
     Vship_Exception err = Vship_GPUFullCheck(cli_args.gpu_id);
+    if (err != Vship_NoError){
+        char errmsg[1024];
+        Vship_GetDetailedLastError(errmsg, 1024);
+        std::cerr << errmsg << std::endl;
+        return 1;
+    }
+    err = Vship_SetDevice(cli_args.gpu_id);
     if (err != Vship_NoError){
         char errmsg[1024];
         Vship_GetDetailedLastError(errmsg, 1024);
