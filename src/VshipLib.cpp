@@ -411,6 +411,23 @@ Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler){
     return err;
 }
 
+Vship_Exception Vship_CVVDPGetDistmapResolution(Vship_CVVDPHandler handler, int64_t* width, int64_t* height){
+    Vship_Exception err = Vship_NoError;
+    HandlerManagerCVVDP.lock.lock();
+    if (handler.id >= HandlerManagerCVVDP.elements.size()){
+        HandlerManagerCVVDP.lock.unlock();
+        lastError = VshipError(BadHandler, __FILE__, __LINE__, "Handler internal state in Vship_ResetCVVDP is not valid, did you allocate or use after free?");
+        return Vship_BadHandler;
+    }
+    //we have this value by copy to be able to run with the mutex unlocked, the pointer could be invalidated if the vector was to change size
+    auto* handlerdata = HandlerManagerCVVDP.elements[handler.id];
+    HandlerManagerCVVDP.lock.unlock();
+
+    *width = handlerdata->implem.resize_width;
+    *height = handlerdata->implem.resize_height;
+    return err;
+}
+
 Vship_Exception Vship_ResetCVVDP(Vship_CVVDPHandler handler){
     Vship_Exception err = Vship_NoError;
     HandlerManagerCVVDP.lock.lock();

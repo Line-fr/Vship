@@ -156,9 +156,11 @@ EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vs
 //passing NULL allows to have no path (similarly "\0" works)
 EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit2(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr, const char* model_config_json_cstr);
 
-
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);
+
+//in order to retrieve the distortion map, you might want to know its resolution (it varies depending on parameters)
+EXPORTPREPROCESS Vship_Exception Vship_CVVDPGetDistmapResolution(Vship_CVVDPHandler handler, int64_t* width, int64_t* height);
 
 //Allows to empty the frame history. Since the metric is temporal, you may want to reset without recreating a whole new handler since it is quite expensive
 //Unlike recreating the handler, this function is basically free perf wise, it is setting a variable to 0, that's it!
