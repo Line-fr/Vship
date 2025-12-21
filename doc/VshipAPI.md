@@ -259,6 +259,12 @@ Vship_PinnedFree(mypointer); //cleanup using this function
 
 This function is used to perform some preprocessing using colorspaces. It creates a handler to be used on the compute function. A handler should only be used to process one frame at a time, should not be used after free but it can process multiple frames sequentially. It is possible and even recommended to create multiple Handler to process multiple frames in parallel.
 
+By default the gpu_id attached is the last Vship_SetDevice set. (Use Vship_SSIMU2Init2 if a specific gpu_id is needed)
+
+### Vship_SSIMU2Init2(Vship_SSIMU2Handler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int gpu_id)
+
+the above but with explicit gpu_id
+
 ### Vship_SSIMU2Free(Vship_SSIMU2Handler handler)
 
 To avoid leaks, every handler that was allocated should be freed later using this function.
@@ -277,6 +283,12 @@ This function is used to perform some preprocessing using colorspaces. It create
 
 The intensity multiplier corresponds to the screen luminosity in nits. It is usually set at 203 nits or 80 nits.
 Qnorm allows getting an arbitrary norm of the Butteraugli distortion map in the ButteruagliScore object. By default you can set it to 2.
+
+By default the gpu_id attached is the last Vship_SetDevice set. (Use Vship_ButteraugliInit2 if a specific gpu_id is needed)
+
+### Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier, int gpu_id)
+
+the above but with explicit gpu_id
 
 ### Vship_ButteraugliFree(Vship_ButteraugliHandler handler)
 
@@ -301,6 +313,12 @@ This handler will have its own temporal filter. As such, you need to feed frames
 the video fps value is important since it controls the size of the temporal filter and can increase or lower VRAM value.
 
 for more information about resizeToDisplay and models, you can refer to [this page](CVVDP.md)
+
+By default the gpu_id attached is the last Vship_SetDevice set. (Use Vship_CVVDPInit3 if a specific gpu_id is needed)
+
+### Vship_CVVDPInit3(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr, const char* model_config_json_cstr, int gpu_id)
+
+the above but with explicit gpu_id and can take a path to a json specifying displays as defined in [this page](CVVDP.md).
 
 ### Vship_CVVDPFree(Vship_CVVDPHandler handler);
 
