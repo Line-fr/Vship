@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
 
     if (cli_args.version){
         Vship_Version vshipVersion = Vship_GetVersion();
-        std::cout << "FFVship 4.0.2-a" << std::endl;
+        std::cout << "FFVship 4.0.3-a" << std::endl;
         std::cout << "Repository : https://github.com/Line-fr/Vship" << std::endl;
         std::cout << "Linked against libvship version " << vshipVersion.major << "." << vshipVersion.minor << "." << vshipVersion.minorMinor << std::endl;
         if (vshipVersion.backend == Vship_Cuda){
@@ -258,13 +258,14 @@ int main(int argc, char **argv) {
     }
 
     // gpu sanity check
-    Vship_Exception err = Vship_GPUFullCheck(cli_args.gpu_id);
+    Vship_Exception err = Vship_GPUFullCheck(cli_args.metricParam.gpu_id);
     if (err != Vship_NoError){
         char errmsg[1024];
         Vship_GetDetailedLastError(errmsg, 1024);
         std::cerr << errmsg << std::endl;
         return 1;
     }
+    /*not needed anymore we defined gpu_id in handler directly
     err = Vship_SetDevice(cli_args.gpu_id);
     if (err != Vship_NoError){
         char errmsg[1024];
@@ -272,6 +273,7 @@ int main(int argc, char **argv) {
         std::cerr << errmsg << std::endl;
         return 1;
     }
+    */
 
     auto init = std::chrono::high_resolution_clock::now();
 

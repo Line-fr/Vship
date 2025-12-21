@@ -24,6 +24,9 @@ if (!(condition)) {\
 enum class MetricType { SSIMULACRA2, Butteraugli, CVVDP, Unknown };
 
 struct MetricParameters{
+    //general
+    int gpu_id = 0;
+
     //CVVDP
     bool resizeToDisplay = 0;
     std::string model_key = "standard_fhd";
@@ -139,11 +142,11 @@ class GpuWorker {
     void allocate_gpu_memory(float fps, MetricParameters metricParam) {
         Vship_Exception err;
         if (selected_metric == MetricType::SSIMULACRA2) {
-            err = Vship_SSIMU2Init(&ssimu2worker, image_colorspace, encoded_colorspace);
+            err = Vship_SSIMU2Init2(&ssimu2worker, image_colorspace, encoded_colorspace, metricParam.gpu_id);
         } else if (selected_metric == MetricType::Butteraugli) {
-            err = Vship_ButteraugliInit(&butterworker, image_colorspace, encoded_colorspace, metricParam.Qnorm, metricParam.intensity_target_nits);
+            err = Vship_ButteraugliInit2(&butterworker, image_colorspace, encoded_colorspace, metricParam.Qnorm, metricParam.intensity_target_nits, metricParam.gpu_id);
         } else if (selected_metric == MetricType::CVVDP){
-            err = Vship_CVVDPInit2(&cvvdpworker, image_colorspace, encoded_colorspace, fps, metricParam.resizeToDisplay, metricParam.model_key.c_str(), metricParam.model_config_json.c_str());
+            err = Vship_CVVDPInit3(&cvvdpworker, image_colorspace, encoded_colorspace, fps, metricParam.resizeToDisplay, metricParam.model_key.c_str(), metricParam.model_config_json.c_str(), metricParam.gpu_id);
         } else {
             ASSERT_WITH_MESSAGE(false,
                                 "Unknown metric during memory allocation.");
@@ -826,7 +829,6 @@ struct CommandLineOptions {
 
     MetricParameters metricParam;
 
-    int gpu_id = 0;
     int gpu_threads = 3;
     int cpu_threads = 1;
 
@@ -921,7 +923,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     parser.add_flag({"--qnorm"}, &opts.metricParam.Qnorm, "Optional Norm to compute (default to 2)");
     parser.add_flag({"--threads", "-t"}, &opts.cpu_threads, "Number of Decoder process, recommended is 2");
     parser.add_flag({"--gpu-threads", "-g"}, &opts.gpu_threads, "GPU thread count, recommended is 3");
-    parser.add_flag({"--gpu-id"}, &opts.gpu_id, "GPU index");
+    parser.add_flag({"--gpu-id"}, &opts.metricParam.gpu_id, "GPU index");
     parser.add_flag({"--list-gpu"}, &opts.list_gpus, "List available GPUs");
     parser.add_flag({"--version"}, &opts.version, "Print FFVship version");
     parser.add_flag({"--verbose"}, &opts.verbose, "Print Colorspace found in Source and encoded");

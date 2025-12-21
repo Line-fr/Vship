@@ -71,9 +71,12 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI
 #define EXPORTVSHIPLIB //to use dllexport for windows
 #include "VshipAPI.h"
 
+int global_gpu_id = 0;
+
 template<typename ImplementationType>
 struct HandlerData{
     ImplementationType implem;
+    int gpu_id = 0;
     VshipError lastError = VshipError(NoError, "Your Heart", 0, "");
 };
 
@@ -87,7 +90,7 @@ extern "C"{
 
 Vship_Version Vship_GetVersion(){
     Vship_Version res;
-    res.major = 4; res.minor = 0; res.minorMinor = 2;
+    res.major = 4; res.minor = 0; res.minorMinor = 3;
     #if defined __CUDACC__
     res.backend = Vship_Cuda;
     #else
@@ -173,12 +176,7 @@ Vship_Exception Vship_SetDevice(int gpu_id){
         lastError = VshipError(BadDeviceArgument, __FILE__, __LINE__, "In Vship_SetDevice");
         return Vship_BadDeviceArgument;
     }
-    try{
-        GPU_CHECK(hipSetDevice(gpu_id));
-    } catch (VshipError& e){
-        lastError = e;
-        return (Vship_Exception)e.type;
-    }
+    global_gpu_id = gpu_id;
     return Vship_NoError;
 }
 
@@ -200,7 +198,7 @@ Vship_Exception Vship_PinnedFree(void* ptr){
     return Vship_NoError;
 }
 
-Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace){
+Vship_Exception Vship_SSIMU2Init2(Vship_SSIMU2Handler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int gpu_id){
     Vship_Exception err = Vship_NoError;
     handler->id = HandlerManagerSSIMU2.allocate();
     HandlerManagerSSIMU2.lock.lock();
@@ -208,6 +206,8 @@ Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, Vship_Colorspace_
     auto* handlerdata = HandlerManagerSSIMU2.elements[handler->id];
     HandlerManagerSSIMU2.lock.unlock();
     try{
+        handlerdata->gpu_id = gpu_id;
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         handlerdata->implem.init(src_colorspace, dis_colorspace);
     } catch (const VshipError& e){
         handlerdata->lastError = e;
@@ -215,6 +215,10 @@ Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, Vship_Colorspace_
         err = (Vship_Exception)e.type;
     }
     return err;
+}
+
+Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace){
+    return Vship_SSIMU2Init2(handler, src_colorspace, dis_colorspace, global_gpu_id);
 }
 
 Vship_Exception Vship_SSIMU2Free(Vship_SSIMU2Handler handler){
@@ -228,6 +232,7 @@ Vship_Exception Vship_SSIMU2Free(Vship_SSIMU2Handler handler){
     auto* handlerdata = HandlerManagerSSIMU2.elements[handler.id];
     HandlerManagerSSIMU2.lock.unlock();
     try{
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         handlerdata->implem.destroy();
     } catch (const VshipError& e){
         handlerdata->lastError = e;
@@ -252,6 +257,7 @@ Vship_Exception Vship_ComputeSSIMU2(Vship_SSIMU2Handler handler, double* score, 
     HandlerManagerSSIMU2.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         *score = handlerdata->implem.run(srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
         handlerdata->lastError = e;
@@ -279,7 +285,7 @@ int Vship_SSIMU2GetDetailedLastError(Vship_SSIMU2Handler handler, char* out_mess
     return cppstr.size()+1;
 }
 
-Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier){
+Vship_Exception Vship_ButteraugliInit2(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier, int gpu_id){
     Vship_Exception err = Vship_NoError;
     handler->id = HandlerManagerButteraugli.allocate();
     HandlerManagerButteraugli.lock.lock();
@@ -287,7 +293,8 @@ Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_C
     auto* handlerdata = HandlerManagerButteraugli.elements[handler->id];
     HandlerManagerButteraugli.lock.unlock();
     try{
-        //Qnorm = 2 by default to mimic old behavior
+        handlerdata->gpu_id = gpu_id;
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         handlerdata->implem.init(src_colorspace, dis_colorspace, Qnorm, intensity_multiplier);
     } catch (const VshipError& e){
         handlerdata->lastError = e;
@@ -295,6 +302,10 @@ Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_C
         err = (Vship_Exception)e.type;
     }
     return err;
+}
+
+Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier){
+    return Vship_ButteraugliInit2(handler, src_colorspace, dis_colorspace, Qnorm, intensity_multiplier, global_gpu_id);
 }
 
 Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler handler){
@@ -308,6 +319,7 @@ Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler handler){
     auto* handlerdata = HandlerManagerButteraugli.elements[handler.id];
     HandlerManagerButteraugli.lock.unlock();
     try{
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         handlerdata->implem.destroy();
     } catch (const VshipError& e){
         handlerdata->lastError = e;
@@ -332,6 +344,7 @@ Vship_Exception Vship_ComputeButteraugli(Vship_ButteraugliHandler handler, Vship
     HandlerManagerButteraugli.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         std::tuple<double, double, double> res = handlerdata->implem.run(dstp, dststride, srcp1, srcp2, lineSize, lineSize2);
         score->normQ = std::get<0>(res);
         score->norm3 = std::get<1>(res);
@@ -362,7 +375,7 @@ int Vship_ButteraugliGetDetailedLastError(Vship_ButteraugliHandler handler, char
     return cppstr.size()+1;
 }
 
-Vship_Exception Vship_CVVDPInit2(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr, const char* model_config_json_cstr){
+Vship_Exception Vship_CVVDPInit3(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr, const char* model_config_json_cstr, int gpu_id){
     Vship_Exception err = Vship_NoError;
     handler->id = HandlerManagerCVVDP.allocate();
     HandlerManagerCVVDP.lock.lock();
@@ -376,6 +389,8 @@ Vship_Exception Vship_CVVDPInit2(Vship_CVVDPHandler* handler, Vship_Colorspace_t
         model_config_json = std::string(model_config_json_cstr);
     } 
     try{
+        handlerdata->gpu_id = gpu_id;
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         handlerdata->implem.init(src_colorspace, dis_colorspace, fps, resizeToDisplay, model_key, model_config_json);
     } catch (const VshipError& e){
         handlerdata->lastError = e;
@@ -383,6 +398,10 @@ Vship_Exception Vship_CVVDPInit2(Vship_CVVDPHandler* handler, Vship_Colorspace_t
         err = (Vship_Exception)e.type;
     }
     return err;
+}
+
+Vship_Exception Vship_CVVDPInit2(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr, const char* model_config_json_cstr){
+    return Vship_CVVDPInit3(handler, src_colorspace, dis_colorspace, fps, resizeToDisplay, model_key_cstr, model_config_json_cstr, global_gpu_id);
 }
 
 Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr){
@@ -400,6 +419,7 @@ Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler){
     auto* handlerdata = HandlerManagerCVVDP.elements[handler.id];
     HandlerManagerCVVDP.lock.unlock();
     try{
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         handlerdata->implem.destroy();
     } catch (const VshipError& e){
         handlerdata->lastError = e;
@@ -441,6 +461,7 @@ Vship_Exception Vship_ResetCVVDP(Vship_CVVDPHandler handler){
     HandlerManagerCVVDP.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         handlerdata->implem.flushTemporalRing();
     } catch (const VshipError& e){
         handlerdata->lastError = e;
@@ -464,6 +485,7 @@ Vship_Exception Vship_ResetScoreCVVDP(Vship_CVVDPHandler handler){
     HandlerManagerCVVDP.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         handlerdata->implem.flushOnlyScore();
     } catch (const VshipError& e){
         handlerdata->lastError = e;
@@ -488,6 +510,7 @@ Vship_Exception Vship_LoadTemporalCVVDP(Vship_CVVDPHandler handler, const uint8_
     HandlerManagerCVVDP.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         handlerdata->implem.loadImageToRing(srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
         handlerdata->lastError = e;
@@ -510,6 +533,7 @@ Vship_Exception Vship_ComputeCVVDP(Vship_CVVDPHandler handler, double* score, co
     HandlerManagerCVVDP.lock.unlock();
     //there is no safety feature to prevent using twice at the same time a single computingimplem
     try{
+        GPU_CHECK(hipSetDevice(handlerdata->gpu_id));
         *score = handlerdata->implem.run(dstp, dststride, srcp1, srcp2, lineSize, lineSize2);
     } catch (const VshipError& e){
         handlerdata->lastError = e;

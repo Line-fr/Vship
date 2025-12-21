@@ -106,6 +106,8 @@ EXPORTPREPROCESS Vship_Exception Vship_PinnedFree(void* ptr);
 //handler pointer will be replaced, it is a return value. Don't forget to free it after usage.
 EXPORTPREPROCESS Vship_Exception Vship_SSIMU2Init(Vship_SSIMU2Handler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace);
 
+EXPORTPREPROCESS Vship_Exception Vship_SSIMU2Init2(Vship_SSIMU2Handler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int gpu_id);
+
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_SSIMU2Free(Vship_SSIMU2Handler handler);
 
@@ -128,6 +130,8 @@ typedef struct Vship_ButteraugliScore{
 
 //handler pointer will be replaced, it is a return value. Don't forget to free it after usage.
 EXPORTPREPROCESS Vship_Exception Vship_ButteraugliInit(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier);
+
+EXPORTPREPROCESS Vship_Exception Vship_ButteraugliInit2(Vship_ButteraugliHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, int Qnorm, float intensity_multiplier, int gpu_id);
 
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_ButteraugliFree(Vship_ButteraugliHandler handler);
@@ -155,6 +159,8 @@ EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit(Vship_CVVDPHandler* handler, Vs
 //however if you go with a completely new display name, you will have to specify everything
 //passing NULL allows to have no path (similarly "\0" works)
 EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit2(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr, const char* model_config_json_cstr);
+
+EXPORTPREPROCESS Vship_Exception Vship_CVVDPInit3(Vship_CVVDPHandler* handler, Vship_Colorspace_t src_colorspace, Vship_Colorspace_t dis_colorspace, float fps, bool resizeToDisplay, const char* model_key_cstr, const char* model_config_json_cstr, int gpu_id);
 
 //handler pointer can be discarded after this function.
 EXPORTPREPROCESS Vship_Exception Vship_CVVDPFree(Vship_CVVDPHandler handler);
