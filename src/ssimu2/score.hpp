@@ -1,7 +1,7 @@
 namespace ssimu2{
 
 //if the weight is below or equal to weight_pruning, we skip and put to 0
-const float weight_pruning = 0.f;
+const float weight_pruning = -1.f;
 const float weights[108] = {
     0.0f,
     0.0007376606707406586f,
@@ -215,7 +215,6 @@ __global__ void planescale_map_Kernel(float* dst, float* im1, float* im2, int64_
     //retrieve the value of im that we will use from the precreated tampon
     im1p = im1tampon[(threadIdx.y+8)*32+threadIdx.x+8];
     im2p = im2tampon[(threadIdx.y+8)*32+threadIdx.x+8];
-    //if (x == 1000 && y == 650) printf("im1 %f im2 %f\n", im1p, im2p);
     __syncthreads();
 
     if constexpr (!skipSSIM){
@@ -247,6 +246,7 @@ __global__ void planescale_map_Kernel(float* dst, float* im1, float* im2, int64_
     m1 = GaussianSmart_Device(im1tampon, x, y, width, height, gaussiankernel, gaussiankernel_integral);
     m2 = GaussianSmart_Device(im2tampon, x, y, width, height, gaussiankernel, gaussiankernel_integral);
 
+    //if (x == 0 && y == 0) printf("im1 %f im2 %f m1 %f m2 %f s12 %f s1122 %f\n", im1p, im2p, m1, m2, s12, s11_s22);
     //now we have im1p, im2p, m1, m2 and (s12, s11_s22 if ssim enabled)
     if (x < width && y < height){
         if constexpr (!skipSSIM){
