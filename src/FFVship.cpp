@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
 
     if (cli_args.version){
         Vship_Version vshipVersion = Vship_GetVersion();
-        std::cout << "FFVship 4.0.3-a" << std::endl;
+        std::cout << "FFVship 4.1.0-a" << std::endl;
         std::cout << "Repository : https://github.com/Line-fr/Vship" << std::endl;
         std::cout << "Linked against libvship version " << vshipVersion.major << "." << vshipVersion.minor << "." << vshipVersion.minorMinor << std::endl;
         if (vshipVersion.backend == Vship_Cuda){
