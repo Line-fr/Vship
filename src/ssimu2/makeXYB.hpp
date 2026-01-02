@@ -51,53 +51,22 @@ __device__ inline void rgb_to_positive_xyb_d(float3& a){
     make_positive_xyb(a);
 }
 
-__device__ inline void rgb_to_linrgbfunc(float& a){
-    if (a < 0){
-        a = -powf(-a, 2.4);
-    } else {
-        a = powf(a, 2.4);
-    }
-}
-
-__device__ inline void rgb_to_linrgb(float3& a){
-    rgb_to_linrgbfunc(a.x);
-    rgb_to_linrgbfunc(a.y);
-    rgb_to_linrgbfunc(a.z);
-}
-
 __launch_bounds__(256)
-__global__ void rgb_to_positive_xyb_Kernel(float3* array, int64_t width){
+__global__ void rgb_to_positive_xyb_Kernel(float* p0, float* p1, float* p2, int64_t width){
     int64_t x = threadIdx.x + blockIdx.x*blockDim.x;
     if (x >= width) return;
-    //float3 old = array[x];
-    //rgb_to_linrgb(array[x]); we need to do it before rescale
-    //float3 old = array[x];
-    rgb_to_positive_xyb_d(array[x]);
+    float3 packed = {p0[x], p1[x], p2[x]};
+    rgb_to_positive_xyb_d(packed);
+    p0[x] = packed.x;
+    p1[x] = packed.y;
+    p2[x] = packed.z;
     //if (x == 10000) printf("from %f, %f, %f to %f, %f, %f\n", old.x, old.y, old.z, array[x].x, array[x].y, array[x].z);
 }
 
-__host__ inline void rgb_to_positive_xyb(float3* array, int64_t width, hipStream_t stream){
+__host__ inline void rgb_to_positive_xyb(float* src_d[3], int64_t width, hipStream_t stream){
     int64_t th_x = std::min((int64_t)256, width);
     int64_t bl_x = (width-1)/th_x + 1;
-    rgb_to_positive_xyb_Kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(array, width);
-    GPU_CHECK(hipGetLastError());
-}
-
-__launch_bounds__(256)
-__global__ void rgb_to_linear_Kernel(float3* array, int64_t width){
-    int64_t x = threadIdx.x + blockIdx.x*blockDim.x;
-    if (x >= width) return;
-    //float3 old = array[x];
-    rgb_to_linrgb(array[x]);
-    //float3 old = array[x];
-    //rgb_to_positive_xyb_d(array[x]); we need to make it xyb after downscale
-    //if (x == 10000) printf("from %f, %f, %f to %f, %f, %f\n", old.x, old.y, old.z, array[x].x, array[x].y, array[x].z);
-}
-
-__host__ inline void rgb_to_linear(float3* array, int64_t width, hipStream_t stream){
-    int64_t th_x = std::min((int64_t)256, width);
-    int64_t bl_x = (width-1)/th_x + 1;
-    rgb_to_linear_Kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(array, width);
+    rgb_to_positive_xyb_Kernel<<<dim3(bl_x), dim3(th_x), 0, stream>>>(src_d[0], src_d[1], src_d[2], width);
     GPU_CHECK(hipGetLastError());
 }
 

@@ -21,38 +21,24 @@ public:
     }
 };
 
-__device__ void GaussianSmartSharedLoadProduct(float3* tampon, const float3* src1, const float3* src2, int64_t x, int64_t y, int64_t width, int64_t height){
+__device__ void GaussianSmartSharedLoad(float* tampon, const float* src, int64_t x, int64_t y, int64_t width, int64_t height){
     const int thx = threadIdx.x;
     const int thy = threadIdx.y;
     const int tampon_base_x = x - thx - 8;
     const int tampon_base_y = y - thy - 8;
 
     //fill tampon
-    tampon[thy*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? src1[(tampon_base_y+thy)*width + tampon_base_x+thx]*src2[(tampon_base_y+thy)*width + tampon_base_x+thx] : makeFloat3(0.f, 0.f, 0.f);
-    tampon[(thy+16)*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? src1[(tampon_base_y+thy+16)*width + tampon_base_x+thx]*src2[(tampon_base_y+thy+16)*width + tampon_base_x+thx] : makeFloat3(0.f, 0.f, 0.f);
-    tampon[thy*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? src1[(tampon_base_y+thy)*width + tampon_base_x+thx+16]*src2[(tampon_base_y+thy)*width + tampon_base_x+thx+16] : makeFloat3(0.f, 0.f, 0.f);
-    tampon[(thy+16)*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? src1[(tampon_base_y+thy+16)*width + tampon_base_x+thx+16]*src2[(tampon_base_y+thy+16)*width + tampon_base_x+thx+16] : makeFloat3(0.f, 0.f, 0.f);
-    __syncthreads();
-}
-
-__device__ void GaussianSmartSharedLoad(float3* tampon, const float3* src, int64_t x, int64_t y, int64_t width, int64_t height){
-    const int thx = threadIdx.x;
-    const int thy = threadIdx.y;
-    const int tampon_base_x = x - thx - 8;
-    const int tampon_base_y = y - thy - 8;
-
-    //fill tampon
-    tampon[thy*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? src[(tampon_base_y+thy)*width + tampon_base_x+thx] : makeFloat3(0.f, 0.f, 0.f);
-    tampon[(thy+16)*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? src[(tampon_base_y+thy+16)*width + tampon_base_x+thx] : makeFloat3(0.f, 0.f, 0.f);
-    tampon[thy*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? src[(tampon_base_y+thy)*width + tampon_base_x+thx+16] : makeFloat3(0.f, 0.f, 0.f);
-    tampon[(thy+16)*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? src[(tampon_base_y+thy+16)*width + tampon_base_x+thx+16] : makeFloat3(0.f, 0.f, 0.f);
+    tampon[thy*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? src[(tampon_base_y+thy)*width + tampon_base_x+thx] : 0.f;
+    tampon[(thy+16)*32+thx] = (tampon_base_x + thx >= 0 && tampon_base_x + thx < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? src[(tampon_base_y+thy+16)*width + tampon_base_x+thx] : 0.f;
+    tampon[thy*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy >= 0 && tampon_base_y + thy < height) ? src[(tampon_base_y+thy)*width + tampon_base_x+thx+16] : 0.f;
+    tampon[(thy+16)*32+thx+16] = (tampon_base_x + thx +16 >= 0 && tampon_base_x + thx +16 < width && tampon_base_y + thy + 16 >= 0 && tampon_base_y + thy + 16 < height) ? src[(tampon_base_y+thy+16)*width + tampon_base_x+thx+16] : 0.f;
     __syncthreads();
 }
 
 //a whole block of 16x16 should into there, x and y corresponds to their real position in the src (or slighly outside)
 //at the end, the central 16*16 part of tampon contains the blurred value for each thread
 //tampon is of size 32*32
-__device__ void GaussianSmart_Device(float3* tampon, int64_t x, int64_t y, int64_t width, int64_t height, float* gaussiankernel, float* gaussiankernel_integral){
+__device__ float GaussianSmart_Device(float* tampon, int64_t x, int64_t y, int64_t width, int64_t height, float* gaussiankernel, float* gaussiankernel_integral){
     const int thx = threadIdx.x;
     const int thy = threadIdx.y;
 
@@ -60,8 +46,8 @@ __device__ void GaussianSmart_Device(float3* tampon, int64_t x, int64_t y, int64
 
     //1st pass in [8 - 24][0 - 16]
     float tot;
-    float3 out = makeFloat3(0.f, 0.f, 0.f);
-    float3 out2 = makeFloat3(0.f, 0.f, 0.f);
+    float out = 0.f;
+    float out2 = 0.f;
     //border handling precompute
     int beg = max((int64_t)0, x-8)-(x-8);
     int end2 = min(width, x+9)-min(width, (x-8));
@@ -78,7 +64,7 @@ __device__ void GaussianSmart_Device(float3* tampon, int64_t x, int64_t y, int64
     __syncthreads();
 
     //verticalBlur on tampon restraint into rectangle [8 - 24][8 - 24] -> 1 pass per thread
-    out = makeFloat3(0.f, 0.f, 0.f);
+    out = 0.f;
     beg = max((int64_t)0, y-8)-(y-8);
     end2 = min(height, y+9)-min(height, (y-8));
     tot = gaussiankernel_integral[end2] - gaussiankernel_integral[beg];
@@ -87,8 +73,7 @@ __device__ void GaussianSmart_Device(float3* tampon, int64_t x, int64_t y, int64
     }
 
     __syncthreads();
-    tampon[(thy+8)*32 + thx+8] = out/tot;
-    __syncthreads();
+    return out/tot;
 }
 
 }
