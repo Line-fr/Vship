@@ -1,7 +1,7 @@
 namespace ssimu2{
 
 //if the weight is below or equal to weight_pruning, we skip and put to 0
-const float weight_pruning = -1.f;
+const float weight_pruning = 0.5f;
 const float weights[108] = {
     0.0f,
     0.0007376606707406586f,
@@ -384,14 +384,16 @@ std::vector<float> allscore_map(float* im1[3], float* im2[3], float* temp, int64
 
     int64_t w = basewidth;
     int64_t h = baseheight;
+    int64_t index = 0;
     //stream1 will exclusively manage scale 0 while stream2 will manage smaller scales
     for (int scale = 0; scale < 6; scale++){
         hipStream_t stream = (scale == 0) ? streams[0] : streams[1];
         float* tempScale = (scale == 0) ? temp1 : temp2;
         for (int plane = 0; plane < 3; plane++){
             SkipMap skipMap = getSkipMap(plane, scale);
-            planescale_map(outbuffer_d+plane*6*2*3 + scale*2*3, im1[plane], im2[plane], tempScale, w, h, gaussianhandle, skipMap, stream);
+            planescale_map(outbuffer_d+plane*6*2*3 + scale*2*3, im1[plane]+index, im2[plane]+index, tempScale, w, h, gaussianhandle, skipMap, stream);
         }
+        index += w*h;
         w = (w+1)/2;
         h = (h+1)/2;
     }
