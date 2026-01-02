@@ -215,6 +215,8 @@ __global__ void planescale_map_Kernel(float* dst, float* im1, float* im2, int64_
     //retrieve the value of im that we will use from the precreated tampon
     im1p = im1tampon[(threadIdx.y+8)*32+threadIdx.x+8];
     im2p = im2tampon[(threadIdx.y+8)*32+threadIdx.x+8];
+    //if (x == 1000 && y == 650) printf("im1 %f im2 %f\n", im1p, im2p);
+    __syncthreads();
 
     if constexpr (!skipSSIM){
         //product blur a*b
