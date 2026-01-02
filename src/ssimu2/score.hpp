@@ -1,7 +1,7 @@
 namespace ssimu2{
 
 //if the weight is below or equal to weight_pruning, we skip and put to 0
-const float weight_pruning = 0.5f;
+const float weight_pruning = 0.01f;
 const float weights[108] = {
     0.0f,
     0.0007376606707406586f,
