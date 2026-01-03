@@ -197,12 +197,18 @@ __global__ void planescale_map_Kernel(float* dst, float* im1, float* im2, int64_
     const int64_t threadnum = 256;
     const int64_t thid = threadIdx.y*16 + threadIdx.x;
 
-    __shared__ float sharedmem[32*32 *3]; //12288B
+    constexpr uint gaussianBuffers = (skipSSIM) ? 2 : 3;
+    __shared__ float sharedmem[32*32 * gaussianBuffers]; //12288B
     //explicit image cache
     float* im1tampon = sharedmem;
     float* im2tampon = sharedmem+32*32;
     //working buffer
-    float* gaussiantampon = sharedmem+2*32*32;
+    float* gaussiantampon;
+    if constexpr (!skipSSIM){
+        gaussiantampon = sharedmem+2*32*32;
+    } else {
+        (void)gaussiantampon;
+    }
 
     //fill image buffers
     GaussianSmartSharedLoad(im1tampon, im1, x, y, width, height); 
@@ -213,9 +219,15 @@ __global__ void planescale_map_Kernel(float* dst, float* im1, float* im2, int64_
     float ssim = 0, artifact = 0, detailloss = 0;
 
     //retrieve the value of im that we will use from the precreated tampon
-    im1p = im1tampon[(threadIdx.y+8)*32+threadIdx.x+8];
-    im2p = im2tampon[(threadIdx.y+8)*32+threadIdx.x+8];
-    __syncthreads();
+    if constexpr (!skipArtifact || !skipDetailloss){
+        im1p = im1tampon[(threadIdx.y+8)*32+threadIdx.x+8];
+        im2p = im2tampon[(threadIdx.y+8)*32+threadIdx.x+8];
+        __syncthreads();
+    } else {
+        //unused
+        (void)im1p;
+        (void)im2p;
+    }
 
     if constexpr (!skipSSIM){
         //product blur a*b
@@ -240,6 +252,8 @@ __global__ void planescale_map_Kernel(float* dst, float* im1, float* im2, int64_
         const float sumsquared = GaussianSmart_Device(gaussiantampon, x, y, width, height, gaussiankernel, gaussiankernel_integral);
         //we can deduce a**2 + b**2 now following linearity of gaussian blur
         s11_s22 = sumsquared - 2*s12;
+    } else {
+        (void)s12; (void)s11_s22; //unused
     }
 
     //then we blur our im1buffer and im2buffer to get m1 and m2
