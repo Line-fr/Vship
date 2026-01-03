@@ -194,13 +194,14 @@ ref.vship.CVVDP(dist, distmap = 1).set_output()
 ## Performance
 
 Testing Hardware: Ryzen 7940HS + RTX 4050 Mobile (strong CPU - weak GPU configuration)
+Testing Clip: 1080p 1339 frames
 
 SSIMU2 Implementation | HW Type | Time
 --- | --- | ---
 JXL | CPU | 115s
 VSZIP | CPU | 68s
 Vapoursynth Vship | GPU | 25s
-FFVship | GPU | 15s
+FFVship | GPU | 9s
 
 Butteraugli Implementation | HW Type | Time
 --- | --- | ---
