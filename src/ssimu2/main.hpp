@@ -78,7 +78,6 @@ double ssimu2GPUProcess(float* src1_d[3], float* src2_d[3], float* temp_d, int64
 }
 
 class SSIMU2ComputingImplementation{
-    float* pinned;
     GaussianHandle gaussianhandle;
     VshipColorConvert::Converter converter1;
     VshipColorConvert::Converter converter2;
