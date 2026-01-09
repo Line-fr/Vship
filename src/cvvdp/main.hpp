@@ -347,12 +347,12 @@ public:
         const double current_score = CVVDPprocess(dstp, dststride, resize_width, resize_height, temporalRing1, temporalRing2, csf_handler, gaussianhandle, model, stream1, stream2, event, event2);
         score_squareSum += std::pow(current_score, beta_t);
         double resQ;
-        if (numFrame == 0){
+        numFrame++;
+        if (numFrame == 1){
             resQ = current_score * image_int;
         } else {
             resQ = std::pow(score_squareSum/(double)numFrame, 1./beta_t);
         }
-        numFrame++;
         return toJOD(resQ);
     }
     void flushOnlyScore(){
