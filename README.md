@@ -1,3 +1,8 @@
+# Deprecation Notice: Vship is moving away from github (microslop). 
+
+Here is the link to the new [Codeberg Repository](https://codeberg.org/Line-fr/Vship)
+This git repository will receive no further commits/releases but files will remain for now.
+
 # Vship : Fast Metric Computation on GPU
 
 An easy to use high-performance Library for GPU-accelerated visual fidelity
